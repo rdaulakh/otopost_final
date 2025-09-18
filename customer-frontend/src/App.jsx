@@ -24,8 +24,13 @@ import { ThemeProvider, useTheme } from './contexts/ThemeContext.jsx'
 import { AuthProvider, useAuth } from './contexts/AuthContext.jsx'
 import { QueryProvider } from './providers/QueryProvider.jsx'
 
+// Import UX infrastructure
+import ErrorBoundary from './components/ErrorBoundary.jsx'
+import { NotificationProvider } from './components/NotificationSystem.jsx'
+
 // Import components
 import Dashboard from './components/Dashboard.jsx'
+import { DashboardSkeleton } from './components/LoadingSkeletons.jsx'
 import StrategyPlanner from './components/StrategyPlanner.jsx'
 import EnhancedContentCalendar from './components/EnhancedContentCalendar.jsx'
 import CampaignManager from './components/CampaignManager.jsx'
@@ -454,9 +459,11 @@ function App() {
       <QueryProvider>
         <ThemeProvider>
           <AuthProvider>
-            <AuthWrapper>
-              <AppContent />
-            </AuthWrapper>
+            <NotificationProvider>
+              <AuthWrapper>
+                <AppContent />
+              </AuthWrapper>
+            </NotificationProvider>
           </AuthProvider>
         </ThemeProvider>
       </QueryProvider>

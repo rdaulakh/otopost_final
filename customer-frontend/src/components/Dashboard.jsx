@@ -48,6 +48,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge.jsx'
 import { Button } from '@/components/ui/button.jsx'
 import { Progress } from '@/components/ui/progress.jsx'
+
+// Import UX infrastructure
+import { useNotifications } from './NotificationSystem.jsx'
+import { useWebSocket } from '../services/websocketService.js'
+import { DashboardSkeleton } from './LoadingSkeletons.jsx'
 import { useTheme } from '../contexts/ThemeContext.jsx'
 import { getBadgeClasses } from '../constants/colors.js'
 
@@ -104,11 +109,60 @@ const Dashboard = ({ data: fallbackData = {}, user = {}, onDataUpdate = () => {}
     isLoading: subscriptionLoading 
   } = useUserSubscription()
 
+  // UX infrastructure hooks
+  const { success, error, info, warning } = useNotifications()
+  const { isConnected, subscribe } = useWebSocket()
+
   // Loading state
   const isLoading = analyticsLoading || contentLoading || aiLoading || usageLoading || socialLoading || subscriptionLoading
 
   // Error handling
   const hasError = analyticsError || contentError || aiError
+
+  // WebSocket real-time updates
+  useEffect(() => {
+    if (!isConnected) return
+
+    // Subscribe to real-time analytics updates
+    const unsubscribeAnalytics = subscribe('analyticsUpdate', (data) => {
+      info('Analytics updated with latest data')
+      refetchAnalytics()
+    })
+
+    // Subscribe to AI agent status updates
+    const unsubscribeAgents = subscribe('agentStatus', (data) => {
+      info(`AI Agent ${data.agentName} status: ${data.status}`)
+    })
+
+    // Subscribe to content updates
+    const unsubscribeContent = subscribe('contentPublished', (data) => {
+      success(`New content published: ${data.title}`)
+    })
+
+    // Subscribe to system notifications
+    const unsubscribeNotifications = subscribe('newNotification', (notification) => {
+      switch (notification.type) {
+        case 'success':
+          success(notification.message)
+          break
+        case 'error':
+          error(notification.message)
+          break
+        case 'warning':
+          warning(notification.message)
+          break
+        default:
+          info(notification.message)
+      }
+    })
+
+    return () => {
+      unsubscribeAnalytics()
+      unsubscribeAgents()
+      unsubscribeContent()
+      unsubscribeNotifications()
+    }
+  }, [isConnected, subscribe, success, error, info, warning, refetchAnalytics])
 
   // Fallback to mock data if API data is not available
   const performanceMetrics = analyticsData?.performance || fallbackData?.performance || {
@@ -335,6 +389,11 @@ const Dashboard = ({ data: fallbackData = {}, user = {}, onDataUpdate = () => {}
         </Card>
       </div>
     )
+  }
+
+  // Show loading skeleton while data is loading
+  if (isLoading && !fallbackData) {
+    return <DashboardSkeleton />
   }
 
   return (
