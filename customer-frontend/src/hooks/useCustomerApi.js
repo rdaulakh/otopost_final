@@ -236,6 +236,89 @@ export const useDeleteContent = () => {
   })
 }
 
+// Get Content Batch (for calendar view)
+export const useContentBatch = (options = {}) => {
+  return useQuery({
+    queryKey: ['contentBatch', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/content/batch', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    cacheTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2
+  })
+}
+
+// Approve Content
+export const useContentApprove = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ contentId, feedback }) => {
+      try {
+        const response = await api.post(`/content/${contentId}/approve`, { feedback })
+        return response.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['contentList'])
+      queryClient.invalidateQueries(['contentBatch'])
+      queryClient.invalidateQueries(['analyticsOverview'])
+    }
+  })
+}
+
+// Reject Content
+export const useContentReject = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ contentId, feedback }) => {
+      try {
+        const response = await api.post(`/content/${contentId}/reject`, { feedback })
+        return response.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['contentList'])
+      queryClient.invalidateQueries(['contentBatch'])
+    }
+  })
+}
+
+// Schedule Content
+export const useContentSchedule = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ contentId, scheduledTime, platforms }) => {
+      try {
+        const response = await api.post(`/content/${contentId}/schedule`, { 
+          scheduledTime, 
+          platforms 
+        })
+        return response.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['contentList'])
+      queryClient.invalidateQueries(['contentBatch'])
+      queryClient.invalidateQueries(['scheduledPosts'])
+    }
+  })
+}
+
 // ============================================================================
 // AI HOOKS
 // ============================================================================

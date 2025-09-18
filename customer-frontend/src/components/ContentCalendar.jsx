@@ -42,7 +42,7 @@ import {
   useContentReject, 
   useContentSchedule,
   useContentBatch
-} from '../hooks/useApi.js'
+} from '../hooks/useCustomerApi.js'
 
 const ContentCalendar = ({ data: fallbackData, onDataUpdate }) => {
   const { isDarkMode } = useTheme()
@@ -72,91 +72,17 @@ const ContentCalendar = ({ data: fallbackData, onDataUpdate }) => {
   // Loading state
   const isLoading = contentLoading || batchLoading
 
-  // Fallback content batch data structure
-  const fallbackContentBatch = {
-    weekOf: 'January 15-21, 2024',
-    status: 'pending_approval',
-    deadline: '2024-01-13T23:59:59',
-    totalPosts: 14,
+  // Use real data only - no mock fallbacks
+  const contentBatch = batchData || {
+    weekOf: 'Current Week',
+    status: 'no_data',
+    deadline: null,
+    totalPosts: 0,
     approvedPosts: 0,
     rejectedPosts: 0,
-    posts: [
-      {
-        id: 1,
-        platform: 'instagram',
-        type: 'carousel',
-        title: 'New Year Productivity Tips',
-        caption: '🚀 Start 2024 with these game-changing productivity hacks! Swipe to see how successful entrepreneurs maximize their time...',
-        hashtags: ['#productivity', '#entrepreneur', '#newyear', '#success', '#tips'],
-        scheduledTime: '2024-01-15T14:00:00',
-        estimatedReach: '8,500-12,000',
-        confidenceScore: 92,
-        status: 'pending',
-        designBrief: 'Modern carousel with 5 slides, each featuring a productivity tip with clean icons and brand colors',
-        aiReasoning: 'High engagement expected due to New Year timing and actionable content format'
-      },
-      {
-        id: 2,
-        platform: 'linkedin',
-        type: 'text_post',
-        title: 'Industry Insights: SaaS Trends 2024',
-        caption: 'The SaaS landscape is evolving rapidly. Here are 5 key trends that will shape our industry in 2024:\n\n1. AI-First Product Development\n2. Vertical SaaS Specialization\n3. Usage-Based Pricing Models\n4. Enhanced Security Focus\n5. Customer Success Automation\n\nWhich trend do you think will have the biggest impact? 💭',
-        hashtags: ['#SaaS', '#TechTrends', '#AI', '#Innovation', '#B2B'],
-        scheduledTime: '2024-01-15T09:00:00',
-        estimatedReach: '3,200-4,800',
-        confidenceScore: 88,
-        status: 'pending',
-        designBrief: 'Professional text post with subtle background pattern and company logo',
-        aiReasoning: 'LinkedIn audience responds well to industry insights and discussion-starting questions'
-      },
-      {
-        id: 3,
-        platform: 'twitter',
-        type: 'image',
-        title: 'Quick Tip Tuesday',
-        caption: '💡 Quick Tip Tuesday: Use the 2-minute rule for better productivity!\n\nIf a task takes less than 2 minutes, do it immediately instead of adding it to your to-do list.\n\nSimple but effective! 🎯\n\n#ProductivityTip #TuesdayTip #TimeManagement',
-        hashtags: ['#ProductivityTip', '#TuesdayTip', '#TimeManagement'],
-        scheduledTime: '2024-01-16T11:30:00',
-        estimatedReach: '2,100-3,500',
-        confidenceScore: 85,
-        status: 'pending',
-        designBrief: 'Eye-catching graphic with timer icon and bold typography on gradient background',
-        aiReasoning: 'Twitter users engage well with quick, actionable tips and consistent series branding'
-      },
-      {
-        id: 4,
-        platform: 'facebook',
-        type: 'video',
-        title: 'Behind the Scenes: Team Meeting',
-        caption: 'Ever wondered how we plan our product roadmap? 🤔\n\nTake a peek behind the scenes at our weekly strategy meeting! Our team is passionate about building tools that make your work life easier.\n\n#BehindTheScenes #TeamWork #ProductDevelopment #Company Culture',
-        hashtags: ['#BehindTheScenes', '#TeamWork', '#ProductDevelopment'],
-        scheduledTime: '2024-01-16T16:00:00',
-        estimatedReach: '5,800-8,200',
-        confidenceScore: 79,
-        status: 'pending',
-        designBrief: '60-second video montage with upbeat music, showing team collaboration and office environment',
-        aiReasoning: 'Facebook users appreciate authentic behind-the-scenes content that humanizes the brand'
-      },
-      {
-        id: 5,
-        platform: 'instagram',
-        type: 'reel',
-        title: 'Feature Spotlight: AI Assistant',
-        caption: '🤖 Meet your new AI assistant! Watch how it transforms your workflow in just 30 seconds ✨\n\n#AIAssistant #ProductDemo #Innovation #TechMagic #Productivity',
-        hashtags: ['#AIAssistant', '#ProductDemo', '#Innovation', '#TechMagic'],
-        scheduledTime: '2024-01-17T13:00:00',
-        estimatedReach: '12,000-18,000',
-        confidenceScore: 94,
-        status: 'pending',
-        designBrief: 'Dynamic reel with screen recordings, smooth transitions, and engaging text overlays',
-        aiReasoning: 'Reels have highest reach potential, and product demos perform exceptionally well'
-      }
-    ]
+    posts: []
   }
-
-  // Use real data or fallback
-  const contentBatch = batchData || fallbackData?.contentBatch || fallbackContentBatch
-  const posts = contentData?.content || contentBatch.posts || []
+  const posts = contentData?.content || []
 
   // Update content batch with real posts
   const realContentBatch = {
