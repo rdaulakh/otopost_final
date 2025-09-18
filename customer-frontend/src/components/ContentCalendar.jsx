@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Calendar, 
@@ -35,8 +35,16 @@ import { Separator } from '@/components/ui/separator.jsx'
 import PlatformPreview from './previews/PlatformPreview.jsx'
 import { useTheme } from '../contexts/ThemeContext.jsx'
 
+// Import API hooks
+import { 
+  useContentList, 
+  useContentApprove, 
+  useContentReject, 
+  useContentSchedule,
+  useContentBatch
+} from '../hooks/useApi.js'
 
-const ContentCalendar = ({ data, onDataUpdate }) => {
+const ContentCalendar = ({ data: fallbackData, onDataUpdate }) => {
   const { isDarkMode } = useTheme()
 
   const [activeView, setActiveView] = useState('approval')
@@ -44,8 +52,28 @@ const ContentCalendar = ({ data, onDataUpdate }) => {
   const [isProcessing, setIsProcessing] = useState(false)
   const [actionStatus, setActionStatus] = useState(null)
 
-  // Mock content batch data
-  const [contentBatch, setContentBatch] = useState({
+  // API hooks for real content data
+  const { 
+    data: contentData, 
+    isLoading: contentLoading, 
+    error: contentError,
+    refetch: refetchContent 
+  } = useContentList({ status: 'pending_approval', limit: 50 })
+  
+  const { 
+    data: batchData, 
+    isLoading: batchLoading 
+  } = useContentBatch()
+  
+  const approveContentMutation = useContentApprove()
+  const rejectContentMutation = useContentReject()
+  const scheduleContentMutation = useContentSchedule()
+
+  // Loading state
+  const isLoading = contentLoading || batchLoading
+
+  // Fallback content batch data structure
+  const fallbackContentBatch = {
     weekOf: 'January 15-21, 2024',
     status: 'pending_approval',
     deadline: '2024-01-13T23:59:59',
@@ -124,7 +152,20 @@ const ContentCalendar = ({ data, onDataUpdate }) => {
         aiReasoning: 'Reels have highest reach potential, and product demos perform exceptionally well'
       }
     ]
-  })
+  }
+
+  // Use real data or fallback
+  const contentBatch = batchData || fallbackData?.contentBatch || fallbackContentBatch
+  const posts = contentData?.content || contentBatch.posts || []
+
+  // Update content batch with real posts
+  const realContentBatch = {
+    ...contentBatch,
+    posts: posts,
+    totalPosts: posts.length,
+    approvedPosts: posts.filter(p => p.status === 'approved').length,
+    rejectedPosts: posts.filter(p => p.status === 'rejected').length
+  }
 
   const platformIcons = {
     instagram: Instagram,
@@ -146,10 +187,68 @@ const ContentCalendar = ({ data, onDataUpdate }) => {
     setIsProcessing(true)
     setActionStatus(null)
 
+    try {
+      let result
+      
+      if (action === 'approved') {
+        result = await approveContentMutation.mutateAsync({ 
+          contentId: postId, 
+          feedback 
+        })
+        setActionStatus({
+          type: 'success',
+          message: 'Content approved and scheduled successfully!'
+        })
+      } else if (action === 'rejected') {
+        result = await rejectContentMutation.mutateAsync({ 
+          contentId: postId, 
+          feedback 
+        })
+        setActionStatus({
+          type: 'warning',
+          message: 'Content rejected. AI will create a new version based on your feedback.'
+        })
+      }
+
+      // Refresh content list
+      await refetchContent()
+      
+      // Update callback
+      onDataUpdate({ 
+        action, 
+        postId, 
+        feedback,
+        timestamp: new Date() 
+      })
+
+    } catch (error) {
+      console.error('Error processing content action:', error)
+      setActionStatus({
+        type: 'error',
+        message: 'Failed to process action. Please try again.'
+      })
+    } finally {
+      setIsProcessing(false)
+    }
+
+    // Clear status after 5 seconds
+    setTimeout(() => setActionStatus(null), 5000)
+  }
+
+  // Fallback to mock behavior if API is not available
+  const handlePostActionFallback = async (postId, action, feedback = null) => {
+    setIsProcessing(true)
+    setActionStatus(null)
+
     // Simulate API call
     setTimeout(() => {
-      setContentBatch(prev => ({
-        ...prev,
+      // Mock update logic here
+      setActionStatus({
+        type: action === 'approved' ? 'success' : 'warning',
+        message: action === 'approved' 
+          ? 'Content approved and scheduled successfully!' 
+          : 'Content rejected. AI will create a new version.'
+      })
         posts: prev.posts.map(post => 
           post.id === postId 
             ? { ...post, status: action, feedback }
@@ -512,11 +611,16 @@ const ContentCalendar = ({ data, onDataUpdate }) => {
         </div>
         <div className="flex items-center space-x-4">
           <Badge variant="outline" className="bg-blue-50 text-blue-700">
-            Week of {contentBatch.weekOf}
+            Week of {realContentBatch.weekOf}
           </Badge>
           <Badge variant="outline" className="bg-orange-50 text-orange-700">
-            Deadline: {formatTime(contentBatch.deadline)}
+            Deadline: {formatTime(realContentBatch.deadline)}
           </Badge>
+          {isLoading && (
+            <Badge variant="outline" className="bg-gray-50 text-gray-700">
+              Loading...
+            </Badge>
+          )}
         </div>
       </div>
 
@@ -554,7 +658,7 @@ const ContentCalendar = ({ data, onDataUpdate }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Total Posts</p>
-                <p className="text-2xl font-bold text-slate-900">{contentBatch.totalPosts}</p>
+                <p className="text-2xl font-bold text-slate-900">{realContentBatch.totalPosts}</p>
               </div>
               <Calendar className="h-8 w-8 text-blue-600" />
             </div>
@@ -566,7 +670,7 @@ const ContentCalendar = ({ data, onDataUpdate }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Approved</p>
-                <p className="text-2xl font-bold text-green-600">{contentBatch.approvedPosts}</p>
+                <p className="text-2xl font-bold text-green-600">{realContentBatch.approvedPosts}</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
@@ -579,7 +683,7 @@ const ContentCalendar = ({ data, onDataUpdate }) => {
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Pending Review</p>
                 <p className="text-2xl font-bold text-orange-600">
-                  {contentBatch.totalPosts - contentBatch.approvedPosts - contentBatch.rejectedPosts}
+                  {realContentBatch.totalPosts - realContentBatch.approvedPosts - realContentBatch.rejectedPosts}
                 </p>
               </div>
               <Clock className="h-8 w-8 text-orange-600" />
@@ -593,7 +697,7 @@ const ContentCalendar = ({ data, onDataUpdate }) => {
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400">Avg. Confidence</p>
                 <p className="text-2xl font-bold text-purple-600">
-                  {Math.round(contentBatch.posts.reduce((acc, post) => acc + post.confidenceScore, 0) / contentBatch.posts.length)}%
+                  {realContentBatch.posts.length > 0 ? Math.round(realContentBatch.posts.reduce((acc, post) => acc + (post.confidenceScore || 0), 0) / realContentBatch.posts.length) : 0}%
                 </p>
               </div>
               <TrendingUp className="h-8 w-8 text-purple-600" />
@@ -613,14 +717,14 @@ const ContentCalendar = ({ data, onDataUpdate }) => {
         {/* Pending Approval Tab */}
         <TabsContent value="approval" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {contentBatch.posts
+            {realContentBatch.posts
               .filter(post => post.status === 'pending')
               .map(post => (
                 <PostCard key={post.id} post={post} />
               ))}
           </div>
           
-          {contentBatch.posts.filter(post => post.status === 'pending').length === 0 && (
+          {realContentBatch.posts.filter(post => post.status === 'pending').length === 0 && (
             <div className="text-center py-12">
               <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
               <h3 className="text-xl font-semibold text-slate-900 mb-2">All Posts Reviewed!</h3>
@@ -632,7 +736,7 @@ const ContentCalendar = ({ data, onDataUpdate }) => {
         {/* Scheduled Posts Tab */}
         <TabsContent value="scheduled" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {contentBatch.posts
+            {realContentBatch.posts
               .filter(post => post.status === 'approved')
               .map(post => (
                 <PostCard key={post.id} post={post} />
