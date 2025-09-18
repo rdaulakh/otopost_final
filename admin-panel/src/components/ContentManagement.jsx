@@ -28,79 +28,241 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button';
 import Modal from './ui/Modal';
 import { format } from 'date-fns';
-import { contentManagementService } from '../services';
-import { debugLog } from '../config/environment';
+// Import API hooks and UX components
+import { 
+  useContentList,
+  useContentStats,
+  useContentApproval,
+  useContentRejection,
+  useDeleteContent,
+  useContentExport,
+  useBulkContentActions,
+  useContentModeration
+} from '../hooks/useApi.js'
+import { useNotifications } from './NotificationSystem.jsx'
+import { TableSkeleton } from './LoadingSkeletons.jsx'
 
 const ContentManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false }) => {
+  // UX hooks
+  const { success, error, info } = useNotifications()
+
+  // Component state
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [selectedContent, setSelectedContent] = useState([])
   const [sortBy, setSortBy] = useState('createdAt')
-  const [sortOrder, setSortOrder] = useState('desc');
-  const [isViewContentModalOpen, setIsViewContentModalOpen] = useState(false);
-  const [viewingContent, setViewingContent] = useState(null);
-  const [isDeleteContentModalOpen, setIsDeleteContentModalOpen] = useState(false);
-  const [deletingContent, setDeletingContent] = useState(null);
+  const [sortOrder, setSortOrder] = useState('desc')
+  const [isViewContentModalOpen, setIsViewContentModalOpen] = useState(false)
+  const [viewingContent, setViewingContent] = useState(null)
+  const [isDeleteContentModalOpen, setIsDeleteContentModalOpen] = useState(false)
+  const [deletingContent, setDeletingContent] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+
+  // Real API calls for content management data
+  const { 
+    data: contentListData, 
+    isLoading: contentListLoading,
+    error: contentListError,
+    refetch: refetchContent 
+  } = useContentList({
+    search: searchTerm,
+    status: selectedFilter !== 'all' ? selectedFilter : undefined,
+    sortBy,
+    sortOrder,
+    page: currentPage,
+    limit: 10
+  })
   
-  // API state
-  const [content, setContent] = useState([]);
-  const [contentStats, setContentStats] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [pagination, setPagination] = useState({
+  const { 
+    data: contentStatsData, 
+    isLoading: contentStatsLoading 
+  } = useContentStats()
+  
+  const { 
+    mutate: approveContent,
+    isLoading: isApprovingContent 
+  } = useContentApproval()
+  
+  const { 
+    mutate: rejectContent,
+    isLoading: isRejectingContent 
+  } = useContentRejection()
+  
+  const { 
+    mutate: deleteContent,
+    isLoading: isDeletingContent 
+  } = useDeleteContent()
+  
+  const { 
+    mutate: exportContent,
+    isLoading: isExportingContent 
+  } = useContentExport()
+  
+  const { 
+    mutate: bulkContentActions,
+    isLoading: isBulkActioning 
+  } = useBulkContentActions()
+  
+  const { 
+    mutate: moderateContent,
+    isLoading: isModeratingContent 
+  } = useContentModeration()
+
+  // Loading state
+  const isLoading = contentListLoading || contentStatsLoading
+
+  // Error handling
+  const hasError = contentListError
+
+  // Use real API data with fallback to mock data
+  const content = contentListData?.content || []
+  const contentStats = contentStatsData || {
+    total: 0,
+    published: 0,
+    draft: 0,
+    pending: 0,
+    rejected: 0,
+    scheduled: 0
+  }
+  const pagination = contentListData?.pagination || {
     page: 1,
     limit: 10,
     total: 0,
     totalPages: 0
-  });
+  }
 
+  // Handle content operations
   const handleExport = async () => {
     try {
-      const exportData = await contentManagementService.exportContent({
+      info('Preparing content export...')
+      await exportContent({
         format: 'csv',
         filters: {
-          status: selectedFilter === 'all' ? '' : selectedFilter,
+          status: selectedFilter !== 'all' ? selectedFilter : undefined,
           search: searchTerm
         }
-      });
-      
-      // Create a blob and download
-      const blob = new Blob([exportData], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `content-export-${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      debugLog('Error exporting content:', error);
-      setError(error.message || 'Failed to export content');
+      })
+      success('Content exported successfully!')
+    } catch (err) {
+      error('Failed to export content')
     }
-  };
+  }
 
-  const handleViewContent = (content) => {
-    setViewingContent(content);
-    setIsViewContentModalOpen(true);
-  };
-
-  const handleDeleteContent = (content) => {
-    setDeletingContent(content);
-    setIsDeleteContentModalOpen(true);
-  };
-
-  const confirmDeleteContent = async () => {
+  const handleApproveContent = async (contentId) => {
     try {
-      await contentManagementService.deleteContent(deletingContent.id, 'Admin deletion');
-      await fetchContent();
-      setIsDeleteContentModalOpen(false);
-      setDeletingContent(null);
-    } catch (error) {
-      debugLog('Error deleting content:', error);
-      setError(error.message || 'Failed to delete content');
+      await approveContent({ contentId, reason: 'Admin approval' })
+      success('Content approved successfully!')
+      await refetchContent()
+      if (onDataUpdate) {
+        onDataUpdate({ action: 'content_approved', contentId })
+      }
+    } catch (err) {
+      error('Failed to approve content')
     }
-  };
+  }
+
+  const handleRejectContent = async (contentId, reason) => {
+    try {
+      await rejectContent({ contentId, reason })
+      success('Content rejected successfully!')
+      await refetchContent()
+      if (onDataUpdate) {
+        onDataUpdate({ action: 'content_rejected', contentId, reason })
+      }
+    } catch (err) {
+      error('Failed to reject content')
+    }
+  }
+
+  const handleDeleteContent = async (contentId) => {
+    try {
+      await deleteContent({ contentId, reason: 'Admin deletion' })
+      success('Content deleted successfully!')
+      setIsDeleteContentModalOpen(false)
+      setDeletingContent(null)
+      await refetchContent()
+      if (onDataUpdate) {
+        onDataUpdate({ action: 'content_deleted', contentId })
+      }
+    } catch (err) {
+      error('Failed to delete content')
+    }
+  }
+
+  const handleModerateContent = async (contentId, action, reason) => {
+    try {
+      await moderateContent({ contentId, action, reason })
+      success(`Content ${action} successfully!`)
+      await refetchContent()
+      if (onDataUpdate) {
+        onDataUpdate({ action: 'content_moderated', contentId, moderationAction: action })
+      }
+    } catch (err) {
+      error(`Failed to ${action} content`)
+    }
+  }
+
+  const handleBulkAction = async (action, contentIds) => {
+    try {
+      info(`Processing ${action} for ${contentIds.length} content items...`)
+      await bulkContentActions({ action, contentIds })
+      success(`${action} completed successfully for ${contentIds.length} items`)
+      setSelectedContent([])
+      await refetchContent()
+      if (onDataUpdate) {
+        onDataUpdate({ action: 'bulk_content_action', bulkAction: action, contentIds })
+      }
+    } catch (err) {
+      error(`Failed to ${action} content`)
+    }
+  }
+
+  const handleRefresh = async () => {
+    try {
+      await refetchContent()
+      success('Content data refreshed successfully')
+    } catch (err) {
+      error('Failed to refresh content data')
+    }
+  }
+
+  const handleViewContent = (contentItem) => {
+    setViewingContent(contentItem)
+    setIsViewContentModalOpen(true)
+  }
+
+  const handleDeleteContentModal = (contentItem) => {
+    setDeletingContent(contentItem)
+    setIsDeleteContentModalOpen(true)
+  }
+
+  // Show loading skeleton
+  if (isLoading && !content.length) {
+    return <TableSkeleton />
+  }
+
+  // Show error state
+  if (hasError && !content.length) {
+    return (
+      <div className="p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              <span>Error loading content data. Please try refreshing.</span>
+            </div>
+            <Button 
+              onClick={handleRefresh} 
+              className="mt-4 bg-red-600 hover:bg-red-700"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Loading...' : 'Retry'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+
 
   const handleUpdateContentStatus = async (contentId, status) => {
     try {
@@ -336,19 +498,21 @@ const ContentManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode = fa
             <div className="flex items-center space-x-3">
               <Button
                 onClick={handleExport}
+                disabled={isExportingContent}
                 variant="outline"
                 className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''}
               >
                 <Download className="h-4 w-4 mr-2" />
-                Export
+                {isExportingContent ? 'Exporting...' : 'Export'}
               </Button>
               <Button
-                onClick={() => fetchContent()}
+                onClick={handleRefresh}
+                disabled={isLoading}
                 variant="outline"
                 className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''}
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Refresh
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                {isLoading ? 'Refreshing...' : 'Refresh'}
               </Button>
             </div>
           </div>
