@@ -135,7 +135,6 @@ const UserProfile = ({ user, onUpdateUser }) => {
   // Error handling
   const hasError = profileError
 
-  // Use real API data with fallback to mock data
   const profileData = userProfileData || user || {
     name: 'John Doe',
     email: 'john@example.com',

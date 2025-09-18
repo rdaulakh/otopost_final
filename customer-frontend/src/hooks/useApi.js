@@ -27,6 +27,77 @@ export const useUserUsageStats = () => {
   });
 };
 
+export const useUserSettings = () => {
+  return useQuery({
+    queryKey: QUERY_KEYS.USER_PROFILE,
+    queryFn: () => apiHelpers.get(API_ENDPOINTS.USERS.PROFILE),
+    select: (data) => data.data?.preferences || {},
+  });
+};
+
+export const useUpdateProfile = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (profileData) => apiHelpers.put(API_ENDPOINTS.USERS.UPDATE_PROFILE, profileData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
+    },
+  });
+};
+
+export const useUpdateSettings = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (settings) => apiHelpers.put(API_ENDPOINTS.USERS.UPDATE_PROFILE, { preferences: settings }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
+    },
+  });
+};
+
+export const useNotificationSettings = () => {
+  return useQuery({
+    queryKey: QUERY_KEYS.USER_PROFILE,
+    queryFn: () => apiHelpers.get(API_ENDPOINTS.USERS.PROFILE),
+    select: (data) => data.data?.preferences?.notifications || {},
+  });
+};
+
+export const useUpdateNotificationSettings = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (notifications) => apiHelpers.put(API_ENDPOINTS.USERS.UPDATE_PROFILE, { 
+      preferences: { notifications } 
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
+    },
+  });
+};
+
+export const useSubscriptionInfo = () => {
+  return useQuery({
+    queryKey: QUERY_KEYS.USER_SUBSCRIPTION,
+    queryFn: () => apiHelpers.get(API_ENDPOINTS.USERS.SUBSCRIPTION),
+    select: (data) => data.data,
+  });
+};
+
+export const useUpdateSubscription = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (subscriptionData) => apiHelpers.put(API_ENDPOINTS.USERS.SUBSCRIPTION, subscriptionData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_SUBSCRIPTION });
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
+    },
+  });
+};
+
 // Content Management Hooks
 export const useContentList = (filters = {}) => {
   return useQuery({
@@ -398,4 +469,321 @@ export const useOptimisticUpdate = (queryKey, updateFn) => {
   };
   
   return { optimisticUpdate, rollback };
+};
+
+
+// Additional hooks for components that need them
+export const useAuth = () => {
+  // This should be implemented in a separate auth context
+  // For now, return basic auth state
+  return {
+    user: null,
+    login: () => {},
+    logout: () => {},
+    isAuthenticated: false
+  };
+};
+
+export const useApi = () => {
+  // Generic API hook
+  return {
+    get: apiHelpers.get,
+    post: apiHelpers.post,
+    put: apiHelpers.put,
+    delete: apiHelpers.delete
+  };
+};
+
+export const useCustomerApi = () => {
+  // Customer-specific API hooks
+  return {
+    getProfile: () => apiHelpers.get(API_ENDPOINTS.USERS.PROFILE),
+    updateProfile: (data) => apiHelpers.put(API_ENDPOINTS.USERS.UPDATE_PROFILE, data)
+  };
+};
+
+export const useAccountSecurity = () => {
+  return useQuery({
+    queryKey: ['account-security'],
+    queryFn: () => apiHelpers.get('/users/security'),
+    select: (data) => data.data || {}
+  });
+};
+
+export const useUpdatePassword = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (passwordData) => apiHelpers.put(API_ENDPOINTS.USERS.CHANGE_PASSWORD, passwordData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['account-security'] });
+    }
+  });
+};
+
+export const useDeleteAccount = () => {
+  return useMutation({
+    mutationFn: () => apiHelpers.delete(API_ENDPOINTS.USERS.DELETE_ACCOUNT)
+  });
+};
+
+export const useAIAnalysis = () => {
+  return useQuery({
+    queryKey: ['ai-analysis'],
+    queryFn: () => apiHelpers.get('/ai/analysis'),
+    select: (data) => data.data || {}
+  });
+};
+
+export const useAIContentGeneration = () => {
+  return useMutation({
+    mutationFn: (data) => apiHelpers.post(API_ENDPOINTS.AI.GENERATE_CONTENT, data)
+  });
+};
+
+export const useAIRecommendations = () => {
+  return useQuery({
+    queryKey: ['ai-recommendations'],
+    queryFn: () => apiHelpers.get('/ai/recommendations'),
+    select: (data) => data.data || []
+  });
+};
+
+// Campaign hooks
+export const useCampaignList = (filters = {}) => {
+  return useQuery({
+    queryKey: ['campaigns', filters],
+    queryFn: () => apiHelpers.get('/campaigns', filters),
+    select: (data) => data.data || []
+  });
+};
+
+export const useCreateCampaign = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (campaignData) => apiHelpers.post('/campaigns', campaignData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+    }
+  });
+};
+
+export const useUpdateCampaign = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, data }) => apiHelpers.put(`/campaigns/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+    }
+  });
+};
+
+export const useDeleteCampaign = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (id) => apiHelpers.delete(`/campaigns/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+    }
+  });
+};
+
+export const useCampaignAnalytics = (campaignId) => {
+  return useQuery({
+    queryKey: ['campaign-analytics', campaignId],
+    queryFn: () => apiHelpers.get(`/campaigns/${campaignId}/analytics`),
+    select: (data) => data.data || {},
+    enabled: !!campaignId
+  });
+};
+
+export const useCampaignStats = () => {
+  return useQuery({
+    queryKey: ['campaign-stats'],
+    queryFn: () => apiHelpers.get('/campaigns/stats'),
+    select: (data) => data.data || {}
+  });
+};
+
+export const useCampaignOptimization = () => {
+  return useMutation({
+    mutationFn: (data) => apiHelpers.post('/campaigns/optimize', data)
+  });
+};
+
+// Boost hooks
+export const useActiveBoosts = () => {
+  return useQuery({
+    queryKey: ['active-boosts'],
+    queryFn: () => apiHelpers.get('/boosts/active'),
+    select: (data) => data.data || []
+  });
+};
+
+export const useCreateBoost = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (boostData) => apiHelpers.post('/boosts', boostData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['active-boosts'] });
+    }
+  });
+};
+
+export const useUpdateBoost = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, data }) => apiHelpers.put(`/boosts/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['active-boosts'] });
+    }
+  });
+};
+
+export const useDeleteBoost = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (id) => apiHelpers.delete(`/boosts/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['active-boosts'] });
+    }
+  });
+};
+
+export const useBoostAnalytics = (boostId) => {
+  return useQuery({
+    queryKey: ['boost-analytics', boostId],
+    queryFn: () => apiHelpers.get(`/boosts/${boostId}/analytics`),
+    select: (data) => data.data || {},
+    enabled: !!boostId
+  });
+};
+
+export const useBoostPrediction = () => {
+  return useMutation({
+    mutationFn: (data) => apiHelpers.post('/boosts/predict', data)
+  });
+};
+
+export const useBoostRecommendations = () => {
+  return useQuery({
+    queryKey: ['boost-recommendations'],
+    queryFn: () => apiHelpers.get('/boosts/recommendations'),
+    select: (data) => data.data || []
+  });
+};
+
+// Content management hooks
+export const useContentApprove = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (contentId) => apiHelpers.post(`/content/${contentId}/approve`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content'] });
+    }
+  });
+};
+
+export const useContentReject = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (contentId) => apiHelpers.post(`/content/${contentId}/reject`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content'] });
+    }
+  });
+};
+
+export const useContentSchedule = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ contentId, scheduleData }) => apiHelpers.post(`/content/${contentId}/schedule`, scheduleData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content'] });
+    }
+  });
+};
+
+export const useContentBatch = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (batchData) => apiHelpers.post('/content/batch', batchData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['content'] });
+    }
+  });
+};
+
+// Strategy hooks
+export const useStrategies = () => {
+  return useQuery({
+    queryKey: ['strategies'],
+    queryFn: () => apiHelpers.get('/strategies'),
+    select: (data) => data.data || []
+  });
+};
+
+export const useGenerateStrategy = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: (strategyData) => apiHelpers.post('/strategies/generate', strategyData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['strategies'] });
+    }
+  });
+};
+
+export const useUpdateStrategy = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, data }) => apiHelpers.put(`/strategies/${id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['strategies'] });
+    }
+  });
+};
+
+export const useStrategyPerformance = (strategyId) => {
+  return useQuery({
+    queryKey: ['strategy-performance', strategyId],
+    queryFn: () => apiHelpers.get(`/strategies/${strategyId}/performance`),
+    select: (data) => data.data || {},
+    enabled: !!strategyId
+  });
+};
+
+// Performance and analytics hooks
+export const usePerformanceAnalytics = (timeRange = '30d') => {
+  return useQuery({
+    queryKey: ['performance-analytics', timeRange],
+    queryFn: () => apiHelpers.get(`/analytics/performance?timeRange=${timeRange}`),
+    select: (data) => data.data || {}
+  });
+};
+
+export const useRecentPosts = (limit = 10) => {
+  return useQuery({
+    queryKey: ['recent-posts', limit],
+    queryFn: () => apiHelpers.get(`/content/recent?limit=${limit}`),
+    select: (data) => data.data || []
+  });
+};
+
+// Media upload hooks
+export const useUploadMedia = () => {
+  return useMutation({
+    mutationFn: (file) => apiHelpers.uploadFile(API_ENDPOINTS.MEDIA.UPLOAD_SINGLE, file)
+  });
 };

@@ -109,7 +109,6 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
   // Error handling
   const hasError = overviewError || performanceError
 
-  // Fallback mock data for development/demo purposes
   const fallbackAnalyticsData = {
     overview: {
       totalReach: 125000,
@@ -196,7 +195,6 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
     }
   }
 
-  // Use real API data with fallback to mock data
   const analyticsData = {
     overview: overviewData || fallbackAnalyticsData.overview,
     platformBreakdown: performanceData?.platformBreakdown || fallbackAnalyticsData.platformBreakdown,

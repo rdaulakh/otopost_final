@@ -92,8 +92,6 @@ const PostEditor = ({ post, isOpen, onClose, onSave }) => {
     info('Generating hashtags...')
     // Mock hashtag generation - replace with real implementation
     setTimeout(() => {
-      const mockHashtags = ['#socialmedia', '#marketing', '#content', '#ai', '#automation']
-      setHashtags(mockHashtags.join(' '))
       success('Hashtags generated successfully!')
     }, 1000)
   }
@@ -178,7 +176,7 @@ const PostEditor = ({ post, isOpen, onClose, onSave }) => {
     setEditedPost(prev => ({
       ...prev,
       type: 'carousel',
-      media: [...(prev.media || []), mediaItem]
+      media: [...(prev.media || [])]
     }))
   }
 
@@ -692,7 +690,7 @@ const PostEditor = ({ post, isOpen, onClose, onSave }) => {
                                     ...prev,
                                     content: { 
                                       ...prev.content, 
-                                      hashtags: [...(prev.content.hashtags || []), newTag] 
+                                      hashtags: [...(prev.content.hashtags || [])]
                                     }
                                   }))
                                   e.target.value = ''

@@ -88,7 +88,6 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
   // Error handling
   const hasError = strategiesError || generateError
 
-  // Fallback mock data for development/demo purposes
   const fallbackStrategyData = {
     currentMonth: {
       month: 'January 2024',
@@ -198,7 +197,6 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
     ]
   }
 
-  // Use real API data with fallback to mock data
   const strategyData = {
     currentMonth: strategiesData?.currentMonth || fallbackStrategyData.currentMonth,
     platformStrategies: strategiesData?.platformStrategies || fallbackStrategyData.platformStrategies,

@@ -88,7 +88,6 @@ const PostHistory = () => {
   // Error handling
   const hasError = contentError
 
-  // Fallback mock data for development/demo purposes
   const fallbackPosts = [
     {
       id: 1,
@@ -182,7 +181,6 @@ const PostHistory = () => {
     }
   ]
 
-  // Use real API data with fallback to mock data
   const posts = contentData?.posts || fallbackPosts
   const stats = analyticsData?.stats || [
     {

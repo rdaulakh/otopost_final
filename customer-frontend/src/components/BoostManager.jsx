@@ -88,104 +88,10 @@ const BoostManager = () => {
   // Error handling
   const hasError = boostRecommendationsError
 
-  // Use real API data with fallback to mock data
-  const aiRecommendations = boostRecommendationsData?.recommendations || [
-    {
-      id: 1,
-      priority: 'high',
-      postTitle: '5 AI Tools Every SaaS Founder Needs',
-      platform: 'Instagram',
-      postType: 'Carousel',
-      postedTime: '2 hours ago',
-      currentEngagement: 8.9,
-      viralScore: 89,
-      predictedImpact: {
-        reach: '+340%',
-        leads: '25-35',
-        cost: '$150'
-      },
-      thumbnail: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=400&h=300&fit=crop',
-      metrics: {
-        likes: 1247,
-        comments: 89,
-        shares: 156,
-        reach: 14200
-      }
-    },
-    {
-      id: 2,
-      priority: 'medium',
-      postTitle: 'The Future of AI in Business',
-      platform: 'LinkedIn',
-      postType: 'Single Image',
-      postedTime: '1 day ago',
-      currentEngagement: 12.3,
-      viralScore: 76,
-      predictedImpact: {
-        reach: '+280%',
-        leads: '18-25',
-        cost: '$120'
-      },
-      thumbnail: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?w=400&h=300&fit=crop',
-      metrics: {
-        likes: 892,
-        comments: 67,
-        shares: 234,
-        reach: 7800
-      }
-    }
-  ]
+  // Use real API data only - no mock fallbacks
+  const aiRecommendations = boostRecommendationsData?.recommendations || []
 
-  const recentPosts = recentPostsData?.posts || [
-    {
-      id: 3,
-      title: 'How to Scale Your SaaS Business',
-      platform: 'LinkedIn',
-      postType: 'Article',
-      postedTime: '3 hours ago',
-      engagementRate: 6.7,
-      viralScore: 45,
-      thumbnail: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=400&h=300&fit=crop',
-      metrics: {
-        likes: 456,
-        comments: 23,
-        shares: 78,
-        reach: 5600
-      }
-    },
-    {
-      id: 4,
-      title: 'Top 10 Marketing Automation Tools',
-      platform: 'Twitter',
-      postType: 'Thread',
-      postedTime: '6 hours ago',
-      engagementRate: 4.2,
-      viralScore: 32,
-      thumbnail: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=400&h=300&fit=crop',
-      metrics: {
-        likes: 234,
-        comments: 45,
-        shares: 89,
-        reach: 3200
-      }
-    },
-    {
-      id: 5,
-      title: 'Customer Success Stories',
-      platform: 'Facebook',
-      postType: 'Video',
-      postedTime: '1 day ago',
-      engagementRate: 7.8,
-      viralScore: 58,
-      thumbnail: 'https://images.unsplash.com/photo-1552664730-d307ca884978?w=400&h=300&fit=crop',
-      metrics: {
-        likes: 678,
-        comments: 34,
-        shares: 123,
-        reach: 8900
-      }
-    }
-  ]
+  const recentPosts = recentPostsData?.posts || []
 
   const activeBoosts = activeBoostsData?.boosts || []
   const boostAnalytics = boostAnalyticsData || {

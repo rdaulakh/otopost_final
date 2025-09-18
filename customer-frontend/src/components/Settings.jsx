@@ -150,7 +150,6 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
   // Error handling
   const hasError = profileError
 
-  // Use real API data only - no mock fallbacks
   const businessProfile = userProfileData?.businessProfile || {
     companyName: '',
     industry: '',
@@ -173,7 +172,6 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
 
   const [businessProfileState, setBusinessProfile] = useState(businessProfile)
 
-  // AI Preferences from API - no mock fallbacks
   const aiPreferences = userSettingsData?.aiPreferences || {
     creativityLevel: 'Balanced',
     contentTone: 'Professional',
@@ -217,7 +215,6 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
   // Social profiles from API
   const socialProfiles = socialProfilesData?.profiles || []
   
-  // Notification settings from API - no mock fallbacks
   const notificationSettings = notificationSettingsData || {
     email: false,
     push: false,
@@ -230,7 +227,6 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
 
   const [notificationSettingsState, setNotificationSettings] = useState(notificationSettings)
 
-  // Subscription info from API - no mock fallbacks
   const subscriptionInfo = subscriptionData || {
     plan: 'Free',
     status: 'inactive',
