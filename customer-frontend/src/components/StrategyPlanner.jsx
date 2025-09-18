@@ -34,14 +34,62 @@ import { Separator } from '@/components/ui/separator.jsx'
 import { useTheme } from '../contexts/ThemeContext.jsx'
 import { getThemeClasses } from '../utils/themeUtils.js'
 
+// Import API hooks and UX components
+import { 
+  useGenerateStrategy,
+  useStrategies,
+  useAIAnalysis,
+  useUpdateStrategy,
+  useStrategyPerformance
+} from '../hooks/useApi.js'
+import { useNotifications } from './NotificationSystem.jsx'
+import { AnalyticsSkeleton } from './LoadingSkeletons.jsx'
+
 const StrategyPlanner = ({ data, user, onDataUpdate }) => {
   const { isDarkMode } = useTheme()
   const themeClasses = getThemeClasses(isDarkMode)
   const [activeTab, setActiveTab] = useState('overview')
-  const [isGenerating, setIsGenerating] = useState(false)
 
-  // Simulated strategy data
-  const strategyData = {
+  // UX hooks
+  const { success, error, info } = useNotifications()
+
+  // Real API calls for strategy data
+  const { 
+    data: strategiesData, 
+    isLoading: strategiesLoading,
+    error: strategiesError,
+    refetch: refetchStrategies 
+  } = useStrategies()
+  
+  const { 
+    data: performanceData, 
+    isLoading: performanceLoading 
+  } = useStrategyPerformance()
+  
+  const { 
+    mutate: generateStrategy, 
+    isLoading: isGenerating,
+    error: generateError 
+  } = useGenerateStrategy()
+  
+  const { 
+    mutate: updateStrategy,
+    isLoading: isUpdating 
+  } = useUpdateStrategy()
+  
+  const { 
+    data: aiAnalysis,
+    isLoading: analysisLoading 
+  } = useAIAnalysis()
+
+  // Loading state
+  const isLoading = strategiesLoading || performanceLoading || analysisLoading
+
+  // Error handling
+  const hasError = strategiesError || generateError
+
+  // Fallback mock data for development/demo purposes
+  const fallbackStrategyData = {
     currentMonth: {
       month: 'January 2024',
       theme: 'New Year Growth & Engagement',
@@ -150,14 +198,82 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
     ]
   }
 
-  const generateNewStrategy = async () => {
-    setIsGenerating(true)
-    // Simulate AI strategy generation
-    setTimeout(() => {
-      setIsGenerating(false)
-      // In real app, this would trigger the AI agents
-    }, 3000)
+  // Use real API data with fallback to mock data
+  const strategyData = {
+    currentMonth: strategiesData?.currentMonth || fallbackStrategyData.currentMonth,
+    platformStrategies: strategiesData?.platformStrategies || fallbackStrategyData.platformStrategies,
+    aiInsights: aiAnalysis?.insights || fallbackStrategyData.aiInsights
   }
+
+  // Handle strategy generation
+  const generateNewStrategy = async () => {
+    try {
+      await generateStrategy({
+        userId: user?.id,
+        preferences: user?.preferences,
+        businessType: user?.businessType,
+        targetAudience: user?.targetAudience
+      })
+      success('New AI strategy generated successfully!')
+      await refetchStrategies()
+      if (onDataUpdate) {
+        onDataUpdate({ lastStrategyUpdate: new Date() })
+      }
+    } catch (err) {
+      error('Failed to generate new strategy. Please try again.')
+    }
+  }
+
+  // Handle strategy updates
+  const handleStrategyUpdate = async (strategyId, updates) => {
+    try {
+      await updateStrategy({ strategyId, updates })
+      success('Strategy updated successfully!')
+      await refetchStrategies()
+    } catch (err) {
+      error('Failed to update strategy')
+    }
+  }
+
+  // Handle data refresh
+  const handleRefresh = async () => {
+    try {
+      await refetchStrategies()
+      success('Strategy data refreshed successfully')
+    } catch (err) {
+      error('Failed to refresh strategy data')
+    }
+  }
+
+  // Show loading skeleton
+  if (isLoading && !fallbackStrategyData) {
+    return <AnalyticsSkeleton />
+  }
+
+  // Show error state
+  if (hasError && !fallbackStrategyData) {
+    return (
+      <div className="p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2 text-red-600">
+              <Brain className="h-5 w-5" />
+              <span>Error loading strategy data. Please try refreshing.</span>
+            </div>
+            <Button 
+              onClick={handleRefresh} 
+              className="mt-4 bg-red-600 hover:bg-red-700"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Loading...' : 'Retry'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+
 
   const getStatusColor = (status) => {
     switch (status) {

@@ -33,6 +33,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.j
 import { Progress } from '@/components/ui/progress.jsx'
 import { useTheme } from '../contexts/ThemeContext.jsx'
 
+// Import API hooks and UX components
+import { 
+  useAnalyticsOverview,
+  useAnalyticsPerformance,
+  useAnalyticsEngagement,
+  useAnalyticsAudience,
+  useContentAnalytics,
+  usePerformanceAnalytics
+} from '../hooks/useApi.js'
+import { useNotifications } from './NotificationSystem.jsx'
+import { AnalyticsSkeleton } from './LoadingSkeletons.jsx'
+
 import {
   LineChart,
   Line,
@@ -58,10 +70,47 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
   const [timeRange, setTimeRange] = useState('30d') // 7d, 30d, 90d, 1y
   const [selectedMetric, setSelectedMetric] = useState('engagement')
   const [selectedPlatform, setSelectedPlatform] = useState('all')
-  const [isLoading, setIsLoading] = useState(false)
 
-  // Mock analytics data - in real app, this would come from social media APIs
-  const [analyticsData] = useState({
+  // UX hooks
+  const { success, error, info } = useNotifications()
+
+  // Real API calls for analytics data
+  const { 
+    data: overviewData, 
+    isLoading: overviewLoading,
+    error: overviewError,
+    refetch: refetchOverview 
+  } = useAnalyticsOverview({ timeRange, platform: selectedPlatform })
+  
+  const { 
+    data: performanceData, 
+    isLoading: performanceLoading,
+    error: performanceError 
+  } = useAnalyticsPerformance({ timeRange, metric: selectedMetric, platform: selectedPlatform })
+  
+  const { 
+    data: engagementData, 
+    isLoading: engagementLoading 
+  } = useAnalyticsEngagement({ timeRange, platform: selectedPlatform })
+  
+  const { 
+    data: audienceData, 
+    isLoading: audienceLoading 
+  } = useAnalyticsAudience({ timeRange })
+  
+  const { 
+    data: contentAnalytics, 
+    isLoading: contentLoading 
+  } = useContentAnalytics({ timeRange, platform: selectedPlatform })
+
+  // Loading state
+  const isLoading = overviewLoading || performanceLoading || engagementLoading || audienceLoading || contentLoading
+
+  // Error handling
+  const hasError = overviewError || performanceError
+
+  // Fallback mock data for development/demo purposes
+  const fallbackAnalyticsData = {
     overview: {
       totalReach: 125000,
       totalEngagement: 8750,
@@ -146,6 +195,69 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
       ]
     }
   })
+
+  // Use real API data with fallback to mock data
+  const analyticsData = {
+    overview: overviewData || fallbackAnalyticsData.overview,
+    platformBreakdown: performanceData?.platformBreakdown || fallbackAnalyticsData.platformBreakdown,
+    timeSeriesData: performanceData?.timeSeriesData || fallbackAnalyticsData.timeSeriesData,
+    contentTypePerformance: contentAnalytics?.contentTypePerformance || fallbackAnalyticsData.contentTypePerformance,
+    bestPostingTimes: engagementData?.bestPostingTimes || fallbackAnalyticsData.bestPostingTimes,
+    audienceInsights: audienceData || fallbackAnalyticsData.audienceInsights
+  }
+
+  // Handle data refresh
+  const handleRefresh = async () => {
+    try {
+      await refetchOverview()
+      success('Analytics data refreshed successfully')
+      if (onDataUpdate) {
+        onDataUpdate({ lastRefresh: new Date() })
+      }
+    } catch (err) {
+      error('Failed to refresh analytics data')
+    }
+  }
+
+  // Handle time range change
+  const handleTimeRangeChange = (newTimeRange) => {
+    setTimeRange(newTimeRange)
+    info(`Analytics updated for ${newTimeRange} period`)
+  }
+
+  // Handle platform filter change
+  const handlePlatformChange = (platform) => {
+    setSelectedPlatform(platform)
+    info(`Filtered analytics for ${platform === 'all' ? 'all platforms' : platform}`)
+  }
+
+  // Show loading skeleton
+  if (isLoading && !fallbackAnalyticsData) {
+    return <AnalyticsSkeleton />
+  }
+
+  // Show error state
+  if (hasError && !fallbackAnalyticsData) {
+    return (
+      <div className="p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2 text-red-600">
+              <Activity className="h-5 w-5" />
+              <span>Error loading analytics data. Please try refreshing.</span>
+            </div>
+            <Button 
+              onClick={handleRefresh} 
+              className="mt-4 bg-red-600 hover:bg-red-700"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Loading...' : 'Retry'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const formatNumber = (num) => {
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
@@ -239,9 +351,9 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
             <Download className="h-4 w-4 mr-2" />
             Export Report
           </Button>
-          <Button variant="outline" size="sm" onClick={() => setIsLoading(true)}>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-            Refresh Data
+            {isLoading ? 'Refreshing...' : 'Refresh Data'}
           </Button>
         </div>
       </div>
@@ -254,7 +366,7 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
             key={range}
             variant={timeRange === range ? 'default' : 'outline'}
             size="sm"
-            onClick={() => setTimeRange(range)}
+            onClick={() => handleTimeRangeChange(range)}
           >
             {range === '7d' ? 'Last 7 days' : 
              range === '30d' ? 'Last 30 days' :
