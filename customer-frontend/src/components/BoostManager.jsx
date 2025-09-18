@@ -6,15 +6,90 @@ import {
   Search, Heart, MessageCircle, Share, Eye, ThumbsUp
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext.jsx'
+// Import API hooks and UX components
+import { 
+  useBoostRecommendations,
+  useRecentPosts,
+  useActiveBoosts,
+  useCreateBoost,
+  useUpdateBoost,
+  useDeleteBoost,
+  useBoostAnalytics,
+  useBoostPrediction
+} from '../hooks/useApi.js'
+import { useNotifications } from './NotificationSystem.jsx'
+import { TableSkeleton } from './LoadingSkeletons.jsx'
 
 const BoostManager = () => {
   const { isDarkMode } = useTheme()
+  
+  // UX hooks
+  const { success, error, info } = useNotifications()
 
-  const [activeTab, setActiveTab] = useState('recommendations');
-  const [showBoostModal, setShowBoostModal] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
+  // Component state
+  const [activeTab, setActiveTab] = useState('recommendations')
+  const [showBoostModal, setShowBoostModal] = useState(false)
+  const [selectedPost, setSelectedPost] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [platformFilter, setPlatformFilter] = useState('all')
 
-  const [aiRecommendations] = useState([
+  // Real API calls for boost management data
+  const { 
+    data: boostRecommendationsData, 
+    isLoading: boostRecommendationsLoading,
+    error: boostRecommendationsError,
+    refetch: refetchRecommendations 
+  } = useBoostRecommendations({
+    platform: platformFilter !== 'all' ? platformFilter : undefined
+  })
+  
+  const { 
+    data: recentPostsData, 
+    isLoading: recentPostsLoading 
+  } = useRecentPosts({
+    search: searchTerm,
+    platform: platformFilter !== 'all' ? platformFilter : undefined,
+    limit: 20
+  })
+  
+  const { 
+    data: activeBoostsData, 
+    isLoading: activeBoostsLoading 
+  } = useActiveBoosts()
+  
+  const { 
+    mutate: createBoost,
+    isLoading: isCreatingBoost 
+  } = useCreateBoost()
+  
+  const { 
+    mutate: updateBoost,
+    isLoading: isUpdatingBoost 
+  } = useUpdateBoost()
+  
+  const { 
+    mutate: deleteBoost,
+    isLoading: isDeletingBoost 
+  } = useDeleteBoost()
+  
+  const { 
+    data: boostAnalyticsData, 
+    isLoading: boostAnalyticsLoading 
+  } = useBoostAnalytics()
+  
+  const { 
+    mutate: getBoostPrediction,
+    isLoading: isPredictingBoost 
+  } = useBoostPrediction()
+
+  // Loading state
+  const isLoading = boostRecommendationsLoading || recentPostsLoading || activeBoostsLoading
+
+  // Error handling
+  const hasError = boostRecommendationsError
+
+  // Use real API data with fallback to mock data
+  const aiRecommendations = boostRecommendationsData?.recommendations || [
     {
       id: 1,
       priority: 'high',
@@ -59,9 +134,9 @@ const BoostManager = () => {
         reach: 7800
       }
     }
-  ]);
+  ]
 
-  const [recentPosts] = useState([
+  const recentPosts = recentPostsData?.posts || [
     {
       id: 3,
       title: 'How to Scale Your SaaS Business',
@@ -110,42 +185,96 @@ const BoostManager = () => {
         reach: 8900
       }
     }
-  ]);
+  ]
 
-  const [boostHistory] = useState([
-    {
-      id: 1,
-      postTitle: 'SaaS Growth Strategies 2025',
-      platform: 'LinkedIn',
-      startDate: '2025-10-10',
-      endDate: '2025-10-17',
-      budget: 200,
-      spent: 200,
-      status: 'Completed',
-      results: {
-        reach: 18500,
-        leads: 28,
-        cpl: 7.14,
-        roas: 4.2
-      }
-    },
-    {
-      id: 2,
-      postTitle: 'AI Tools for Productivity',
-      platform: 'Instagram',
-      startDate: '2025-10-12',
-      endDate: '2025-10-19',
-      budget: 150,
-      spent: 89,
-      status: 'Active',
-      results: {
-        reach: 12300,
-        leads: 15,
-        cpl: 5.93,
-        roas: 3.8
-      }
+  const activeBoosts = activeBoostsData?.boosts || []
+  const boostAnalytics = boostAnalyticsData || {
+    totalSpent: 289,
+    totalReach: 30800,
+    totalLeads: 43,
+    averageROAS: 4.0
+  }
+
+  // Handle boost operations
+  const handleCreateBoost = async (postId, boostConfig) => {
+    try {
+      info('Creating boost campaign...')
+      await createBoost({ postId, ...boostConfig })
+      success('Boost campaign created successfully!')
+      setShowBoostModal(false)
+      setSelectedPost(null)
+      await refetchRecommendations()
+    } catch (err) {
+      error('Failed to create boost campaign')
     }
-  ]);
+  }
+
+  const handleUpdateBoost = async (boostId, updates) => {
+    try {
+      await updateBoost({ boostId, updates })
+      success('Boost campaign updated successfully!')
+      await refetchRecommendations()
+    } catch (err) {
+      error('Failed to update boost campaign')
+    }
+  }
+
+  const handleDeleteBoost = async (boostId) => {
+    try {
+      await deleteBoost(boostId)
+      success('Boost campaign deleted successfully!')
+      await refetchRecommendations()
+    } catch (err) {
+      error('Failed to delete boost campaign')
+    }
+  }
+
+  const handleGetPrediction = async (postId) => {
+    try {
+      info('Analyzing boost potential...')
+      const prediction = await getBoostPrediction({ postId })
+      success('Boost prediction generated successfully!')
+      return prediction
+    } catch (err) {
+      error('Failed to generate boost prediction')
+      return null
+    }
+  }
+
+  const handleRefresh = async () => {
+    try {
+      await refetchRecommendations()
+      success('Boost data refreshed successfully')
+    } catch (err) {
+      error('Failed to refresh boost data')
+    }
+  }
+
+  // Show loading skeleton
+  if (isLoading && !aiRecommendations.length && !recentPosts.length) {
+    return <TableSkeleton />
+  }
+
+  // Show error state
+  if (hasError && !aiRecommendations.length && !recentPosts.length) {
+    return (
+      <div className="p-6">
+        <div className="border border-red-200 bg-red-50 rounded-lg p-6">
+          <div className="flex items-center space-x-2 text-red-600">
+            <AlertCircle className="h-5 w-5" />
+            <span>Error loading boost data. Please try refreshing.</span>
+          </div>
+          <button 
+            onClick={handleRefresh} 
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Loading...' : 'Retry'}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const getPlatformIcon = (platform) => {
     switch (platform) {
@@ -468,7 +597,9 @@ const BoostManager = () => {
       {showBoostModal && selectedPost && (
         <BoostConfigurationModal 
           post={selectedPost} 
-          onClose={() => setShowBoostModal(false)} 
+          onClose={() => setShowBoostModal(false)}
+          onStartBoost={handleCreateBoost}
+          isCreating={isCreatingBoost}
         />
       )}
     </div>
@@ -476,7 +607,7 @@ const BoostManager = () => {
 };
 
 // Boost Configuration Modal Component
-const BoostConfigurationModal = ({ post, onClose }) => {
+const BoostConfigurationModal = ({ post, onClose, onStartBoost, isCreating }) => {
   const [boostConfig, setBoostConfig] = useState({
     objective: 'lead_generation',
     audience: 'ai_optimized',
@@ -492,11 +623,11 @@ const BoostConfigurationModal = ({ post, onClose }) => {
     { id: 'engagement', name: 'Engagement', description: 'Increase likes, comments, shares' }
   ];
 
-  const handleStartBoost = () => {
-    // Handle boost creation logic here
-    console.log('Starting boost with config:', boostConfig);
-    onClose();
-  };
+  const handleStartBoost = async () => {
+    if (onStartBoost) {
+      await onStartBoost(post.id, boostConfig)
+    }
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
