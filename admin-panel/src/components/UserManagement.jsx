@@ -29,60 +29,218 @@ import EditUserForm from './EditUserForm';
 import ViewUser from './ViewUser';
 import { format } from 'date-fns';
 import { downloadCSV } from '../utils/csv';
-import { adminUserService } from '../services';
-import { debugLog } from '../config/environment';
+// Import API hooks and UX components
+import { 
+  useUserList,
+  useUserStats,
+  useCreateUser,
+  useUpdateUser,
+  useDeleteUser,
+  useUserExport,
+  useBulkUserActions
+} from '../hooks/useApi.js'
+import { useNotifications } from './NotificationSystem.jsx'
+import { TableSkeleton } from './LoadingSkeletons.jsx'
 
 const UserManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false }) => {
+  // UX hooks
+  const { success, error, info } = useNotifications()
+
+  // Component state
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedFilter, setSelectedFilter] = useState('all')
   const [selectedUsers, setSelectedUsers] = useState([])
   const [sortBy, setSortBy] = useState('createdAt')
-  const [sortOrder, setSortOrder] = useState('desc');
-  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
-  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState(null);
-  const [isViewUserModalOpen, setIsViewUserModalOpen] = useState(false);
-  const [viewingUser, setViewingUser] = useState(null);
-  const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
-  const [deletingUser, setDeletingUser] = useState(null);
+  const [sortOrder, setSortOrder] = useState('desc')
+  const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false)
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState(null)
+  const [isViewUserModalOpen, setIsViewUserModalOpen] = useState(false)
+  const [viewingUser, setViewingUser] = useState(null)
+  const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false)
+  const [deletingUser, setDeletingUser] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+
+  // Real API calls for user management data
+  const { 
+    data: userListData, 
+    isLoading: userListLoading,
+    error: userListError,
+    refetch: refetchUsers 
+  } = useUserList({
+    search: searchTerm,
+    status: selectedFilter !== 'all' ? selectedFilter : undefined,
+    sortBy,
+    sortOrder,
+    page: currentPage,
+    limit: 10
+  })
   
-  // API state
-  const [users, setUsers] = useState([]);
-  const [userStats, setUserStats] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [pagination, setPagination] = useState({
+  const { 
+    data: userStatsData, 
+    isLoading: userStatsLoading 
+  } = useUserStats()
+  
+  const { 
+    mutate: createUser,
+    isLoading: isCreatingUser 
+  } = useCreateUser()
+  
+  const { 
+    mutate: updateUser,
+    isLoading: isUpdatingUser 
+  } = useUpdateUser()
+  
+  const { 
+    mutate: deleteUser,
+    isLoading: isDeletingUser 
+  } = useDeleteUser()
+  
+  const { 
+    mutate: exportUsers,
+    isLoading: isExportingUsers 
+  } = useUserExport()
+  
+  const { 
+    mutate: bulkUserActions,
+    isLoading: isBulkActioning 
+  } = useBulkUserActions()
+
+  // Loading state
+  const isLoading = userListLoading || userStatsLoading
+
+  // Error handling
+  const hasError = userListError
+
+  // Use real API data with fallback to mock data
+  const users = userListData?.users || []
+  const userStats = userStatsData || {
+    total: 0,
+    active: 0,
+    inactive: 0,
+    trial: 0,
+    premium: 0,
+    pro: 0
+  }
+  const pagination = userListData?.pagination || {
     page: 1,
     limit: 10,
     total: 0,
     totalPages: 0
-  });
+  }
 
+  // Handle user operations
   const handleExport = async () => {
     try {
-      const exportData = await adminUserService.exportUsers({
+      info('Preparing user export...')
+      await exportUsers({
         format: 'csv',
         filters: {
-          status: selectedFilter === 'all' ? '' : selectedFilter,
+          status: selectedFilter !== 'all' ? selectedFilter : undefined,
           search: searchTerm
         }
-      });
-      
-      // Create a blob and download
-      const blob = new Blob([exportData], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `users-export-${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      debugLog('Error exporting users:', error);
-      setError(error.message || 'Failed to export users');
+      })
+      success('Users exported successfully!')
+    } catch (err) {
+      error('Failed to export users')
     }
-  };
+  }
+
+  const handleCreateUser = async (userData) => {
+    try {
+      await createUser(userData)
+      success('User created successfully!')
+      setIsAddUserModalOpen(false)
+      await refetchUsers()
+      if (onDataUpdate) {
+        onDataUpdate({ action: 'user_created', user: userData })
+      }
+    } catch (err) {
+      error('Failed to create user')
+    }
+  }
+
+  const handleUpdateUser = async (userId, userData) => {
+    try {
+      await updateUser({ userId, userData })
+      success('User updated successfully!')
+      setIsEditUserModalOpen(false)
+      setEditingUser(null)
+      await refetchUsers()
+      if (onDataUpdate) {
+        onDataUpdate({ action: 'user_updated', userId, userData })
+      }
+    } catch (err) {
+      error('Failed to update user')
+    }
+  }
+
+  const handleDeleteUser = async (userId) => {
+    try {
+      await deleteUser(userId)
+      success('User deleted successfully!')
+      setIsDeleteUserModalOpen(false)
+      setDeletingUser(null)
+      await refetchUsers()
+      if (onDataUpdate) {
+        onDataUpdate({ action: 'user_deleted', userId })
+      }
+    } catch (err) {
+      error('Failed to delete user')
+    }
+  }
+
+  const handleBulkAction = async (action, userIds) => {
+    try {
+      info(`Processing ${action} for ${userIds.length} users...`)
+      await bulkUserActions({ action, userIds })
+      success(`${action} completed successfully for ${userIds.length} users`)
+      setSelectedUsers([])
+      await refetchUsers()
+      if (onDataUpdate) {
+        onDataUpdate({ action: 'bulk_action', bulkAction: action, userIds })
+      }
+    } catch (err) {
+      error(`Failed to ${action} users`)
+    }
+  }
+
+  const handleRefresh = async () => {
+    try {
+      await refetchUsers()
+      success('User data refreshed successfully')
+    } catch (err) {
+      error('Failed to refresh user data')
+    }
+  }
+
+  // Show loading skeleton
+  if (isLoading && !users.length) {
+    return <TableSkeleton />
+  }
+
+  // Show error state
+  if (hasError && !users.length) {
+    return (
+      <div className="p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2 text-red-600">
+              <AlertCircle className="h-5 w-5" />
+              <span>Error loading user data. Please try refreshing.</span>
+            </div>
+            <Button 
+              onClick={handleRefresh} 
+              className="mt-4 bg-red-600 hover:bg-red-700"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Loading...' : 'Retry'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   const handleEditUser = (user) => {
     setEditingUser(user);
@@ -341,9 +499,15 @@ const UserManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false
               </p>
             </div>
             <div className="flex items-center space-x-3">
-              <Button variant='outline' size='sm' onClick={handleExport} className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700 bg-slate-700' : ''}>
+              <Button 
+                variant='outline' 
+                size='sm' 
+                onClick={handleExport} 
+                disabled={isExportingUsers}
+                className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700 bg-slate-700' : ''}
+              >
                 <Download className='h-4 w-4 mr-2' />
-                Export
+                {isExportingUsers ? 'Exporting...' : 'Export'}
               </Button>
               <Button size='sm' onClick={() => setIsAddUserModalOpen(true)} className={isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : ''}>
                 <UserPlus className='h-4 w-4 mr-2' />
