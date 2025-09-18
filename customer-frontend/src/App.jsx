@@ -13,8 +13,16 @@ import {
   User,
   Settings as SettingsIcon,
   Sparkles,
-  Loader2
+  Loader2,
+  AlertCircle,
+  Wifi,
+  WifiOff
 } from 'lucide-react'
+
+// Import providers
+import { ThemeProvider, useTheme } from './contexts/ThemeContext.jsx'
+import { AuthProvider, useAuth } from './contexts/AuthContext.jsx'
+import { QueryProvider } from './providers/QueryProvider.jsx'
 
 // Import components
 import Dashboard from './components/Dashboard.jsx'
@@ -31,6 +39,7 @@ import Sidebar from './components/Sidebar.jsx'
 
 // Import UI components
 import { Card, CardContent } from '@/components/ui/card.jsx'
+import { Button } from '@/components/ui/button.jsx'
 
 // Import authentication components
 import SignIn from './components/auth/SignIn.jsx'
@@ -39,8 +48,8 @@ import SignUp from './components/auth/SignUp.jsx'
 // Import enhanced profile component
 import ProfileDemo from './ProfileDemo.jsx'
 
-// Import theme context
-import { ThemeProvider, useTheme } from './contexts/ThemeContext.jsx'
+// Import API hooks
+import { useSystemHealth } from './hooks/useApi.js'
 
 import './App.css'
 
@@ -64,6 +73,55 @@ const LoadingSpinner = ({ message = "Loading..." }) => {
   )
 }
 
+// Connection Status Component
+const ConnectionStatus = () => {
+  const { isDarkMode } = useTheme()
+  const { data: healthData, isError, isLoading } = useSystemHealth()
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  const isConnected = isOnline && !isError && healthData?.status === 'OK'
+
+  return (
+    <motion.div
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      className="fixed top-4 right-4 z-50"
+    >
+      <Card className={`border-0 shadow-lg ${
+        isConnected 
+          ? 'bg-green-500 text-white' 
+          : 'bg-red-500 text-white'
+      }`}>
+        <CardContent className="p-2">
+          <div className="flex items-center space-x-2">
+            {isConnected ? (
+              <Wifi className="h-4 w-4" />
+            ) : (
+              <WifiOff className="h-4 w-4" />
+            )}
+            <span className="text-xs font-medium">
+              {isLoading ? 'Connecting...' : isConnected ? 'Connected' : 'Offline'}
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  )
+}
+
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -83,14 +141,17 @@ class ErrorBoundary extends React.Component {
     if (this.state.hasError) {
       return (
         <div className="p-6 bg-red-50 border border-red-200 rounded-lg m-4">
-          <h2 className="text-lg font-semibold text-red-800 mb-2">Component Error</h2>
+          <div className="flex items-center space-x-2 mb-4">
+            <AlertCircle className="h-5 w-5 text-red-600" />
+            <h2 className="text-lg font-semibold text-red-800">Component Error</h2>
+          </div>
           <p className="text-red-600 mb-4">This component failed to load. Please try refreshing the page.</p>
-          <button 
+          <Button 
             onClick={() => window.location.reload()} 
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+            className="bg-red-600 hover:bg-red-700 text-white"
           >
             Refresh Page
-          </button>
+          </Button>
           <details className="mt-4">
             <summary className="text-sm text-red-500 cursor-pointer">Error Details</summary>
             <pre className="text-xs text-red-400 mt-1 p-2 bg-red-100 rounded overflow-auto">
@@ -105,23 +166,45 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// Authentication Wrapper Component
+const AuthWrapper = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth()
+  const [authView, setAuthView] = useState('signin')
+
+  if (isLoading) {
+    return <LoadingSpinner message="Initializing AI Social Media Manager..." />
+  }
+
+  if (!isAuthenticated) {
+    if (authView === 'signin') {
+      return (
+        <ErrorBoundary>
+          <SignIn 
+            onSwitchToSignUp={() => setAuthView('signup')}
+          />
+        </ErrorBoundary>
+      )
+    } else {
+      return (
+        <ErrorBoundary>
+          <SignUp 
+            onSwitchToSignIn={() => setAuthView('signin')}
+          />
+        </ErrorBoundary>
+      )
+    }
+  }
+
+  return children
+}
+
+// Main App Content Component
 function AppContent() {
   const { isDarkMode } = useTheme()
+  const { user, logout } = useAuth()
   const [currentView, setCurrentView] = useState('dashboard')
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [authView, setAuthView] = useState('signin') // 'signin' or 'signup'
-  const [isLoading, setIsLoading] = useState(true)
-  const [isAuthenticating, setIsAuthenticating] = useState(false)
-  const [user, setUser] = useState({
-    name: 'Sarah Johnson',
-    email: 'sarah@techstart.com',
-    company: 'TechStart Solutions',
-    industry: 'SaaS',
-    subscription: 'Premium',
-    avatar: '/api/placeholder/40/40'
-  })
 
-  // Simulated real-time data
+  // Simulated real-time data (will be replaced with real API data)
   const [dashboardData, setDashboardData] = useState({
     performance: {
       engagement_rate: 4.2,
@@ -172,34 +255,8 @@ function AppContent() {
     }
   })
 
-  // Check for existing authentication on app load
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Simulate loading time
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        const savedAuth = localStorage.getItem('isAuthenticated')
-        const savedUser = localStorage.getItem('user')
-        
-        if (savedAuth === 'true' && savedUser) {
-          setIsAuthenticated(true)
-          setUser(JSON.parse(savedUser))
-        }
-      } catch (error) {
-        console.error('Error checking authentication:', error)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    checkAuth()
-  }, [])
-
   // Update data periodically to simulate real-time updates
   useEffect(() => {
-    if (!isAuthenticated) return // Only run when authenticated
-
     const interval = setInterval(() => {
       setDashboardData(prev => ({
         ...prev,
@@ -213,87 +270,14 @@ function AppContent() {
     }, 30000) // Update every 30 seconds
 
     return () => clearInterval(interval)
-  }, [isAuthenticated])
+  }, [])
 
-  const handleSignIn = async (userData) => {
-    setIsAuthenticating(true)
+  const handleSignOut = async () => {
     try {
-      // Simulate authentication delay
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      setUser(userData)
-      setIsAuthenticated(true)
-      localStorage.setItem('isAuthenticated', 'true')
-      localStorage.setItem('user', JSON.stringify(userData))
+      await logout()
+      setCurrentView('dashboard')
     } catch (error) {
-      console.error('Sign in error:', error)
-      alert('Sign in failed. Please try again.')
-    } finally {
-      setIsAuthenticating(false)
-    }
-  }
-
-  const handleSignUp = async (userData) => {
-    setIsAuthenticating(true)
-    try {
-      // Simulate authentication delay
-      await new Promise(resolve => setTimeout(resolve, 1500))
-      
-      setUser(userData)
-      setIsAuthenticated(true)
-      localStorage.setItem('isAuthenticated', 'true')
-      localStorage.setItem('user', JSON.stringify(userData))
-    } catch (error) {
-      console.error('Sign up error:', error)
-      alert('Sign up failed. Please try again.')
-    } finally {
-      setIsAuthenticating(false)
-    }
-  }
-
-  const handleSignOut = () => {
-    setIsAuthenticated(false)
-    setUser({})
-    localStorage.removeItem('isAuthenticated')
-    localStorage.removeItem('user')
-    setCurrentView('dashboard')
-  }
-
-  // const handleUpdateUser = (updatedUser) => {
-  //   setUser(updatedUser)
-  //   localStorage.setItem('user', JSON.stringify(updatedUser))
-  // }
-
-  // Show loading spinner during initial load
-  if (isLoading) {
-    return <LoadingSpinner message="Initializing AI Social Media Manager..." />
-  }
-
-  // Show authentication loading
-  if (isAuthenticating) {
-    return <LoadingSpinner message="Authenticating..." />
-  }
-
-  // If not authenticated, show auth screens
-  if (!isAuthenticated) {
-    if (authView === 'signin') {
-      return (
-        <ErrorBoundary>
-          <SignIn 
-            onSignIn={handleSignIn}
-            onSwitchToSignUp={() => setAuthView('signup')}
-          />
-        </ErrorBoundary>
-      )
-    } else {
-      return (
-        <ErrorBoundary>
-          <SignUp 
-            onSignUp={handleSignUp}
-            onSwitchToSignIn={() => setAuthView('signin')}
-          />
-        </ErrorBoundary>
-      )
+      console.error('Sign out error:', error)
     }
   }
 
@@ -394,6 +378,9 @@ function AppContent() {
         ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
         : 'bg-white'
     }`}>
+      {/* Connection Status Indicator */}
+      <ConnectionStatus />
+
       <div className="flex h-screen">
         {/* Sidebar */}
         <ErrorBoundary>
@@ -460,13 +447,21 @@ function AppContent() {
   )
 }
 
+// Main App Component with all providers
 function App() {
   return (
-    <ThemeProvider>
-      <AppContent />
-    </ThemeProvider>
+    <ErrorBoundary>
+      <QueryProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AuthWrapper>
+              <AppContent />
+            </AuthWrapper>
+          </AuthProvider>
+        </ThemeProvider>
+      </QueryProvider>
+    </ErrorBoundary>
   )
 }
 
 export default App
-
