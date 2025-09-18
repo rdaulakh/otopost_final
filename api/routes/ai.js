@@ -1,463 +1,446 @@
 const express = require('express');
-const { auth, checkSubscription } = require('../middleware/auth');
-const Content = require('../models/Content');
-const User = require('../models/User');
+const { auth } = require('../middleware/auth');
+const openaiService = require('../services/openaiService');
+const { aiLimiter } = require('../middleware/rateLimiter');
+const { aiValidation } = require('../middleware/validation');
+const { auditLogger, AUDIT_EVENTS } = require('../middleware/auditLogger');
 
 const router = express.Router();
 
-// Mock AI service responses for now - will be replaced with actual AI agent integration
-const mockAIResponse = (type, prompt, userContext) => {
-  const responses = {
-    'content-generation': {
-      text: `AI-generated content based on: "${prompt}". This would be personalized for ${userContext.businessProfile?.industry || 'your industry'} with a ${userContext.businessProfile?.marketingStrategy?.brandVoice || 'professional'} tone.`,
-      hashtags: ['#AI', '#SocialMedia', '#Marketing', '#Growth'],
-      suggestions: [
-        'Consider adding a call-to-action',
-        'Include relevant industry statistics',
-        'Add visual elements for better engagement'
-      ],
-      confidence: 0.85
-    },
-    'strategy-planning': {
-      strategy: `30-day content strategy for ${userContext.businessProfile?.industry || 'your business'}`,
-      recommendations: [
-        'Post 3-4 times per week for optimal engagement',
-        'Focus on educational content (40%), promotional (30%), behind-the-scenes (30%)',
-        'Best posting times: 9 AM, 1 PM, 5 PM based on your audience'
-      ],
-      contentCalendar: [
-        { date: '2024-01-01', type: 'educational', topic: 'Industry insights' },
-        { date: '2024-01-03', type: 'promotional', topic: 'Product showcase' },
-        { date: '2024-01-05', type: 'behind-the-scenes', topic: 'Team spotlight' }
-      ],
-      confidence: 0.92
-    },
-    'content-optimization': {
-      optimizedText: `Optimized version: ${prompt}`,
-      improvements: [
-        'Added power words for better engagement',
-        'Optimized hashtag placement',
-        'Improved call-to-action'
-      ],
-      expectedPerformance: {
-        engagementIncrease: '15-25%',
-        reachIncrease: '10-20%'
-      },
-      confidence: 0.78
-    },
-    'analytics-insights': {
-      insights: [
-        'Your engagement rate is 23% higher on Tuesday posts',
-        'Video content performs 40% better than images',
-        'Posts with 3-5 hashtags get optimal reach'
-      ],
-      recommendations: [
-        'Increase video content frequency',
-        'Schedule more posts on Tuesday and Wednesday',
-        'Use trending hashtags in your industry'
-      ],
-      trends: {
-        bestPerformingContent: 'Educational videos',
-        optimalPostingTime: '2:00 PM',
-        topHashtags: ['#industry', '#tips', '#growth']
-      },
-      confidence: 0.89
-    }
-  };
-
-  return responses[type] || { message: 'AI response not available', confidence: 0.5 };
-};
+// Apply AI-specific rate limiting
+router.use(aiLimiter);
 
 // @route   POST /api/ai/generate-content
-// @desc    Generate content using AI
+// @desc    Generate social media content using AI
 // @access  Private
-router.post('/generate-content', auth, async (req, res) => {
+router.post('/generate-content', auth, aiValidation.generateContent, async (req, res) => {
   try {
-    const {
-      prompt,
-      platform,
-      postType = 'text',
+    const { prompt, platform, tone, length, includeHashtags, includeEmojis, targetAudience, callToAction } = req.body;
+    
+    const options = {
       tone,
-      includeHashtags = true,
-      includeImages = false
-    } = req.body;
+      length,
+      includeHashtags,
+      includeEmojis,
+      targetAudience,
+      callToAction
+    };
 
-    if (!prompt) {
-      return res.status(400).json({
-        message: 'Prompt is required for content generation'
+    const result = await openaiService.generateContent(prompt, platform, options);
+
+    // Log AI usage
+    auditLogger.log(AUDIT_EVENTS.AI_CONTENT_GENERATED, {
+      userId: req.user.id,
+      platform,
+      promptLength: prompt.length,
+      success: result.success,
+      model: result.model
+    }, req);
+
+    if (result.success) {
+      res.json({
+        message: 'Content generated successfully',
+        content: result.content,
+        usage: result.usage,
+        model: result.model
+      });
+    } else {
+      res.status(500).json({
+        message: 'Content generation failed',
+        error: result.error,
+        fallback: result.fallback
       });
     }
-
-    // Get user context for personalization
-    const user = await User.findById(req.user.id);
-    
-    // Mock AI content generation - replace with actual AI service
-    const aiResponse = mockAIResponse('content-generation', prompt, user);
-
-    // Create content draft
-    const contentDraft = new Content({
-      user: req.user.id,
-      title: `AI Generated: ${prompt.substring(0, 50)}...`,
-      content: {
-        text: aiResponse.text,
-        hashtags: includeHashtags ? aiResponse.hashtags : [],
-        mentions: []
-      },
-      platforms: platform ? [{
-        platform,
-        status: 'draft'
-      }] : [],
-      postType,
-      status: 'draft',
-      aiGenerated: {
-        isAIGenerated: true,
-        prompt,
-        model: 'gpt-4',
-        confidence: aiResponse.confidence,
-        suggestions: aiResponse.suggestions
-      }
-    });
-
-    await contentDraft.save();
-
-    res.json({
-      message: 'Content generated successfully',
-      content: contentDraft,
-      aiResponse: {
-        suggestions: aiResponse.suggestions,
-        confidence: aiResponse.confidence
-      }
-    });
   } catch (error) {
     console.error('AI content generation error:', error);
     res.status(500).json({
-      message: 'Server error during content generation'
-    });
-  }
-});
-
-// @route   POST /api/ai/generate-strategy
-// @desc    Generate content strategy using AI
-// @access  Private
-router.post('/generate-strategy', auth, checkSubscription('basic'), async (req, res) => {
-  try {
-    const {
-      goals = [],
-      targetAudience,
-      platforms = [],
-      duration = 30,
-      contentTypes = []
-    } = req.body;
-
-    // Get user context
-    const user = await User.findById(req.user.id);
-    
-    // Mock AI strategy generation
-    const aiResponse = mockAIResponse('strategy-planning', 'strategy', user);
-
-    res.json({
-      message: 'Strategy generated successfully',
-      strategy: {
-        duration,
-        goals,
-        targetAudience,
-        platforms,
-        contentTypes,
-        ...aiResponse
-      }
-    });
-  } catch (error) {
-    console.error('AI strategy generation error:', error);
-    res.status(500).json({
-      message: 'Server error during strategy generation'
-    });
-  }
-});
-
-// @route   POST /api/ai/optimize-content
-// @desc    Optimize existing content using AI
-// @access  Private
-router.post('/optimize-content', auth, async (req, res) => {
-  try {
-    const { contentId, optimizationType = 'engagement' } = req.body;
-
-    if (!contentId) {
-      return res.status(400).json({
-        message: 'Content ID is required for optimization'
-      });
-    }
-
-    const content = await Content.findOne({
-      _id: contentId,
-      user: req.user.id
-    });
-
-    if (!content) {
-      return res.status(404).json({
-        message: 'Content not found'
-      });
-    }
-
-    // Get user context
-    const user = await User.findById(req.user.id);
-    
-    // Mock AI optimization
-    const aiResponse = mockAIResponse('content-optimization', content.content.text, user);
-
-    // Update content with optimizations
-    content.content.text = aiResponse.optimizedText;
-    content.aiGenerated.suggestions = aiResponse.improvements;
-    content.aiGenerated.confidence = aiResponse.confidence;
-
-    await content.save();
-
-    res.json({
-      message: 'Content optimized successfully',
-      content,
-      optimization: {
-        improvements: aiResponse.improvements,
-        expectedPerformance: aiResponse.expectedPerformance,
-        confidence: aiResponse.confidence
-      }
-    });
-  } catch (error) {
-    console.error('AI content optimization error:', error);
-    res.status(500).json({
-      message: 'Server error during content optimization'
-    });
-  }
-});
-
-// @route   GET /api/ai/insights
-// @desc    Get AI-powered analytics insights
-// @access  Private
-router.get('/insights', auth, async (req, res) => {
-  try {
-    const { period = '30' } = req.query;
-    
-    // Get user's content for analysis
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - parseInt(period));
-
-    const userContent = await Content.find({
-      user: req.user.id,
-      createdAt: { $gte: startDate }
-    }).select('analytics postType platforms content createdAt');
-
-    // Get user context
-    const user = await User.findById(req.user.id);
-    
-    // Mock AI insights generation
-    const aiResponse = mockAIResponse('analytics-insights', 'insights', user);
-
-    res.json({
-      message: 'AI insights generated successfully',
-      period: parseInt(period),
-      insights: aiResponse.insights,
-      recommendations: aiResponse.recommendations,
-      trends: aiResponse.trends,
-      confidence: aiResponse.confidence,
-      dataPoints: userContent.length
-    });
-  } catch (error) {
-    console.error('AI insights error:', error);
-    res.status(500).json({
-      message: 'Server error during insights generation'
+      message: 'Error generating content',
+      error: error.message
     });
   }
 });
 
 // @route   POST /api/ai/generate-hashtags
-// @desc    Generate relevant hashtags for content
+// @desc    Generate hashtags for content
 // @access  Private
-router.post('/generate-hashtags', auth, async (req, res) => {
+router.post('/generate-hashtags', auth, aiValidation.generateHashtags, async (req, res) => {
   try {
-    const { content, platform, industry } = req.body;
+    const { content, platform, count = 10 } = req.body;
 
-    if (!content) {
-      return res.status(400).json({
-        message: 'Content is required for hashtag generation'
+    const result = await openaiService.generateHashtags(content, platform, count);
+
+    // Log AI usage
+    auditLogger.log(AUDIT_EVENTS.AI_HASHTAGS_GENERATED, {
+      userId: req.user.id,
+      platform,
+      contentLength: content.length,
+      hashtagCount: count,
+      success: result.success
+    }, req);
+
+    if (result.success) {
+      res.json({
+        message: 'Hashtags generated successfully',
+        hashtags: result.hashtags,
+        usage: result.usage,
+        model: result.model
+      });
+    } else {
+      res.status(500).json({
+        message: 'Hashtag generation failed',
+        error: result.error,
+        fallback: result.fallback
       });
     }
-
-    // Mock hashtag generation based on content and context
-    const hashtags = [
-      '#SocialMedia',
-      '#Marketing',
-      '#DigitalMarketing',
-      '#ContentCreation',
-      '#AI',
-      '#Growth',
-      '#Business',
-      '#Strategy',
-      '#Engagement',
-      '#BrandAwareness'
-    ];
-
-    // Filter based on platform and industry
-    const platformSpecificHashtags = {
-      instagram: ['#InstaGood', '#PhotoOfTheDay', '#Reels'],
-      linkedin: ['#Professional', '#Leadership', '#Industry'],
-      twitter: ['#TwitterTips', '#Thread', '#Viral'],
-      facebook: ['#Community', '#Share', '#Connect'],
-      tiktok: ['#Trending', '#Viral', '#ForYou']
-    };
-
-    const finalHashtags = [
-      ...hashtags.slice(0, 7),
-      ...(platformSpecificHashtags[platform] || [])
-    ].slice(0, 10);
-
-    res.json({
-      message: 'Hashtags generated successfully',
-      hashtags: finalHashtags,
-      suggestions: [
-        'Use 5-10 hashtags for optimal reach',
-        'Mix popular and niche hashtags',
-        'Research trending hashtags in your industry'
-      ]
-    });
   } catch (error) {
     console.error('AI hashtag generation error:', error);
     res.status(500).json({
-      message: 'Server error during hashtag generation'
+      message: 'Error generating hashtags',
+      error: error.message
     });
   }
 });
 
-// @route   POST /api/ai/schedule-optimization
-// @desc    Get AI-recommended posting schedule
+// @route   POST /api/ai/generate-caption
+// @desc    Generate caption for content
 // @access  Private
-router.post('/schedule-optimization', auth, checkSubscription('basic'), async (req, res) => {
+router.post('/generate-caption', auth, async (req, res) => {
   try {
-    const { platforms = [], timezone = 'UTC' } = req.body;
+    const { content, platform, tone, includeQuestion, includeCallToAction, maxLength } = req.body;
 
-    // Mock optimal scheduling recommendations
-    const scheduleRecommendations = {
-      instagram: [
-        { day: 'Monday', time: '11:00', reason: 'High engagement start of week' },
-        { day: 'Wednesday', time: '14:00', reason: 'Midweek peak activity' },
-        { day: 'Friday', time: '15:00', reason: 'Weekend preparation time' }
-      ],
-      linkedin: [
-        { day: 'Tuesday', time: '09:00', reason: 'Professional morning check' },
-        { day: 'Wednesday', time: '12:00', reason: 'Lunch break browsing' },
-        { day: 'Thursday', time: '17:00', reason: 'End of workday engagement' }
-      ],
-      twitter: [
-        { day: 'Monday', time: '08:00', reason: 'Morning news consumption' },
-        { day: 'Wednesday', time: '12:00', reason: 'Lunch break activity' },
-        { day: 'Friday', time: '16:00', reason: 'End of week discussions' }
-      ],
-      facebook: [
-        { day: 'Tuesday', time: '15:00', reason: 'Afternoon social browsing' },
-        { day: 'Thursday', time: '20:00', reason: 'Evening leisure time' },
-        { day: 'Saturday', time: '12:00', reason: 'Weekend family time' }
-      ]
+    const options = {
+      tone,
+      includeQuestion,
+      includeCallToAction,
+      maxLength
     };
 
-    const recommendations = platforms.reduce((acc, platform) => {
-      if (scheduleRecommendations[platform]) {
-        acc[platform] = scheduleRecommendations[platform];
-      }
-      return acc;
-    }, {});
+    const result = await openaiService.generateCaption(content, platform, options);
 
-    res.json({
-      message: 'Schedule optimization completed',
-      timezone,
-      recommendations,
-      generalTips: [
-        'Post consistently at the same times',
-        'Test different times and measure engagement',
-        'Consider your audience\'s time zone',
-        'Avoid posting during major holidays'
-      ]
-    });
+    if (result.success) {
+      res.json({
+        message: 'Caption generated successfully',
+        caption: result.caption,
+        usage: result.usage,
+        model: result.model
+      });
+    } else {
+      res.status(500).json({
+        message: 'Caption generation failed',
+        error: result.error,
+        fallback: result.fallback
+      });
+    }
   } catch (error) {
-    console.error('AI schedule optimization error:', error);
+    console.error('AI caption generation error:', error);
     res.status(500).json({
-      message: 'Server error during schedule optimization'
+      message: 'Error generating caption',
+      error: error.message
     });
   }
 });
 
-// @route   GET /api/ai/agents/status
-// @desc    Get status of all AI agents
+// @route   POST /api/ai/analyze-trends
+// @desc    Analyze current trends for industry and platform
 // @access  Private
-router.get('/agents/status', auth, async (req, res) => {
+router.post('/analyze-trends', auth, async (req, res) => {
   try {
-    // Mock AI agents status - will be replaced with actual agent monitoring
-    const agentsStatus = {
-      intelligence: {
-        name: 'Intelligence Agent',
-        status: 'active',
-        lastActivity: new Date(),
-        tasksCompleted: 156,
-        efficiency: 94,
-        currentTask: 'Analyzing user engagement patterns'
+    const { industry, platform, timeframe = '7d' } = req.body;
+
+    const result = await openaiService.analyzeTrends(industry, platform, timeframe);
+
+    // Log AI usage
+    auditLogger.log(AUDIT_EVENTS.AI_ANALYSIS_PERFORMED, {
+      userId: req.user.id,
+      analysisType: 'trends',
+      industry,
+      platform,
+      success: result.success
+    }, req);
+
+    if (result.success) {
+      res.json({
+        message: 'Trend analysis completed',
+        analysis: result.analysis,
+        usage: result.usage,
+        model: result.model
+      });
+    } else {
+      res.status(500).json({
+        message: 'Trend analysis failed',
+        error: result.error,
+        fallback: result.fallback
+      });
+    }
+  } catch (error) {
+    console.error('AI trend analysis error:', error);
+    res.status(500).json({
+      message: 'Error analyzing trends',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/ai/analyze-audience
+// @desc    Analyze audience data and provide insights
+// @access  Private
+router.post('/analyze-audience', auth, async (req, res) => {
+  try {
+    const { audienceData, platform } = req.body;
+
+    const result = await openaiService.analyzeAudience(audienceData, platform);
+
+    // Log AI usage
+    auditLogger.log(AUDIT_EVENTS.AI_ANALYSIS_PERFORMED, {
+      userId: req.user.id,
+      analysisType: 'audience',
+      platform,
+      success: result.success
+    }, req);
+
+    if (result.success) {
+      res.json({
+        message: 'Audience analysis completed',
+        analysis: result.analysis,
+        usage: result.usage,
+        model: result.model
+      });
+    } else {
+      res.status(500).json({
+        message: 'Audience analysis failed',
+        error: result.error,
+        fallback: result.fallback
+      });
+    }
+  } catch (error) {
+    console.error('AI audience analysis error:', error);
+    res.status(500).json({
+      message: 'Error analyzing audience',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/ai/analyze-competitors
+// @desc    Analyze competitor data and strategies
+// @access  Private
+router.post('/analyze-competitors', auth, async (req, res) => {
+  try {
+    const { competitorData, industry } = req.body;
+
+    const result = await openaiService.analyzeCompetitors(competitorData, industry);
+
+    // Log AI usage
+    auditLogger.log(AUDIT_EVENTS.AI_ANALYSIS_PERFORMED, {
+      userId: req.user.id,
+      analysisType: 'competitors',
+      industry,
+      success: result.success
+    }, req);
+
+    if (result.success) {
+      res.json({
+        message: 'Competitor analysis completed',
+        analysis: result.analysis,
+        usage: result.usage,
+        model: result.model
+      });
+    } else {
+      res.status(500).json({
+        message: 'Competitor analysis failed',
+        error: result.error,
+        fallback: result.fallback
+      });
+    }
+  } catch (error) {
+    console.error('AI competitor analysis error:', error);
+    res.status(500).json({
+      message: 'Error analyzing competitors',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/ai/optimize-performance
+// @desc    Analyze performance data and provide optimization recommendations
+// @access  Private
+router.post('/optimize-performance', auth, async (req, res) => {
+  try {
+    const { performanceData, goals } = req.body;
+
+    const result = await openaiService.optimizePerformance(performanceData, goals);
+
+    // Log AI usage
+    auditLogger.log(AUDIT_EVENTS.AI_ANALYSIS_PERFORMED, {
+      userId: req.user.id,
+      analysisType: 'performance_optimization',
+      success: result.success
+    }, req);
+
+    if (result.success) {
+      res.json({
+        message: 'Performance optimization completed',
+        recommendations: result.recommendations,
+        usage: result.usage,
+        model: result.model
+      });
+    } else {
+      res.status(500).json({
+        message: 'Performance optimization failed',
+        error: result.error,
+        fallback: result.fallback
+      });
+    }
+  } catch (error) {
+    console.error('AI performance optimization error:', error);
+    res.status(500).json({
+      message: 'Error optimizing performance',
+      error: error.message
+    });
+  }
+});
+
+// @route   GET /api/ai/agents
+// @desc    Get available AI agents and their capabilities
+// @access  Private
+router.get('/agents', auth, async (req, res) => {
+  try {
+    const agents = {
+      contentCreator: {
+        name: 'Content Creator',
+        description: 'Generates engaging social media content tailored to your brand and audience',
+        capabilities: ['Content generation', 'Platform optimization', 'Tone matching', 'Audience targeting'],
+        model: 'GPT-4'
       },
-      strategy: {
-        name: 'Strategy Agent',
-        status: 'active',
-        lastActivity: new Date(),
-        tasksCompleted: 89,
-        efficiency: 91,
-        currentTask: 'Generating monthly content strategy'
+      hashtagGenerator: {
+        name: 'Hashtag Generator',
+        description: 'Creates relevant and trending hashtags to maximize reach and engagement',
+        capabilities: ['Trending hashtags', 'Niche targeting', 'Platform-specific optimization'],
+        model: 'GPT-3.5-turbo'
       },
-      content: {
-        name: 'Content Agent',
-        status: 'active',
-        lastActivity: new Date(),
-        tasksCompleted: 234,
-        efficiency: 88,
-        currentTask: 'Creating Instagram carousel content'
+      captionWriter: {
+        name: 'Caption Writer',
+        description: 'Writes compelling captions that drive engagement and conversions',
+        capabilities: ['Hook writing', 'Call-to-action creation', 'Engagement optimization'],
+        model: 'GPT-4'
       },
-      execution: {
-        name: 'Execution Agent',
-        status: 'active',
-        lastActivity: new Date(),
-        tasksCompleted: 178,
-        efficiency: 96,
-        currentTask: 'Scheduling posts across platforms'
+      trendAnalyzer: {
+        name: 'Trend Analyzer',
+        description: 'Analyzes current trends and identifies opportunities for your content strategy',
+        capabilities: ['Trend identification', 'Opportunity analysis', 'Strategic recommendations'],
+        model: 'GPT-4'
       },
-      learning: {
-        name: 'Learning Agent',
-        status: 'active',
-        lastActivity: new Date(),
-        tasksCompleted: 67,
-        efficiency: 85,
-        currentTask: 'Analyzing performance data'
+      audienceAnalyzer: {
+        name: 'Audience Analyzer',
+        description: 'Provides deep insights into your audience behavior and preferences',
+        capabilities: ['Demographic analysis', 'Behavior patterns', 'Content preferences'],
+        model: 'GPT-4'
       },
-      engagement: {
-        name: 'Engagement Agent',
-        status: 'active',
-        lastActivity: new Date(),
-        tasksCompleted: 145,
-        efficiency: 92,
-        currentTask: 'Monitoring comments and mentions'
+      competitorAnalyzer: {
+        name: 'Competitor Analyzer',
+        description: 'Analyzes competitor strategies and identifies competitive advantages',
+        capabilities: ['Strategy analysis', 'Gap identification', 'Competitive insights'],
+        model: 'GPT-4'
       },
-      analytics: {
-        name: 'Analytics Agent',
-        status: 'active',
-        lastActivity: new Date(),
-        tasksCompleted: 98,
-        efficiency: 89,
-        currentTask: 'Generating performance reports'
+      performanceOptimizer: {
+        name: 'Performance Optimizer',
+        description: 'Optimizes your content strategy based on performance data and analytics',
+        capabilities: ['Performance analysis', 'Optimization recommendations', 'Strategy refinement'],
+        model: 'GPT-4'
       }
     };
 
     res.json({
-      message: 'AI agents status retrieved successfully',
-      agents: agentsStatus,
-      overallHealth: 'excellent',
-      totalTasksCompleted: Object.values(agentsStatus).reduce((sum, agent) => sum + agent.tasksCompleted, 0),
-      averageEfficiency: Object.values(agentsStatus).reduce((sum, agent) => sum + agent.efficiency, 0) / Object.keys(agentsStatus).length
+      message: 'AI agents retrieved successfully',
+      agents,
+      totalAgents: Object.keys(agents).length
     });
   } catch (error) {
-    console.error('AI agents status error:', error);
+    console.error('Get AI agents error:', error);
     res.status(500).json({
-      message: 'Server error retrieving agents status'
+      message: 'Error retrieving AI agents',
+      error: error.message
+    });
+  }
+});
+
+// @route   GET /api/ai/usage-stats
+// @desc    Get AI usage statistics for the user
+// @access  Private
+router.get('/usage-stats', auth, async (req, res) => {
+  try {
+    const stats = await openaiService.getUsageStats();
+
+    res.json({
+      message: 'Usage statistics retrieved successfully',
+      stats,
+      subscription: req.user.subscription,
+      limits: {
+        free: { requests: 10, tokens: 10000 },
+        basic: { requests: 100, tokens: 100000 },
+        premium: { requests: 500, tokens: 500000 },
+        enterprise: { requests: 'unlimited', tokens: 'unlimited' }
+      }
+    });
+  } catch (error) {
+    console.error('Get usage stats error:', error);
+    res.status(500).json({
+      message: 'Error retrieving usage statistics',
+      error: error.message
+    });
+  }
+});
+
+// @route   POST /api/ai/batch-generate
+// @desc    Generate multiple pieces of content in batch
+// @access  Private
+router.post('/batch-generate', auth, async (req, res) => {
+  try {
+    const { prompts, platform, options = {} } = req.body;
+
+    if (!Array.isArray(prompts) || prompts.length === 0) {
+      return res.status(400).json({
+        message: 'Prompts array is required and cannot be empty'
+      });
+    }
+
+    if (prompts.length > 10) {
+      return res.status(400).json({
+        message: 'Maximum 10 prompts allowed per batch request'
+      });
+    }
+
+    const results = [];
+    for (const prompt of prompts) {
+      const result = await openaiService.generateContent(prompt, platform, options);
+      results.push({
+        prompt,
+        result
+      });
+    }
+
+    // Log batch AI usage
+    auditLogger.log(AUDIT_EVENTS.AI_CONTENT_GENERATED, {
+      userId: req.user.id,
+      batchSize: prompts.length,
+      platform,
+      success: results.filter(r => r.result.success).length
+    }, req);
+
+    res.json({
+      message: 'Batch content generation completed',
+      results,
+      summary: {
+        total: results.length,
+        successful: results.filter(r => r.result.success).length,
+        failed: results.filter(r => !r.result.success).length
+      }
+    });
+  } catch (error) {
+    console.error('AI batch generation error:', error);
+    res.status(500).json({
+      message: 'Error in batch content generation',
+      error: error.message
     });
   }
 });
