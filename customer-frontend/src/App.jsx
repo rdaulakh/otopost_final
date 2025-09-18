@@ -51,7 +51,7 @@ import SignIn from './components/auth/SignIn.jsx'
 import SignUp from './components/auth/SignUp.jsx'
 
 // Import enhanced profile component
-import ProfileDemo from './ProfileDemo.jsx'
+import UserProfile from './components/UserProfile.jsx'
 
 // Import API hooks
 import { useSystemHealth } from './hooks/useApi.js'
@@ -128,48 +128,7 @@ const ConnectionStatus = () => {
 }
 
 // Error Boundary Component
-class ErrorBoundary extends React.Component {
-  constructor(props) {
-    super(props)
-    this.state = { hasError: false, error: null }
-  }
 
-  static getDerivedStateFromError(error) {
-    return { hasError: true, error }
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error('Component error:', error, errorInfo)
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="p-6 bg-red-50 border border-red-200 rounded-lg m-4">
-          <div className="flex items-center space-x-2 mb-4">
-            <AlertCircle className="h-5 w-5 text-red-600" />
-            <h2 className="text-lg font-semibold text-red-800">Component Error</h2>
-          </div>
-          <p className="text-red-600 mb-4">This component failed to load. Please try refreshing the page.</p>
-          <Button 
-            onClick={() => window.location.reload()} 
-            className="bg-red-600 hover:bg-red-700 text-white"
-          >
-            Refresh Page
-          </Button>
-          <details className="mt-4">
-            <summary className="text-sm text-red-500 cursor-pointer">Error Details</summary>
-            <pre className="text-xs text-red-400 mt-1 p-2 bg-red-100 rounded overflow-auto">
-              {this.state.error?.toString()}
-            </pre>
-          </details>
-        </div>
-      )
-    }
-
-    return this.props.children
-  }
-}
 
 // Authentication Wrapper Component
 const AuthWrapper = ({ children }) => {
@@ -359,7 +318,7 @@ function AppContent() {
       case 'profile':
         return (
           <ErrorBoundary>
-            <ProfileDemo />
+            <UserProfile />
           </ErrorBoundary>
         )
       case 'settings':

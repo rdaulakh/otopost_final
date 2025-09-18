@@ -34,7 +34,7 @@ import {
   useRevenueAnalytics,
   usePlatformStats,
   useAdminAlerts
-} from '../hooks/useApi.js'
+} from '../hooks/useAdminApi.js'
 import { useNotifications } from './NotificationSystem.jsx'
 import { DashboardSkeleton } from './LoadingSkeletons.jsx'
 

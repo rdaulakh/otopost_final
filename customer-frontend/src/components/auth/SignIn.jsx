@@ -157,7 +157,7 @@ const SignIn = ({ onSwitchToSignUp }) => {
             >
               Transform your social media strategy with AI-powered content creation, 
               automated scheduling, and intelligent analytics.
-            </p>
+            </motion.p>
           </div>
 
           <motion.div
@@ -339,3 +339,4 @@ const SignIn = ({ onSwitchToSignUp }) => {
 }
 
 export default SignIn
+

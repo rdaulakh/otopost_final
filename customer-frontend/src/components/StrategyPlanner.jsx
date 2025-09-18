@@ -41,7 +41,7 @@ import {
   useAIAnalysis,
   useUpdateStrategy,
   useStrategyPerformance
-} from '../hooks/useApi.js'
+} from '../hooks/useCustomerApi.js'
 import { useNotifications } from './NotificationSystem.jsx'
 import { AnalyticsSkeleton } from './LoadingSkeletons.jsx'
 

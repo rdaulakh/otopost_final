@@ -9,31 +9,31 @@ class OpenAIService {
     // AI Agent configurations
     this.agents = {
       contentCreator: {
-        model: 'gpt-4',
+        model: 'gpt-4.1-mini',
         systemPrompt: `You are a professional social media content creator. Create engaging, platform-appropriate content that drives engagement and aligns with brand voice. Always consider the target audience and platform best practices.`
       },
       hashtagGenerator: {
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4.1-nano',
         systemPrompt: `You are a hashtag specialist. Generate relevant, trending, and effective hashtags for social media posts. Mix popular and niche hashtags for optimal reach.`
       },
       captionWriter: {
-        model: 'gpt-4',
+        model: 'gpt-4.1-mini',
         systemPrompt: `You are a caption writing expert. Write compelling captions that encourage engagement, include call-to-actions, and match the brand's tone of voice.`
       },
       trendAnalyzer: {
-        model: 'gpt-4',
+        model: 'gpt-4.1-mini',
         systemPrompt: `You are a social media trend analyst. Analyze current trends, identify opportunities, and provide strategic recommendations for content and engagement.`
       },
       audienceAnalyzer: {
-        model: 'gpt-4',
+        model: 'gpt-4.1-mini',
         systemPrompt: `You are an audience analysis expert. Analyze audience behavior, preferences, and engagement patterns to provide actionable insights for content strategy.`
       },
       competitorAnalyzer: {
-        model: 'gpt-4',
+        model: 'gpt-4.1-mini',
         systemPrompt: `You are a competitive analysis specialist. Analyze competitor strategies, identify gaps and opportunities, and provide strategic recommendations.`
       },
       performanceOptimizer: {
-        model: 'gpt-4',
+        model: 'gpt-4.1-mini',
         systemPrompt: `You are a social media performance optimization expert. Analyze metrics, identify improvement opportunities, and provide data-driven recommendations for better performance.`
       }
     };

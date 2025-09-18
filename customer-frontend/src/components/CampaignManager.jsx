@@ -16,7 +16,7 @@ import {
   useCampaignAnalytics,
   useAIRecommendations,
   useCampaignOptimization
-} from '../hooks/useApi.js'
+} from '../hooks/useCustomerApi.js'
 import { useNotifications } from './NotificationSystem.jsx'
 import { TableSkeleton } from './LoadingSkeletons.jsx'
 

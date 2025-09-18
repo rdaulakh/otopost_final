@@ -63,14 +63,20 @@ export const API_ENDPOINTS = {
     VERIFY_EMAIL: '/auth/verify-email',
   },
   
-  // User Management
+    // User Management
   USERS: {
-    PROFILE: '/users/profile',
-    UPDATE_PROFILE: '/users/profile',
-    CHANGE_PASSWORD: '/users/change-password',
-    DELETE_ACCOUNT: '/users/delete-account',
+    PROFILE: '/users/me',
+    UPDATE_PROFILE: '/users/me',
+    CHANGE_PASSWORD: '/users/password',
+    DELETE_ACCOUNT: '/users/me',
     SUBSCRIPTION: '/users/subscription',
-    USAGE_STATS: '/users/usage-stats',
+    USAGE_STATS: '/users/stats',
+  },
+
+  // Profile specific endpoints
+  PROFILE: {
+    UPLOAD_AVATAR: '/profile/avatar',
+    DELETE_AVATAR: '/profile/avatar',
   },
   
   // Content Management

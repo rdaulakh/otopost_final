@@ -41,7 +41,7 @@ import {
   useAnalyticsAudience,
   useContentAnalytics,
   usePerformanceAnalytics
-} from '../hooks/useApi.js'
+} from '../hooks/useCustomerApi.js'
 import { useNotifications } from './NotificationSystem.jsx'
 import { AnalyticsSkeleton } from './LoadingSkeletons.jsx'
 
@@ -194,7 +194,7 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
         { location: 'Other', percentage: 10 }
       ]
     }
-  })
+  }
 
   // Use real API data with fallback to mock data
   const analyticsData = {

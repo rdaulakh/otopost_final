@@ -36,43 +36,154 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.j
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar.jsx'
 import { Progress } from '@/components/ui/progress.jsx'
 import { useTheme } from '../contexts/ThemeContext.jsx'
+// Import API hooks and UX components
+import { 
+  useUserProfile,
+  useUpdateProfile,
+  useUploadAvatar,
+  useDeleteAvatar,
+  useSocialProfiles,
+  useConnectSocialProfile,
+  useDisconnectSocialProfile,
+  useNotificationSettings,
+  useUpdateNotificationSettings,
+  useAccountSecurity,
+  useUpdatePassword,
+  useDeleteAccount
+} from '../hooks/useApi.js'
+import { useNotifications } from './NotificationSystem.jsx'
+import { ProfileSkeleton } from './LoadingSkeletons.jsx'
 
 
 const UserProfile = ({ user, onUpdateUser }) => {
   const { isDarkMode } = useTheme()
+  
+  // UX hooks
+  const { success, error, info } = useNotifications()
 
+  // Component state
   const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState('profile')
+  const [isUploading, setIsUploading] = useState(false)
+
+  // Real API calls for profile data
+  const { 
+    data: userProfileData, 
+    isLoading: profileLoading,
+    error: profileError,
+    refetch: refetchProfile 
+  } = useUserProfile()
+  
+  const { 
+    data: socialProfilesData, 
+    isLoading: socialProfilesLoading 
+  } = useSocialProfiles()
+  
+  const { 
+    data: notificationSettingsData, 
+    isLoading: notificationSettingsLoading 
+  } = useNotificationSettings()
+  
+  const { 
+    data: accountSecurityData, 
+    isLoading: securityLoading 
+  } = useAccountSecurity()
+  
+  const { 
+    mutate: updateProfile,
+    isLoading: isUpdatingProfile 
+  } = useUpdateProfile()
+  
+  const { 
+    mutate: uploadAvatar,
+    isLoading: isUploadingAvatar 
+  } = useUploadAvatar()
+  
+  const { 
+    mutate: deleteAvatar,
+    isLoading: isDeletingAvatar 
+  } = useDeleteAvatar()
+  
+  const { 
+    mutate: connectSocialProfile,
+    isLoading: isConnectingSocial 
+  } = useConnectSocialProfile()
+  
+  const { 
+    mutate: disconnectSocialProfile,
+    isLoading: isDisconnectingSocial 
+  } = useDisconnectSocialProfile()
+  
+  const { 
+    mutate: updateNotificationSettings,
+    isLoading: isUpdatingNotifications 
+  } = useUpdateNotificationSettings()
+  
+  const { 
+    mutate: updatePassword,
+    isLoading: isUpdatingPassword 
+  } = useUpdatePassword()
+  
+  const { 
+    mutate: deleteAccount,
+    isLoading: isDeletingAccount 
+  } = useDeleteAccount()
+
+  // Loading state
+  const isLoading = profileLoading || socialProfilesLoading || notificationSettingsLoading || securityLoading
+
+  // Error handling
+  const hasError = profileError
+
+  // Use real API data with fallback to mock data
+  const profileData = userProfileData || user || {
+    name: 'John Doe',
+    email: 'john@example.com',
+    phone: '+1 (555) 123-4567',
+    company: 'TechCorp Solutions',
+    jobTitle: 'Marketing Manager',
+    location: 'San Francisco, CA',
+    bio: 'Passionate about digital marketing and social media strategy.',
+    website: 'https://johndoe.com',
+    timezone: 'UTC-8',
+    avatar: null,
+    joinDate: '2024-01-15'
+  }
+
   const [formData, setFormData] = useState({
-    firstName: user.name?.split(' ')[0] || '',
-    lastName: user.name?.split(' ')[1] || '',
-    email: user.email || '',
-    phone: user.phone || '',
-    company: user.company || '',
-    jobTitle: user.jobTitle || '',
-    location: user.location || '',
-    bio: user.bio || '',
-    website: user.website || '',
-    timezone: user.timezone || 'UTC-5'
+    firstName: profileData.name?.split(' ')[0] || '',
+    lastName: profileData.name?.split(' ')[1] || '',
+    email: profileData.email || '',
+    phone: profileData.phone || '',
+    company: profileData.company || '',
+    jobTitle: profileData.jobTitle || '',
+    location: profileData.location || '',
+    bio: profileData.bio || '',
+    website: profileData.website || '',
+    timezone: profileData.timezone || 'UTC-5'
   })
   
-  const [notifications, setNotifications] = useState({
+  // Notification settings from API
+  const notifications = notificationSettingsData || {
     emailMarketing: true,
     emailUpdates: true,
     pushNotifications: true,
     smsAlerts: false,
     weeklyReports: true,
     performanceAlerts: true
-  })
+  }
 
-  const [connectedAccounts, setConnectedAccounts] = useState([
+  const [notificationsState, setNotifications] = useState(notifications)
+
+  // Connected accounts from API
+  const connectedAccounts = socialProfilesData?.profiles || [
     { platform: 'Instagram', connected: true, username: '@yourcompany', followers: '12.5K' },
     { platform: 'Facebook', connected: true, username: 'Your Company', followers: '8.2K' },
     { platform: 'LinkedIn', connected: true, username: 'Your Company', followers: '5.1K' },
     { platform: 'Twitter', connected: false, username: '', followers: '' },
     { platform: 'TikTok', connected: false, username: '', followers: '' },
     { platform: 'YouTube', connected: false, username: '', followers: '' }
-  ])
+  ]
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -96,22 +207,46 @@ const UserProfile = ({ user, onUpdateUser }) => {
     }))
   }
 
-  const handleSave = () => {
-    const updatedUser = {
-      ...user,
-      name: `${formData.firstName} ${formData.lastName}`,
-      email: formData.email,
-      phone: formData.phone,
-      company: formData.company,
-      jobTitle: formData.jobTitle,
-      location: formData.location,
-      bio: formData.bio,
-      website: formData.website,
-      timezone: formData.timezone
+      const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      await uploadAvatar({ file });
+      success("Avatar updated successfully!");
+      refetchProfile();
+    } catch (err) {
+      error("Failed to upload avatar.");
+    } finally {
+      setIsUploading(false);
     }
-    onUpdateUser(updatedUser)
-    setIsEditing(false)
-  }
+  };
+
+  const handleAvatarDelete = async () => {
+    try {
+      await deleteAvatar();
+      success("Avatar removed successfully!");
+      refetchProfile();
+    } catch (err) {
+      error("Failed to remove avatar.");
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      await updateProfile({
+        name: `${formData.firstName} ${formData.lastName}`,
+        company: formData.company,
+        // Add other fields from formData as needed by the API
+      });
+      success("Profile updated successfully!");
+      setIsEditing(false);
+      refetchProfile();
+    } catch (err) {
+      error("Failed to update profile.");
+    }
+  };
 
   const handleCancel = () => {
     setFormData({
@@ -214,12 +349,24 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     </AvatarFallback>
                   </Avatar>
                   {isEditing && (
-                    <Button
-                      size="sm"
-                      className="absolute -bottom-2 -right-2 rounded-full h-8 w-8 p-0"
-                    >
-                      <Camera className="h-4 w-4" />
-                    </Button>
+                    <>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                        id="avatar-upload"
+                      />
+                      <label htmlFor="avatar-upload">
+                        <Button
+                          as="span"
+                          size="sm"
+                          className="absolute -bottom-2 -right-2 rounded-full h-8 w-8 p-0"
+                        >
+                          <Camera className="h-4 w-4" />
+                        </Button>
+                      </label>
+                    </>
                   )}
                 </div>
                 <div>

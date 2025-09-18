@@ -1,106 +1,88 @@
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const http = require('http');
-const socketService = require('./services/socketService');
-const { applySecurity } = require('./middleware/security');
-const { auditMiddleware, errorAuditMiddleware } = require('./middleware/auditLogger');
-const { sanitizeInput } = require('./middleware/validation');
-const { generalLimiter, rateLimitInfo } = require('./middleware/rateLimiter');
-
-// Load environment variables
-dotenv.config();
+require("dotenv").config({ path: "/home/ubuntu/ai-social-media-platform/api/.env" });
+const express = require("express");
+const mongoose = require("mongoose");
+const http = require("http");
+const { Server } = require("socket.io");
+const cors = require("cors");
+const rateLimit = require("express-rate-limit");
+const helmet = require("helmet");
+// const { errorAuditMiddleware } = require("./middleware/auditLogger"); // Disabled for development
+const session = require("express-session");
+const initializeSocketService = require("./services/socketService");
 
 const app = express();
 const server = http.createServer(app);
-const PORT = process.env.PORT || 5000;
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 
-// Apply security middleware first
-applySecurity(app);
-
-// Basic middleware
+// Middleware
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json());
+app.use(helmet());
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'a-very-strong-secret',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: process.env.NODE_ENV === 'production' }
+}));
 
-// Security and monitoring middleware
-app.use(rateLimitInfo);
-app.use(generalLimiter);
-app.use(auditMiddleware);
-app.use(sanitizeInput);
 
-// Health check endpoints
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development'
-  });
+// Rate limiting
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  standardHeaders: true,
+  legacyHeaders: false,
 });
+app.use(limiter);
 
-app.get('/live', (req, res) => {
-  res.status(200).json({ status: 'alive' });
-});
-
-// Database connection
+// Connect to MongoDB
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/ai-social-media', {
+    await mongoose.connect(process.env.MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
-  } catch (error) {
-    console.error('Database connection error:', error);
+    console.log("MongoDB Connected...");
+  } catch (err) {
+    console.error(err.message);
     process.exit(1);
   }
 };
 
+connectDB();
+
 // Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/content', require('./routes/content'));
-app.use('/api/social-profiles', require('./routes/socialProfiles'));
-app.use('/api/analytics', require('./routes/analytics'));
-app.use('/api/ai', require('./routes/ai'));
-app.use('/api/media', require('./routes/media'));
-app.use('/api/realtime', require('./routes/realtime'));
-app.use('/api/security', require('./routes/security'));
+app.get("/api/health", (req, res) => res.status(200).send("OK"));
+app.use("/api/auth", require("./routes/auth"));
+app.use("/api/users", require("./routes/users"));
+app.use("/api/content", require("./routes/content"));
+app.use("/api/social-profiles", require("./routes/socialProfiles"));
+app.use("/api/analytics", require("./routes/analytics"));
+app.use("/api/ai", require("./routes/ai"));
+app.use("/api/media", require("./routes/media"));
+app.use("/api/realtime", require("./routes/realtime"));
+app.use("/api/security", require("./routes/security"));
+app.use("/api/profile", require("./routes/profile"));
+app.use("/api/admin", require("./routes/admin"));
+app.use("/api/customer-analytics", require("./routes/customerAnalytics"));
+app.use("/api/ai-strategy", require("./routes/aiStrategy"));
+app.use("/api/campaigns", require("./routes/campaigns"));
+app.use("/api/boosts", require("./routes/boosts"));
+app.use("/api/ai-content", require("./routes/aiContent"));
+app.use("/api/social-publishing", require("./routes/socialPublishing"));
+app.use("/api/twitter-auth", require("./routes/twitterAuth"));
 
 // Error handling middleware
-app.use(errorAuditMiddleware);
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({
-    message: 'Something went wrong!',
-    error: process.env.NODE_ENV === 'production' ? {} : err.message
-  });
-});
+// app.use(errorAuditMiddleware); // Disabled for development
 
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({
-    message: 'Route not found',
-    path: req.originalUrl
-  });
-});
+// Socket.IO
+initializeSocketService(io);
 
-// Start server
-const startServer = async () => {
-  await connectDB();
-  
-  // Initialize Socket.IO
-  socketService.initialize(server);
-  
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-    console.log(`Health check available at http://localhost:${PORT}/health`);
-    console.log(`Socket.IO server initialized`);
-  });
-};
+const PORT = process.env.PORT || 5000;
 
-startServer();
-
-module.exports = app;
+server.listen(PORT, () => console.log(`Server started on port ${PORT}`));

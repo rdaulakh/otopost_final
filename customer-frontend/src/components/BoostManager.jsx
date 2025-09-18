@@ -16,7 +16,7 @@ import {
   useDeleteBoost,
   useBoostAnalytics,
   useBoostPrediction
-} from '../hooks/useApi.js'
+} from '../hooks/useCustomerApi.js'
 import { useNotifications } from './NotificationSystem.jsx'
 import { TableSkeleton } from './LoadingSkeletons.jsx'
 

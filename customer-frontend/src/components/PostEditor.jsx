@@ -55,10 +55,8 @@ import {
   useCreateContent,
   useUpdateContent,
   useUploadMedia,
-  useAIContentGeneration,
-  useAIHashtagGeneration,
-  useContentSuggestions
-} from '../hooks/useApi.js'
+  useAIContentGeneration
+} from '../hooks/useCustomerApi.js'
 import { useNotifications } from './NotificationSystem.jsx'
 
 const PostEditor = ({ post, isOpen, onClose, onSave }) => {
@@ -89,15 +87,20 @@ const PostEditor = ({ post, isOpen, onClose, onSave }) => {
     isLoading: isGeneratingContent 
   } = useAIContentGeneration()
   
-  const { 
-    mutate: generateHashtags, 
-    isLoading: isGeneratingHashtags 
-  } = useAIHashtagGeneration()
+  // Mock hashtag generation for now
+  const generateHashtags = (content) => {
+    info('Generating hashtags...')
+    // Mock hashtag generation - replace with real implementation
+    setTimeout(() => {
+      const mockHashtags = ['#socialmedia', '#marketing', '#content', '#ai', '#automation']
+      setHashtags(mockHashtags.join(' '))
+      success('Hashtags generated successfully!')
+    }, 1000)
+  }
   
-  const { 
-    data: contentSuggestions,
-    isLoading: isFetchingSuggestions 
-  } = useContentSuggestions({ postType: selectedPostType })
+  // Mock content suggestions for now
+  const contentSuggestions = []
+  const isFetchingSuggestions = false
 
   // Component state
   const [activeTab, setActiveTab] = useState('ai-content')

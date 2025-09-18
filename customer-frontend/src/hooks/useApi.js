@@ -301,6 +301,30 @@ export const useDeleteMedia = () => {
   });
 };
 
+// Avatar Mutations
+export const useUploadAvatar = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ file, onProgress }) => 
+      apiHelpers.uploadFile(API_ENDPOINTS.PROFILE.UPLOAD_AVATAR, file, onProgress),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
+    },
+  });
+};
+
+export const useDeleteAvatar = () => {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: () => apiHelpers.delete(API_ENDPOINTS.PROFILE.DELETE_AVATAR),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
+    },
+  });
+};
+
 // Real-time Hooks
 export const useRealtimeStatus = () => {
   return useQuery({
