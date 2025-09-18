@@ -66,15 +66,15 @@ services:
   # =============================================================================
   backend:
     build:
-      context: ./backend-api
+      context: ./api
       dockerfile: Dockerfile
     container_name: ai-social-backend
     restart: unless-stopped
     ports:
-      - "8000:8000"
+      - "5000:5000"
     environment:
       NODE_ENV: production
-      PORT: 8000
+      PORT: 5000
       MONGODB_URI: mongodb://admin:password123@mongodb:27017/ai-social-media?authSource=admin
       REDIS_URL: redis://redis:6379
       CHROMA_HOST: chroma
@@ -82,8 +82,8 @@ services:
     env_file:
       - .env
     volumes:
-      - ./backend-api/logs:/app/logs
-      - ./backend-api/uploads:/app/uploads
+      - ./api/logs:/app/logs
+      - ./api/uploads:/app/uploads
     depends_on:
       mongodb:
         condition: service_healthy
@@ -94,7 +94,7 @@ services:
     networks:
       - ai-social-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -147,8 +147,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      VITE_API_BASE_URL: http://localhost:8000
-      VITE_WS_URL: ws://localhost:8000
+      VITE_API_BASE_URL: http://localhost:5000
+      VITE_WS_URL: ws://localhost:5000
     volumes:
       - ./customer-frontend/dist:/app/dist
     depends_on:
@@ -171,8 +171,8 @@ services:
     ports:
       - "5173:5173"
     environment:
-      VITE_API_BASE_URL: http://localhost:8000
-      VITE_WS_URL: ws://localhost:8000
+      VITE_API_BASE_URL: http://localhost:5000
+      VITE_WS_URL: ws://localhost:5000
     volumes:
       - ./admin-panel/dist:/app/dist
     depends_on:

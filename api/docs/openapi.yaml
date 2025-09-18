@@ -1,0 +1,774 @@
+openapi: 3.0.3
+info:
+  title: AI Social Media Platform API
+  description: |
+    A comprehensive API for the AI-powered social media management platform.
+    
+    This API provides endpoints for user management, content creation, social media integration,
+    AI-powered features, and analytics.
+    
+    ## Authentication
+    
+    The API uses JWT (JSON Web Tokens) for authentication. Include the token in the Authorization header:
+    ```
+    Authorization: Bearer <your-jwt-token>
+    ```
+    
+    ## Rate Limiting
+    
+    API requests are rate limited to prevent abuse:
+    - 100 requests per 15 minutes per IP address
+    - Premium users have higher limits
+    
+    ## Error Handling
+    
+    The API returns standard HTTP status codes and JSON error responses:
+    ```json
+    {
+      "message": "Error description",
+      "error": "Detailed error information (development only)"
+    }
+    ```
+  version: 1.0.0
+  contact:
+    name: AI Social Media Team
+    email: support@aisocialmedia.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5000
+    description: Development server
+  - url: https://api.aisocialmedia.com
+    description: Production server
+
+paths:
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns the health status of the API server
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Server is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: OK
+                  timestamp:
+                    type: string
+                    format: date-time
+                  uptime:
+                    type: number
+                    description: Server uptime in seconds
+                  environment:
+                    type: string
+                    example: development
+
+  /live:
+    get:
+      summary: Liveness check
+      description: Simple endpoint to check if the server is alive
+      tags:
+        - Health
+      responses:
+        '200':
+          description: Server is alive
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: alive
+
+  /api/auth/register:
+    post:
+      summary: Register a new user
+      description: Create a new user account
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+              properties:
+                name:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  minLength: 6
+                  example: password123
+                company:
+                  type: string
+                  example: Acme Corp
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid input or user already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/login:
+    post:
+      summary: User login
+      description: Authenticate user and return JWT token
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  example: password123
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/auth/logout:
+    post:
+      summary: User logout
+      description: Logout user (client-side token removal)
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logout successful
+
+  /api/users/me:
+    get:
+      summary: Get current user profile
+      description: Retrieve the authenticated user's profile information
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      summary: Update user profile
+      description: Update the authenticated user's profile information
+      tags:
+        - Users
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                company:
+                  type: string
+                avatar:
+                  type: string
+                preferences:
+                  $ref: '#/components/schemas/UserPreferences'
+                businessProfile:
+                  $ref: '#/components/schemas/BusinessProfile'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  user:
+                    $ref: '#/components/schemas/User'
+
+  /api/content:
+    get:
+      summary: Get user's content
+      description: Retrieve all content for the authenticated user with pagination
+      tags:
+        - Content
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          description: Filter by content status
+          schema:
+            type: string
+            enum: [draft, scheduled, published, archived]
+        - name: platform
+          in: query
+          description: Filter by platform
+          schema:
+            type: string
+            enum: [facebook, instagram, twitter, linkedin, tiktok, youtube]
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          schema:
+            type: integer
+            default: 10
+      responses:
+        '200':
+          description: Content retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Content'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+
+    post:
+      summary: Create new content
+      description: Create a new piece of content
+      tags:
+        - Content
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContentInput'
+      responses:
+        '201':
+          description: Content created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  content:
+                    $ref: '#/components/schemas/Content'
+
+  /api/ai/generate-content:
+    post:
+      summary: Generate AI content
+      description: Generate content using AI based on a prompt
+      tags:
+        - AI Features
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - prompt
+              properties:
+                prompt:
+                  type: string
+                  example: Create a post about AI in social media marketing
+                platform:
+                  type: string
+                  enum: [facebook, instagram, twitter, linkedin, tiktok, youtube]
+                postType:
+                  type: string
+                  enum: [text, image, video, carousel, story, reel, poll]
+                  default: text
+                tone:
+                  type: string
+                  enum: [professional, casual, friendly, authoritative]
+                includeHashtags:
+                  type: boolean
+                  default: true
+                includeImages:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Content generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  content:
+                    $ref: '#/components/schemas/Content'
+                  aiResponse:
+                    type: object
+                    properties:
+                      suggestions:
+                        type: array
+                        items:
+                          type: string
+                      confidence:
+                        type: number
+                        format: float
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          description: Error message
+        error:
+          type: string
+          description: Detailed error information (development only)
+
+    AuthResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        token:
+          type: string
+          description: JWT authentication token
+        user:
+          $ref: '#/components/schemas/UserBasic'
+
+    UserBasic:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        company:
+          type: string
+        subscription:
+          type: string
+          enum: [free, basic, premium, enterprise]
+
+    User:
+      allOf:
+        - $ref: '#/components/schemas/UserBasic'
+        - type: object
+          properties:
+            avatar:
+              type: string
+            isEmailVerified:
+              type: boolean
+            lastLogin:
+              type: string
+              format: date-time
+            preferences:
+              $ref: '#/components/schemas/UserPreferences'
+            businessProfile:
+              $ref: '#/components/schemas/BusinessProfile'
+            socialAccounts:
+              type: array
+              items:
+                $ref: '#/components/schemas/SocialAccount'
+            profileCompletion:
+              type: number
+              description: Profile completion percentage
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+
+    UserPreferences:
+      type: object
+      properties:
+        theme:
+          type: string
+          enum: [light, dark, system]
+        notifications:
+          type: object
+          properties:
+            email:
+              type: boolean
+            push:
+              type: boolean
+            marketing:
+              type: boolean
+        timezone:
+          type: string
+
+    BusinessProfile:
+      type: object
+      properties:
+        industry:
+          type: string
+          enum: [Technology, Healthcare, Finance, Education, Retail, Manufacturing, Real Estate, Food & Beverage, Travel & Tourism, Entertainment, Other]
+        businessType:
+          type: string
+          enum: [B2B, B2C, B2B2C]
+        companySize:
+          type: string
+          enum: [1-10, 11-50, 51-200, 201-500, 500+]
+        website:
+          type: string
+        foundedYear:
+          type: integer
+        description:
+          type: string
+        contactInfo:
+          type: object
+          properties:
+            businessEmail:
+              type: string
+              format: email
+            phone:
+              type: string
+            address:
+              type: string
+        marketingStrategy:
+          type: object
+          properties:
+            brandVoice:
+              type: string
+              enum: [Professional, Casual, Friendly, Authoritative, Humorous, Inspirational]
+            contentStyle:
+              type: string
+              enum: [Educational, Promotional, Entertainment, News, Behind-the-scenes, User-generated]
+            postingFrequency:
+              type: string
+              enum: [Daily, 3-4 times/week, 2-3 times/week, Weekly, Bi-weekly]
+            geographicReach:
+              type: string
+            targetAudience:
+              type: string
+            businessObjectives:
+              type: array
+              items:
+                type: string
+                enum: [Brand Awareness, Lead Generation, Sales Growth, Customer Engagement, Community Building, Thought Leadership, Customer Support, Market Research]
+
+    SocialAccount:
+      type: object
+      properties:
+        platform:
+          type: string
+          enum: [facebook, instagram, twitter, linkedin, tiktok, youtube]
+        accountId:
+          type: string
+        username:
+          type: string
+        isActive:
+          type: boolean
+        connectedAt:
+          type: string
+          format: date-time
+
+    Content:
+      type: object
+      properties:
+        id:
+          type: string
+        user:
+          type: string
+        title:
+          type: string
+        content:
+          type: object
+          properties:
+            text:
+              type: string
+            hashtags:
+              type: array
+              items:
+                type: string
+            mentions:
+              type: array
+              items:
+                type: string
+        media:
+          type: array
+          items:
+            $ref: '#/components/schemas/Media'
+        platforms:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformContent'
+        postType:
+          type: string
+          enum: [text, image, video, carousel, story, reel, poll]
+        status:
+          type: string
+          enum: [draft, scheduled, published, archived]
+        aiGenerated:
+          $ref: '#/components/schemas/AIGenerated'
+        analytics:
+          $ref: '#/components/schemas/Analytics'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    ContentInput:
+      type: object
+      required:
+        - title
+        - content
+        - platforms
+      properties:
+        title:
+          type: string
+        content:
+          type: object
+          required:
+            - text
+          properties:
+            text:
+              type: string
+            hashtags:
+              type: array
+              items:
+                type: string
+            mentions:
+              type: array
+              items:
+                type: string
+        media:
+          type: array
+          items:
+            $ref: '#/components/schemas/Media'
+        platforms:
+          type: array
+          items:
+            $ref: '#/components/schemas/PlatformContent'
+        postType:
+          type: string
+          enum: [text, image, video, carousel, story, reel, poll]
+          default: text
+        tags:
+          type: array
+          items:
+            type: string
+        campaign:
+          type: string
+        scheduling:
+          type: object
+          properties:
+            timezone:
+              type: string
+            optimalTime:
+              type: boolean
+
+    Media:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [image, video, gif, document]
+        url:
+          type: string
+        filename:
+          type: string
+        size:
+          type: number
+        dimensions:
+          type: object
+          properties:
+            width:
+              type: number
+            height:
+              type: number
+        duration:
+          type: number
+        thumbnail:
+          type: string
+
+    PlatformContent:
+      type: object
+      properties:
+        platform:
+          type: string
+          enum: [facebook, instagram, twitter, linkedin, tiktok, youtube]
+        postId:
+          type: string
+        status:
+          type: string
+          enum: [draft, scheduled, published, failed]
+        scheduledFor:
+          type: string
+          format: date-time
+        publishedAt:
+          type: string
+          format: date-time
+        platformSpecific:
+          type: object
+          properties:
+            text:
+              type: string
+            hashtags:
+              type: array
+              items:
+                type: string
+            mentions:
+              type: array
+              items:
+                type: string
+        error:
+          type: string
+
+    AIGenerated:
+      type: object
+      properties:
+        isAIGenerated:
+          type: boolean
+        prompt:
+          type: string
+        model:
+          type: string
+        confidence:
+          type: number
+          format: float
+        suggestions:
+          type: array
+          items:
+            type: string
+
+    Analytics:
+      type: object
+      properties:
+        views:
+          type: number
+        likes:
+          type: number
+        shares:
+          type: number
+        comments:
+          type: number
+        clicks:
+          type: number
+        reach:
+          type: number
+        impressions:
+          type: number
+        engagement:
+          type: object
+          properties:
+            rate:
+              type: number
+              format: float
+            score:
+              type: number
+              format: float
+
+    Pagination:
+      type: object
+      properties:
+        current:
+          type: integer
+        pages:
+          type: integer
+        total:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Authentication
+    description: User authentication and authorization
+  - name: Users
+    description: User profile management
+  - name: Content
+    description: Content creation and management
+  - name: Social Profiles
+    description: Social media account management
+  - name: AI Features
+    description: AI-powered content generation and optimization
+  - name: Analytics
+    description: Performance analytics and insights
