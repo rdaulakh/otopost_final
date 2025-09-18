@@ -150,64 +150,64 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
   // Error handling
   const hasError = profileError
 
-  // Use real API data with fallback to mock data
+  // Use real API data only - no mock fallbacks
   const businessProfile = userProfileData?.businessProfile || {
-    companyName: 'TechCorp Solutions',
-    industry: 'Technology',
-    businessType: 'B2B',
-    companySize: '51-200 employees',
-    website: 'https://techcorp.com',
-    phone: '+1 (555) 123-4567',
-    email: 'contact@techcorp.com',
-    address: '123 Tech Street, San Francisco, CA 94105',
-    founded: '2018',
-    description: 'Leading technology solutions provider specializing in AI-driven social media management and digital marketing automation.',
-    targetAudience: 'Small to medium businesses looking to enhance their social media presence',
-    businessObjectives: ['Brand Awareness', 'Lead Generation', 'Customer Engagement', 'Sales Growth'],
-    geographicReach: 'North America',
-    brandVoice: 'Professional',
-    contentStyle: 'Educational',
-    postingFrequency: 'Daily',
-    primaryGoals: ['Increase Engagement', 'Generate Leads', 'Build Brand Authority']
+    companyName: '',
+    industry: '',
+    businessType: '',
+    companySize: '',
+    website: '',
+    phone: '',
+    email: '',
+    address: '',
+    founded: '',
+    description: '',
+    targetAudience: '',
+    businessObjectives: [],
+    geographicReach: '',
+    brandVoice: '',
+    contentStyle: '',
+    postingFrequency: '',
+    primaryGoals: []
   }
 
   const [businessProfileState, setBusinessProfile] = useState(businessProfile)
 
-  // AI Preferences from API
+  // AI Preferences from API - no mock fallbacks
   const aiPreferences = userSettingsData?.aiPreferences || {
     creativityLevel: 'Balanced',
     contentTone: 'Professional',
-    autoApproval: true,
+    autoApproval: false,
     autoScheduling: false,
-    aiSuggestions: true,
-    learningMode: true,
+    aiSuggestions: false,
+    learningMode: false,
     contentTypes: {
-      text: true,
-      images: true,
+      text: false,
+      images: false,
       videos: false,
-      stories: true,
-      reels: true
+      stories: false,
+      reels: false
     },
     platforms: {
-      instagram: true,
-      facebook: true,
-      linkedin: true,
+      instagram: false,
+      facebook: false,
+      linkedin: false,
       twitter: false,
       tiktok: false
     },
     optimization: {
-      bestTimes: true,
-      hashtags: true,
-      captions: true,
-      engagement: true
+      bestTimes: false,
+      hashtags: false,
+      captions: false,
+      engagement: false
     },
     notifications: {
-      contentReady: true,
-      performanceAlerts: true,
-      weeklyReports: true,
+      contentReady: false,
+      performanceAlerts: false,
+      weeklyReports: false,
       monthlyInsights: false
     },
-    dataRetention: '12 months',
+    dataRetention: '1 month',
     privacyLevel: 'Standard',
     apiAccess: false
   }
@@ -217,28 +217,28 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
   // Social profiles from API
   const socialProfiles = socialProfilesData?.profiles || []
   
-  // Notification settings from API
+  // Notification settings from API - no mock fallbacks
   const notificationSettings = notificationSettingsData || {
-    email: true,
-    push: true,
+    email: false,
+    push: false,
     sms: false,
-    contentReady: true,
-    performanceAlerts: true,
-    weeklyReports: true,
+    contentReady: false,
+    performanceAlerts: false,
+    weeklyReports: false,
     monthlyInsights: false
   }
 
   const [notificationSettingsState, setNotificationSettings] = useState(notificationSettings)
 
-  // Subscription info from API
+  // Subscription info from API - no mock fallbacks
   const subscriptionInfo = subscriptionData || {
-    plan: 'Pro',
-    status: 'active',
+    plan: 'Free',
+    status: 'inactive',
     billingCycle: 'monthly',
-    nextBilling: '2025-11-19',
+    nextBilling: null,
     usage: {
-      posts: 245,
-      limit: 500
+      posts: 0,
+      limit: 10
     }
   }
 

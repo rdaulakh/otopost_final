@@ -85,9 +85,9 @@ const AdminDashboard = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false
   // Error handling
   const hasError = dashboardError
 
-  // Fallback mock data for development/demo purposes
-  const fallbackAdminData = {
-    platform: {
+  // Use real API data only - no mock fallbacks
+  const adminData = {
+    platform: dashboardData?.platform || {
       totalUsers: 0,
       activeUsers: 0,
       newUsersToday: 0,
@@ -99,7 +99,7 @@ const AdminDashboard = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false
       aiAgentTasks: 0,
       storageUsed: 0
     },
-    users: {
+    users: userAnalytics?.users || {
       total: 0,
       active: 0,
       trial: 0,
@@ -109,7 +109,7 @@ const AdminDashboard = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false
       churnRate: 0,
       avgSessionTime: '0m 0s'
     },
-    revenue: {
+    revenue: revenueAnalytics?.revenue || {
       total: 0,
       monthly: 0,
       growth: 0,
@@ -118,7 +118,7 @@ const AdminDashboard = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false
       ltv: 0,
       churn: 0
     },
-    system: {
+    system: systemHealth?.system || {
       uptime: 0,
       apiHealth: 'unknown',
       dbHealth: 'unknown',
@@ -127,21 +127,12 @@ const AdminDashboard = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false
       criticalIssues: 0,
       avgResponseTime: '0ms'
     },
-    support: {
+    support: dashboardData?.support || {
       openTickets: 0,
       resolvedToday: 0,
       avgResolutionTime: '0m',
       satisfaction: 0
     }
-  }
-
-  // Use real API data with fallback to mock data
-  const adminData = {
-    platform: dashboardData?.platform || fallbackAdminData.platform,
-    users: userAnalytics?.users || fallbackAdminData.users,
-    revenue: revenueAnalytics?.revenue || fallbackAdminData.revenue,
-    system: systemHealth?.system || fallbackAdminData.system,
-    support: dashboardData?.support || fallbackAdminData.support
   }
 
   const revenueData = revenueAnalytics?.monthlyTrend || []
