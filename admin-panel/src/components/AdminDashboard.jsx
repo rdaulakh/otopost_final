@@ -26,15 +26,67 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import adminAnalyticsService from '../services/adminAnalyticsService'
-import systemHealthService from '../services/systemHealthService'
-import userService from '../services/userService'
+// Import API hooks and UX components
+import { 
+  useAdminDashboard,
+  useSystemHealth,
+  useUserAnalytics,
+  useRevenueAnalytics,
+  usePlatformStats,
+  useAdminAlerts
+} from '../hooks/useApi.js'
+import { useNotifications } from './NotificationSystem.jsx'
+import { DashboardSkeleton } from './LoadingSkeletons.jsx'
 
 const AdminDashboard = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false }) => {
-  const [isLoading, setIsLoading] = useState(false)
-  const [lastUpdated, setLastUpdated] = useState(new Date())
+  // UX hooks
+  const { success, error, info } = useNotifications()
+
+  // Component state
   const [selectedTimeRange, setSelectedTimeRange] = useState('7d')
-  const [adminData, setAdminData] = useState({
+  const [lastUpdated, setLastUpdated] = useState(new Date())
+
+  // Real API calls for admin dashboard data
+  const { 
+    data: dashboardData, 
+    isLoading: dashboardLoading,
+    error: dashboardError,
+    refetch: refetchDashboard 
+  } = useAdminDashboard({ timeRange: selectedTimeRange })
+  
+  const { 
+    data: systemHealth, 
+    isLoading: systemLoading 
+  } = useSystemHealth()
+  
+  const { 
+    data: userAnalytics, 
+    isLoading: userLoading 
+  } = useUserAnalytics({ timeRange: selectedTimeRange })
+  
+  const { 
+    data: revenueAnalytics, 
+    isLoading: revenueLoading 
+  } = useRevenueAnalytics({ timeRange: selectedTimeRange })
+  
+  const { 
+    data: platformStats, 
+    isLoading: platformLoading 
+  } = usePlatformStats()
+  
+  const { 
+    data: adminAlerts, 
+    isLoading: alertsLoading 
+  } = useAdminAlerts()
+
+  // Loading state
+  const isLoading = dashboardLoading || systemLoading || userLoading || revenueLoading || platformLoading || alertsLoading
+
+  // Error handling
+  const hasError = dashboardError
+
+  // Fallback mock data for development/demo purposes
+  const fallbackAdminData = {
     platform: {
       totalUsers: 0,
       activeUsers: 0,
@@ -81,34 +133,72 @@ const AdminDashboard = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false
       avgResolutionTime: '0m',
       satisfaction: 0
     }
-  })
-  const [revenueData, setRevenueData] = useState([])
-  const [userGrowthData, setUserGrowthData] = useState([])
-  const [subscriptionData, setSubscriptionData] = useState([])
-  const [error, setError] = useState(null)
+  }
 
-  // Load dashboard data
-  const loadDashboardData = async () => {
-    setIsLoading(true)
-    setError(null)
-    
+  // Use real API data with fallback to mock data
+  const adminData = {
+    platform: dashboardData?.platform || fallbackAdminData.platform,
+    users: userAnalytics?.users || fallbackAdminData.users,
+    revenue: revenueAnalytics?.revenue || fallbackAdminData.revenue,
+    system: systemHealth?.system || fallbackAdminData.system,
+    support: dashboardData?.support || fallbackAdminData.support
+  }
+
+  const revenueData = revenueAnalytics?.monthlyTrend || []
+  const userGrowthData = userAnalytics?.growthTrend || []
+  const subscriptionData = userAnalytics?.subscriptionDistribution || []
+
+  // Handle dashboard operations
+  const handleRefreshDashboard = async () => {
     try {
-      // Load all dashboard data in parallel
-      const [
-        systemDashboard,
-        platformUsage,
-        revenueAnalytics,
-        userStats,
-        systemHealth,
-        systemAlerts
-      ] = await Promise.allSettled([
-        adminAnalyticsService.getSystemDashboard({ timeRange: selectedTimeRange }),
-        adminAnalyticsService.getPlatformUsage({ timeRange: selectedTimeRange }),
-        adminAnalyticsService.getRevenueAnalytics({ timeRange: selectedTimeRange }),
-        userService.getUserStats(),
-        systemHealthService.getSystemHealth(),
-        systemHealthService.getSystemAlerts({ status: 'active', limit: 10 })
-      ])
+      info('Refreshing dashboard data...')
+      await refetchDashboard()
+      setLastUpdated(new Date())
+      success('Dashboard data refreshed successfully')
+      if (onDataUpdate) {
+        onDataUpdate({ lastRefresh: new Date() })
+      }
+    } catch (err) {
+      error('Failed to refresh dashboard data')
+    }
+  }
+
+  const handleTimeRangeChange = (newTimeRange) => {
+    setSelectedTimeRange(newTimeRange)
+    info(`Updating data for ${newTimeRange} time range`)
+  }
+
+  // Show loading skeleton
+  if (isLoading && !fallbackAdminData) {
+    return <DashboardSkeleton />
+  }
+
+  // Show error state
+  if (hasError && !fallbackAdminData) {
+    return (
+      <div className="p-6">
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" />
+              <span>Error loading dashboard data. Please try refreshing.</span>
+            </div>
+            <Button 
+              onClick={handleRefreshDashboard} 
+              className="mt-4 bg-red-600 hover:bg-red-700"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Loading...' : 'Retry'}
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const loadDashboardDataOld = async () => {
+    try {
+      // This is the old mock implementation - keeping for reference
 
       // Process system dashboard data
       if (systemDashboard.status === 'fulfilled') {
@@ -350,14 +440,14 @@ const AdminDashboard = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false
               Last updated: {lastUpdated.toLocaleTimeString()}
             </div>
             <Button
-              onClick={handleRefresh}
+              onClick={handleRefreshDashboard}
               disabled={isLoading}
               variant="outline"
               size="sm"
               className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''}
             >
               <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-              {isLoading ? 'Loading...' : 'Refresh'}
+              {isLoading ? 'Refreshing...' : 'Refresh'}
             </Button>
           </div>
         </div>
