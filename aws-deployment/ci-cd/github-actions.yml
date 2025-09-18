@@ -1,0 +1,463 @@
+name: AI Social Media Platform - CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, develop, staging]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.9'
+  AWS_REGION: us-east-1
+
+jobs:
+  # Frontend Build and Test
+  frontend-test:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./frontend
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run linting
+        run: npm run lint
+      
+      - name: Run type checking
+        run: npm run type-check
+      
+      - name: Run unit tests
+        run: npm run test:unit
+      
+      - name: Run integration tests
+        run: npm run test:integration
+      
+      - name: Build frontend
+        run: npm run build
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/dist/
+          retention-days: 7
+
+  # Backend API Build and Test
+  backend-test:
+    name: Backend API Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    
+    services:
+      mongodb:
+        image: mongo:6.0
+        env:
+          MONGO_INITDB_ROOT_USERNAME: admin
+          MONGO_INITDB_ROOT_PASSWORD: password
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.adminCommand(\"ping\")'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run linting
+        run: npm run lint
+      
+      - name: Run security audit
+        run: npm audit --audit-level moderate
+      
+      - name: Setup test environment
+        run: |
+          cp .env.example .env.test
+          sed -i 's/MONGODB_URI=.*/MONGODB_URI=mongodb:\/\/admin:password@localhost:27017\/test_db?authSource=admin/' .env.test
+          sed -i 's/REDIS_URL=.*/REDIS_URL=redis:\/\/localhost:6379/' .env.test
+      
+      - name: Run unit tests
+        run: npm run test:unit
+        env:
+          NODE_ENV: test
+      
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          NODE_ENV: test
+      
+      - name: Run API tests
+        run: npm run test:api
+        env:
+          NODE_ENV: test
+      
+      - name: Generate test coverage
+        run: npm run test:coverage
+        env:
+          NODE_ENV: test
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./backend/coverage/lcov.info
+          flags: backend
+          name: backend-coverage
+
+  # AI Agents Build and Test
+  ai-agents-test:
+    name: AI Agents Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./ai-agents
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov pytest-asyncio
+      
+      - name: Run linting
+        run: |
+          pip install flake8 black isort
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          black --check .
+          isort --check-only .
+      
+      - name: Run security checks
+        run: |
+          pip install bandit safety
+          bandit -r . -f json -o bandit-report.json || true
+          safety check --json --output safety-report.json || true
+      
+      - name: Run unit tests
+        run: pytest tests/unit/ -v --cov=agents --cov-report=xml
+        env:
+          PYTHONPATH: .
+      
+      - name: Run integration tests
+        run: pytest tests/integration/ -v
+        env:
+          PYTHONPATH: .
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./ai-agents/coverage.xml
+          flags: ai-agents
+          name: ai-agents-coverage
+
+  # Security Scanning
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    needs: [frontend-test, backend-test, ai-agents-test]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+      
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'trivy-results.sarif'
+      
+      - name: Run CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          languages: javascript, python
+
+  # Build Docker Images
+  build-images:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [frontend-test, backend-test, ai-agents-test]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/staging'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/social-media-ai-backend:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/social-media-ai-backend:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      
+      - name: Build and push AI agents image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./ai-agents
+          push: true
+          tags: |
+            ${{ steps.login-ecr.outputs.registry }}/social-media-ai-agents:${{ github.sha }}
+            ${{ steps.login-ecr.outputs.registry }}/social-media-ai-agents:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Deploy to Development
+  deploy-development:
+    name: Deploy to Development
+    runs-on: ubuntu-latest
+    needs: [build-images, security-scan]
+    if: github.ref == 'refs/heads/develop'
+    environment: development
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Deploy to development
+        run: |
+          chmod +x ./aws-deployment/scripts/deploy.sh
+          ./aws-deployment/scripts/deploy.sh \
+            --domain ${{ secrets.DEV_DOMAIN_NAME }} \
+            --cert ${{ secrets.DEV_CERTIFICATE_ARN }} \
+            --key ${{ secrets.DEV_KEY_PAIR_NAME }} \
+            --db-password ${{ secrets.DEV_DATABASE_PASSWORD }} \
+            --redis-password ${{ secrets.DEV_REDIS_PASSWORD }} \
+            --environment development \
+            --region ${{ env.AWS_REGION }}
+      
+      - name: Run smoke tests
+        run: |
+          sleep 60  # Wait for deployment to stabilize
+          curl -f https://${{ secrets.DEV_DOMAIN_NAME }}/api/v1/health || exit 1
+          curl -f https://${{ secrets.DEV_DOMAIN_NAME }}/api/v1/live || exit 1
+
+  # Deploy to Staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [build-images, security-scan]
+    if: github.ref == 'refs/heads/staging'
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Deploy to staging
+        run: |
+          chmod +x ./aws-deployment/scripts/deploy.sh
+          ./aws-deployment/scripts/deploy.sh \
+            --domain ${{ secrets.STAGING_DOMAIN_NAME }} \
+            --cert ${{ secrets.STAGING_CERTIFICATE_ARN }} \
+            --key ${{ secrets.STAGING_KEY_PAIR_NAME }} \
+            --db-password ${{ secrets.STAGING_DATABASE_PASSWORD }} \
+            --redis-password ${{ secrets.STAGING_REDIS_PASSWORD }} \
+            --environment staging \
+            --region ${{ env.AWS_REGION }}
+      
+      - name: Run integration tests
+        run: |
+          sleep 120  # Wait for deployment to stabilize
+          npm run test:e2e -- --baseUrl=https://${{ secrets.STAGING_DOMAIN_NAME }}
+
+  # Deploy to Production
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build-images, security-scan]
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Deploy to production
+        run: |
+          chmod +x ./aws-deployment/scripts/deploy.sh
+          ./aws-deployment/scripts/deploy.sh \
+            --domain ${{ secrets.PROD_DOMAIN_NAME }} \
+            --cert ${{ secrets.PROD_CERTIFICATE_ARN }} \
+            --key ${{ secrets.PROD_KEY_PAIR_NAME }} \
+            --db-password ${{ secrets.PROD_DATABASE_PASSWORD }} \
+            --redis-password ${{ secrets.PROD_REDIS_PASSWORD }} \
+            --environment production \
+            --region ${{ env.AWS_REGION }}
+      
+      - name: Run production health checks
+        run: |
+          sleep 180  # Wait for deployment to stabilize
+          curl -f https://${{ secrets.PROD_DOMAIN_NAME }}/api/v1/health || exit 1
+          curl -f https://${{ secrets.PROD_DOMAIN_NAME }}/api/v1/live || exit 1
+      
+      - name: Notify deployment success
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          text: 'Production deployment completed successfully! 🚀'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: success()
+      
+      - name: Notify deployment failure
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          text: 'Production deployment failed! ❌'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        if: failure()
+
+  # Performance Testing
+  performance-test:
+    name: Performance Testing
+    runs-on: ubuntu-latest
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/staging'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+      
+      - name: Run performance tests
+        run: |
+          k6 run --out json=performance-results.json tests/performance/load-test.js
+        env:
+          BASE_URL: https://${{ secrets.STAGING_DOMAIN_NAME }}
+      
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-results
+          path: performance-results.json
+          retention-days: 30
+
+  # Cleanup
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-development, deploy-staging, deploy-production]
+    if: always()
+    
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+      
+      - name: Cleanup old ECR images
+        run: |
+          # Keep only the latest 10 images
+          aws ecr list-images --repository-name social-media-ai-backend --filter tagStatus=UNTAGGED --query 'imageIds[?imageDigest!=null]' --output json | \
+          jq '.[:(-10)]' | \
+          aws ecr batch-delete-image --repository-name social-media-ai-backend --image-ids file:///dev/stdin || true
+          
+          aws ecr list-images --repository-name social-media-ai-agents --filter tagStatus=UNTAGGED --query 'imageIds[?imageDigest!=null]' --output json | \
+          jq '.[:(-10)]' | \
+          aws ecr batch-delete-image --repository-name social-media-ai-agents --image-ids file:///dev/stdin || true
+
