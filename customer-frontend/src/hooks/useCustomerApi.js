@@ -1012,6 +1012,69 @@ export const useTestConnection = () => {
 }
 
 // ============================================================================
+// AI AGENTS HOOKS
+// ============================================================================
+
+// Get AI Agents Status
+export const useAIAgents = () => {
+  return useQuery({
+    queryKey: ['aiAgents'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/ai-agents')
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 30 * 1000, // 30 seconds - AI agents data should be fresh
+    cacheTime: 2 * 60 * 1000, // 2 minutes
+    refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
+    refetchOnWindowFocus: true,
+    retry: 2
+  })
+}
+
+// Get Specific AI Agent Details
+export const useAIAgentDetails = (agentId) => {
+  return useQuery({
+    queryKey: ['aiAgentDetails', agentId],
+    queryFn: async () => {
+      try {
+        const response = await api.get(`/ai-agents/${agentId}`)
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    enabled: !!agentId,
+    staleTime: 30 * 1000, // 30 seconds
+    cacheTime: 2 * 60 * 1000, // 2 minutes
+    retry: 2
+  })
+}
+
+// Restart AI Agent
+export const useRestartAIAgent = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (agentId) => {
+      try {
+        const response = await api.post(`/ai-agents/${agentId}/restart`)
+        return response.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['aiAgents'])
+      queryClient.invalidateQueries(['aiAgentDetails'])
+    }
+  })
+}
+
+// ============================================================================
 // UTILITY HOOKS
 // ============================================================================
 

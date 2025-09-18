@@ -58,13 +58,16 @@ import { getBadgeClasses } from '../constants/colors.js'
 
 // Import API hooks
 import { 
-  useAnalyticsOverview, 
-  useContentList, 
-  useAIAgents, 
   useUserUsageStats,
   useSocialProfiles,
   useUserSubscription
 } from '../hooks/useApi.js'
+
+import {
+  useAnalyticsOverview,
+  useContentList,
+  useAIAgents
+} from '../hooks/useCustomerApi.js'
 
 const Dashboard = ({ data: fallbackData = {}, user = {}, onDataUpdate = () => {} }) => {
   const { isDarkMode } = useTheme()
@@ -164,141 +167,27 @@ const Dashboard = ({ data: fallbackData = {}, user = {}, onDataUpdate = () => {}
     }
   }, [isConnected, subscribe, success, error, info, warning, refetchAnalytics])
 
-  // Fallback to mock data if API data is not available
-  const performanceMetrics = analyticsData?.performance || fallbackData?.performance || {
-    engagement_rate: { value: 4.2, trend: 12.5, target: 5.0, status: 'good' },
-    reach: { value: 12500, trend: 8.2, target: 15000, status: 'good' },
-    followers_growth: { value: 156, trend: 15.3, target: 200, status: 'warning' },
-    posts_published: { value: 24, trend: 5.1, target: 30, status: 'warning' },
-    revenue: { value: 8450, trend: 22.3, target: 10000, status: 'excellent' },
-    conversion_rate: { value: 3.8, trend: 18.7, target: 4.5, status: 'good' },
-    click_through_rate: { value: 2.4, trend: -3.2, target: 3.0, status: 'poor' },
-    cost_per_click: { value: 0.85, trend: -15.4, target: 0.75, status: 'good' }
-  }
+  // Use real API data only - no mock fallbacks
+  const performanceMetrics = analyticsData?.performance || {}
 
   // AI Agents data with real API integration
-  const aiAgents = aiAgentsData || [
-    {
-      id: 'intelligence',
-      name: 'Intelligence Agent',
-      icon: Brain,
-      color: 'bg-purple-500',
-      status: 'active',
-      efficiency: 94,
-      currentTask: 'Analyzing competitor strategies',
-      tasksCompleted: 127,
-      tasksInProgress: 3,
-      avgTaskTime: '12m',
-      successRate: 96.8,
-      insights: 'Found 3 trending hashtags',
-      nextAction: 'Competitor analysis report',
-      priority: 'high'
-    },
-    {
-      id: 'strategy',
-      name: 'Strategy Agent',
-      icon: Target,
-      color: 'bg-blue-500',
-      status: 'active',
-      efficiency: 91,
-      currentTask: 'Planning Q1 content strategy',
-      tasksCompleted: 89,
-      tasksInProgress: 2,
-      avgTaskTime: '18m',
-      successRate: 94.2,
-      insights: 'Optimal posting times identified',
-      nextAction: 'Content calendar optimization',
-      priority: 'high'
-    },
-    {
-      id: 'content',
-      name: 'Content Agent',
-      icon: Sparkles,
-      color: 'bg-green-500',
-      status: 'active',
-      efficiency: 88,
-      currentTask: 'Generating Instagram captions',
-      tasksCompleted: 203,
-      tasksInProgress: 5,
-      avgTaskTime: '8m',
-      successRate: 92.7,
-      insights: '15 posts ready for review',
-      nextAction: 'Video script generation',
-      priority: 'medium'
-    },
-    {
-      id: 'engagement',
-      name: 'Engagement Agent',
-      icon: Heart,
-      color: 'bg-pink-500',
-      status: 'active',
-      efficiency: 96,
-      currentTask: 'Monitoring comment responses',
-      tasksCompleted: 156,
-      tasksInProgress: 8,
-      avgTaskTime: '5m',
-      successRate: 98.1,
-      insights: '23 interactions pending',
-      nextAction: 'Community management',
-      priority: 'high'
-    },
-    {
-      id: 'analytics',
-      name: 'Analytics Agent',
-      icon: BarChart3,
-      color: 'bg-orange-500',
-      status: 'active',
-      efficiency: 93,
-      currentTask: 'Processing performance data',
-      tasksCompleted: 78,
-      tasksInProgress: 2,
-      avgTaskTime: '15m',
-      successRate: 95.4,
-      insights: 'ROI increased by 18%',
-      nextAction: 'Weekly performance report',
-      priority: 'medium'
-    },
-    {
-      id: 'optimization',
-      name: 'Optimization Agent',
-      icon: Zap,
-      color: 'bg-yellow-500',
-      status: 'active',
-      efficiency: 89,
-      currentTask: 'A/B testing ad creatives',
-      tasksCompleted: 67,
-      tasksInProgress: 4,
-      avgTaskTime: '22m',
-      successRate: 91.8,
-      insights: 'Variant B performing 25% better',
-      nextAction: 'Campaign optimization',
-      priority: 'high'
-    },
-    {
-      id: 'scheduling',
-      name: 'Scheduling Agent',
-      icon: Clock,
-      color: 'bg-indigo-500',
-      status: 'active',
-      efficiency: 97,
-      currentTask: 'Optimizing post schedules',
-      tasksCompleted: 134,
-      tasksInProgress: 1,
-      avgTaskTime: '10m',
-      successRate: 97.9,
-      insights: 'Next week schedule optimized',
-      nextAction: 'Cross-platform scheduling',
-      priority: 'low'
-    }
-  ]
+  const aiAgents = aiAgentsData?.agents || []
+  const aiAgentsSummary = aiAgentsData?.summary || {
+    totalAgents: 0,
+    activeAgents: 0,
+    avgEfficiency: 0,
+    totalTasksCompleted: 0,
+    totalTasksInProgress: 0,
+    systemStatus: 'unknown'
+  }
 
-  // Content data with real API integration
-  const recentContent = contentData?.content || fallbackData?.content || []
+  // Content data with real API integration - no fallback to mock data
+  const recentContent = contentData?.content || []
 
-  // Usage statistics
-  const tokenUsage = usageStats?.tokens || fallbackData?.tokens || {
-    tokensUsed: 2100,
-    tokensTotal: 3000
+  // Usage statistics - no fallback to mock data
+  const tokenUsage = usageStats?.tokens || {
+    tokensUsed: 0,
+    tokensTotal: 0
   }
 
   // Social profiles count
