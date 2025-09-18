@@ -34,22 +34,22 @@ jobs:
       with:
         node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
-        cache-dependency-path: backend-api/package-lock.json
+        cache-dependency-path: api/package-lock.json
     
     - name: Install Backend Dependencies
       run: |
-        cd backend-api
+        cd api
         npm ci
     
     - name: Run Backend Tests
       run: |
-        cd backend-api
+        cd api
         npm run test:coverage
     
     - name: Upload Backend Coverage
       uses: codecov/codecov-action@v3
       with:
-        file: backend-api/coverage/lcov.info
+        file: api/coverage/lcov.info
         flags: backend
 
   # Frontend Tests
