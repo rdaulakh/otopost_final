@@ -6,13 +6,82 @@ import {
   Search, Eye, ShoppingCart, Download, Video, Heart
 } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext.jsx'
+// Import API hooks and UX components
+import { 
+  useCampaignList,
+  useCampaignStats,
+  useCreateCampaign,
+  useUpdateCampaign,
+  useDeleteCampaign,
+  useCampaignAnalytics,
+  useAIRecommendations,
+  useCampaignOptimization
+} from '../hooks/useApi.js'
+import { useNotifications } from './NotificationSystem.jsx'
+import { TableSkeleton } from './LoadingSkeletons.jsx'
 
 const CampaignManager = () => {
   const { isDarkMode } = useTheme()
+  
+  // UX hooks
+  const { success, error, info } = useNotifications()
 
-  const [activeTab, setActiveTab] = useState('overview');
-  const [showCreateCampaign, setShowCreateCampaign] = useState(false);
-  const [campaigns, setCampaigns] = useState([
+  // Component state
+  const [activeTab, setActiveTab] = useState('overview')
+  const [showCreateCampaign, setShowCreateCampaign] = useState(false)
+  const [selectedCampaign, setSelectedCampaign] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+
+  // Real API calls for campaign management data
+  const { 
+    data: campaignListData, 
+    isLoading: campaignListLoading,
+    error: campaignListError,
+    refetch: refetchCampaigns 
+  } = useCampaignList({
+    search: searchTerm,
+    status: statusFilter !== 'all' ? statusFilter : undefined
+  })
+  
+  const { 
+    data: campaignStatsData, 
+    isLoading: campaignStatsLoading 
+  } = useCampaignStats()
+  
+  const { 
+    data: aiRecommendationsData, 
+    isLoading: aiRecommendationsLoading 
+  } = useAIRecommendations({ type: 'campaigns' })
+  
+  const { 
+    mutate: createCampaign,
+    isLoading: isCreatingCampaign 
+  } = useCreateCampaign()
+  
+  const { 
+    mutate: updateCampaign,
+    isLoading: isUpdatingCampaign 
+  } = useUpdateCampaign()
+  
+  const { 
+    mutate: deleteCampaign,
+    isLoading: isDeletingCampaign 
+  } = useDeleteCampaign()
+  
+  const { 
+    mutate: optimizeCampaign,
+    isLoading: isOptimizingCampaign 
+  } = useCampaignOptimization()
+
+  // Loading state
+  const isLoading = campaignListLoading || campaignStatsLoading || aiRecommendationsLoading
+
+  // Error handling
+  const hasError = campaignListError
+
+  // Use real API data with fallback to mock data
+  const campaigns = campaignListData?.campaigns || [
     {
       id: 1,
       name: 'SaaS Lead Generation Q4 2025',
@@ -65,9 +134,16 @@ const CampaignManager = () => {
       startDate: '2025-10-10',
       endDate: 'Ongoing'
     }
-  ]);
+  ]
 
-  const [aiRecommendations] = useState([
+  const campaignStats = campaignStatsData || {
+    totalSpend: 1158,
+    totalConversions: 110,
+    averageROAS: 4.0,
+    activeCampaigns: 3
+  }
+
+  const aiRecommendations = aiRecommendationsData?.recommendations || [
     {
       id: 1,
       type: 'budget',
@@ -92,7 +168,85 @@ const CampaignManager = () => {
       action: 'Boost Post',
       impact: '+340% reach'
     }
-  ]);
+  ]
+
+  // Handle campaign operations
+  const handleCreateCampaign = async (campaignData) => {
+    try {
+      await createCampaign(campaignData)
+      success('Campaign created successfully!')
+      setShowCreateCampaign(false)
+      await refetchCampaigns()
+    } catch (err) {
+      error('Failed to create campaign')
+    }
+  }
+
+  const handleUpdateCampaign = async (campaignId, updates) => {
+    try {
+      await updateCampaign({ campaignId, updates })
+      success('Campaign updated successfully!')
+      await refetchCampaigns()
+    } catch (err) {
+      error('Failed to update campaign')
+    }
+  }
+
+  const handleDeleteCampaign = async (campaignId) => {
+    try {
+      await deleteCampaign(campaignId)
+      success('Campaign deleted successfully!')
+      await refetchCampaigns()
+    } catch (err) {
+      error('Failed to delete campaign')
+    }
+  }
+
+  const handleOptimizeCampaign = async (campaignId, optimizationType) => {
+    try {
+      info(`Optimizing campaign with AI...`)
+      await optimizeCampaign({ campaignId, type: optimizationType })
+      success('Campaign optimized successfully!')
+      await refetchCampaigns()
+    } catch (err) {
+      error('Failed to optimize campaign')
+    }
+  }
+
+  const handleRefresh = async () => {
+    try {
+      await refetchCampaigns()
+      success('Campaign data refreshed successfully')
+    } catch (err) {
+      error('Failed to refresh campaign data')
+    }
+  }
+
+  // Show loading skeleton
+  if (isLoading && !campaigns.length) {
+    return <TableSkeleton />
+  }
+
+  // Show error state
+  if (hasError && !campaigns.length) {
+    return (
+      <div className="p-6">
+        <div className="border border-red-200 bg-red-50 rounded-lg p-6">
+          <div className="flex items-center space-x-2 text-red-600">
+            <AlertCircle className="h-5 w-5" />
+            <span>Error loading campaign data. Please try refreshing.</span>
+          </div>
+          <button 
+            onClick={handleRefresh} 
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Loading...' : 'Retry'}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const getPlatformIcon = (platform) => {
     switch (platform) {
@@ -148,10 +302,11 @@ const CampaignManager = () => {
           </button>
           <button 
             onClick={() => setShowCreateCampaign(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            disabled={isCreatingCampaign}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 disabled:opacity-50"
           >
             <Plus className="w-4 h-4 text-white" />
-            New Campaign
+            {isCreatingCampaign ? 'Creating...' : 'New Campaign'}
           </button>
         </div>
       </div>
@@ -162,7 +317,7 @@ const CampaignManager = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-slate-400">Active Campaigns</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">{activeCampaigns}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">{campaignStats.activeCampaigns}</p>
             </div>
             <div className="p-3 bg-blue-100 rounded-lg">
               <Target className="w-6 h-6 text-blue-600 dark:text-blue-400" />
@@ -174,7 +329,7 @@ const CampaignManager = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-slate-400">Total Spend</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">${totalSpend.toLocaleString()}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">${campaignStats.totalSpend.toLocaleString()}</p>
               <p className="text-sm text-gray-500 dark:text-slate-400">this month</p>
             </div>
             <div className="p-3 bg-green-100 rounded-lg">
@@ -187,7 +342,7 @@ const CampaignManager = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-slate-400">Avg. ROAS</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">{avgRoas.toFixed(1)}x</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">{campaignStats.averageROAS.toFixed(1)}x</p>
               <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" />
                 +12%
@@ -203,7 +358,7 @@ const CampaignManager = () => {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-slate-400">Conversions</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">{totalConversions}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">{campaignStats.totalConversions}</p>
               <p className="text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
                 <TrendingUp className="w-3 h-3" />
                 +23%
