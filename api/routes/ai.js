@@ -3,7 +3,7 @@ const { auth } = require('../middleware/auth');
 const openaiService = require('../services/openaiService');
 const { aiLimiter } = require('../middleware/rateLimiter');
 const { aiValidation } = require('../middleware/validation');
-const { auditLogger, AUDIT_EVENTS } = require('../middleware/auditLogger');
+// const { auditLogger, AUDIT_EVENTS } = require('../middleware/auditLogger');
 
 const router = express.Router();
 
@@ -29,13 +29,13 @@ router.post('/generate-content', auth, aiValidation.generateContent, async (req,
     const result = await openaiService.generateContent(prompt, platform, options);
 
     // Log AI usage
-    auditLogger.log(AUDIT_EVENTS.AI_CONTENT_GENERATED, {
-      userId: req.user.id,
-      platform,
-      promptLength: prompt.length,
-      success: result.success,
-      model: result.model
-    }, req);
+    // auditLogger.log(AUDIT_EVENTS.AI_CONTENT_GENERATED, {
+    //   userId: req.user.id,
+    //   platform,
+    //   promptLength: prompt.length,
+    //   success: result.success,
+    //   model: result.model
+    // }, req);
 
     if (result.success) {
       res.json({
@@ -70,13 +70,13 @@ router.post('/generate-hashtags', auth, aiValidation.generateHashtags, async (re
     const result = await openaiService.generateHashtags(content, platform, count);
 
     // Log AI usage
-    auditLogger.log(AUDIT_EVENTS.AI_HASHTAGS_GENERATED, {
-      userId: req.user.id,
-      platform,
-      contentLength: content.length,
-      hashtagCount: count,
-      success: result.success
-    }, req);
+    // auditLogger.log(AUDIT_EVENTS.AI_HASHTAGS_GENERATED, {
+    //   userId: req.user.id,
+    //   platform,
+    //   contentLength: content.length,
+    //   hashtagCount: count,
+    //   success: result.success
+    // }, req);
 
     if (result.success) {
       res.json({
@@ -150,13 +150,13 @@ router.post('/analyze-trends', auth, async (req, res) => {
     const result = await openaiService.analyzeTrends(industry, platform, timeframe);
 
     // Log AI usage
-    auditLogger.log(AUDIT_EVENTS.AI_ANALYSIS_PERFORMED, {
-      userId: req.user.id,
-      analysisType: 'trends',
-      industry,
-      platform,
-      success: result.success
-    }, req);
+    // auditLogger.log(AUDIT_EVENTS.AI_ANALYSIS_PERFORMED, {
+    //   userId: req.user.id,
+    //   analysisType: 'trends',
+    //   industry,
+    //   platform,
+    //   success: result.success
+    // }, req);
 
     if (result.success) {
       res.json({
@@ -191,12 +191,12 @@ router.post('/analyze-audience', auth, async (req, res) => {
     const result = await openaiService.analyzeAudience(audienceData, platform);
 
     // Log AI usage
-    auditLogger.log(AUDIT_EVENTS.AI_ANALYSIS_PERFORMED, {
-      userId: req.user.id,
-      analysisType: 'audience',
-      platform,
-      success: result.success
-    }, req);
+    // auditLogger.log(AUDIT_EVENTS.AI_ANALYSIS_PERFORMED, {
+    //   userId: req.user.id,
+    //   analysisType: 'audience',
+    //   platform,
+    //   success: result.success
+    // }, req);
 
     if (result.success) {
       res.json({
@@ -231,12 +231,12 @@ router.post('/analyze-competitors', auth, async (req, res) => {
     const result = await openaiService.analyzeCompetitors(competitorData, industry);
 
     // Log AI usage
-    auditLogger.log(AUDIT_EVENTS.AI_ANALYSIS_PERFORMED, {
-      userId: req.user.id,
-      analysisType: 'competitors',
-      industry,
-      success: result.success
-    }, req);
+    // auditLogger.log(AUDIT_EVENTS.AI_ANALYSIS_PERFORMED, {
+    //   userId: req.user.id,
+    //   analysisType: 'competitors',
+    //   industry,
+    //   success: result.success
+    // }, req);
 
     if (result.success) {
       res.json({
@@ -271,11 +271,11 @@ router.post('/optimize-performance', auth, async (req, res) => {
     const result = await openaiService.optimizePerformance(performanceData, goals);
 
     // Log AI usage
-    auditLogger.log(AUDIT_EVENTS.AI_ANALYSIS_PERFORMED, {
-      userId: req.user.id,
-      analysisType: 'performance_optimization',
-      success: result.success
-    }, req);
+    // auditLogger.log(AUDIT_EVENTS.AI_ANALYSIS_PERFORMED, {
+    //   userId: req.user.id,
+    //   analysisType: 'performance_optimization',
+    //   success: result.success
+    // }, req);
 
     if (result.success) {
       res.json({
@@ -420,12 +420,12 @@ router.post('/batch-generate', auth, async (req, res) => {
     }
 
     // Log batch AI usage
-    auditLogger.log(AUDIT_EVENTS.AI_CONTENT_GENERATED, {
-      userId: req.user.id,
-      batchSize: prompts.length,
-      platform,
-      success: results.filter(r => r.result.success).length
-    }, req);
+    // auditLogger.log(AUDIT_EVENTS.AI_CONTENT_GENERATED, {
+    //   userId: req.user.id,
+    //   batchSize: prompts.length,
+    //   platform,
+    //   success: results.filter(r => r.result.success).length
+    // }, req);
 
     res.json({
       message: 'Batch content generation completed',
