@@ -57,17 +57,101 @@ import { Badge } from '@/components/ui/badge.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
 import { Progress } from '@/components/ui/progress.jsx'
 import { useTheme } from '../contexts/ThemeContext.jsx'
+// Import API hooks and UX components
+import { 
+  useUserProfile,
+  useUpdateProfile,
+  useUserSettings,
+  useUpdateSettings,
+  useSocialProfiles,
+  useConnectSocialProfile,
+  useDisconnectSocialProfile,
+  useNotificationSettings,
+  useUpdateNotificationSettings,
+  useSubscriptionInfo,
+  useUpdateSubscription
+} from '../hooks/useApi.js'
+import { useNotifications } from './NotificationSystem.jsx'
+import { TableSkeleton } from './LoadingSkeletons.jsx'
 
 
-const Settings = ({ data = {}, user = {}, onDataUpdate = () => {
+const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
   const { isDarkMode } = useTheme()
-} }) => {
+  
+  // UX hooks
+  const { success, error, info } = useNotifications()
+
+  // Component state
   const [activeTab, setActiveTab] = useState('business')
   const [isSaving, setIsSaving] = useState(false)
   const [saveStatus, setSaveStatus] = useState(null)
+
+  // Real API calls for settings data
+  const { 
+    data: userProfileData, 
+    isLoading: profileLoading,
+    error: profileError,
+    refetch: refetchProfile 
+  } = useUserProfile()
   
-  // Business Profile State
-  const [businessProfile, setBusinessProfile] = useState({
+  const { 
+    data: userSettingsData, 
+    isLoading: settingsLoading 
+  } = useUserSettings()
+  
+  const { 
+    data: socialProfilesData, 
+    isLoading: socialProfilesLoading 
+  } = useSocialProfiles()
+  
+  const { 
+    data: notificationSettingsData, 
+    isLoading: notificationSettingsLoading 
+  } = useNotificationSettings()
+  
+  const { 
+    data: subscriptionData, 
+    isLoading: subscriptionLoading 
+  } = useSubscriptionInfo()
+  
+  const { 
+    mutate: updateProfile,
+    isLoading: isUpdatingProfile 
+  } = useUpdateProfile()
+  
+  const { 
+    mutate: updateSettings,
+    isLoading: isUpdatingSettings 
+  } = useUpdateSettings()
+  
+  const { 
+    mutate: connectSocialProfile,
+    isLoading: isConnectingSocial 
+  } = useConnectSocialProfile()
+  
+  const { 
+    mutate: disconnectSocialProfile,
+    isLoading: isDisconnectingSocial 
+  } = useDisconnectSocialProfile()
+  
+  const { 
+    mutate: updateNotificationSettings,
+    isLoading: isUpdatingNotifications 
+  } = useUpdateNotificationSettings()
+  
+  const { 
+    mutate: updateSubscription,
+    isLoading: isUpdatingSubscription 
+  } = useUpdateSubscription()
+
+  // Loading state
+  const isLoading = profileLoading || settingsLoading || socialProfilesLoading || notificationSettingsLoading || subscriptionLoading
+
+  // Error handling
+  const hasError = profileError
+
+  // Use real API data with fallback to mock data
+  const businessProfile = userProfileData?.businessProfile || {
     companyName: 'TechCorp Solutions',
     industry: 'Technology',
     businessType: 'B2B',
@@ -85,10 +169,12 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {
     contentStyle: 'Educational',
     postingFrequency: 'Daily',
     primaryGoals: ['Increase Engagement', 'Generate Leads', 'Build Brand Authority']
-  })
+  }
 
-  // AI Preferences State
-  const [aiPreferences, setAiPreferences] = useState({
+  const [businessProfileState, setBusinessProfile] = useState(businessProfile)
+
+  // AI Preferences from API
+  const aiPreferences = userSettingsData?.aiPreferences || {
     creativityLevel: 'Balanced',
     contentTone: 'Professional',
     autoApproval: true,
@@ -124,9 +210,39 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {
     dataRetention: '12 months',
     privacyLevel: 'Standard',
     apiAccess: false
-  })
+  }
 
-  const [brandColors, setBrandColors] = useState({
+  const [aiPreferencesState, setAiPreferences] = useState(aiPreferences)
+
+  // Social profiles from API
+  const socialProfiles = socialProfilesData?.profiles || []
+  
+  // Notification settings from API
+  const notificationSettings = notificationSettingsData || {
+    email: true,
+    push: true,
+    sms: false,
+    contentReady: true,
+    performanceAlerts: true,
+    weeklyReports: true,
+    monthlyInsights: false
+  }
+
+  const [notificationSettingsState, setNotificationSettings] = useState(notificationSettings)
+
+  // Subscription info from API
+  const subscriptionInfo = subscriptionData || {
+    plan: 'Pro',
+    status: 'active',
+    billingCycle: 'monthly',
+    nextBilling: '2025-11-19',
+    usage: {
+      posts: 245,
+      limit: 500
+    }
+  }
+
+  const [brandColors, setBrandColors] = useState(userSettingsData?.brandColors || {
     primary: '#3B82F6',
     secondary: '#8B5CF6',
     accent: '#10B981',
@@ -141,14 +257,108 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {
     { name: 'Royal Purple', colors: { primary: '#7C3AED', secondary: '#8B5CF6', accent: '#A78BFA' } }
   ]
 
-  // Save function
-  const handleSave = async () => {
-    setIsSaving(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setSaveStatus('success')
-    setIsSaving(false)
-    setTimeout(() => setSaveStatus(null), 3000)
+  // Handle settings operations
+  const handleSaveProfile = async () => {
+    try {
+      setIsSaving(true)
+      info('Saving business profile...')
+      await updateProfile({ businessProfile: businessProfileState })
+      success('Business profile saved successfully!')
+      setSaveStatus('success')
+      await refetchProfile()
+    } catch (err) {
+      error('Failed to save business profile')
+      setSaveStatus('error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleSaveSettings = async () => {
+    try {
+      setIsSaving(true)
+      info('Saving AI preferences...')
+      await updateSettings({ 
+        aiPreferences: aiPreferencesState,
+        brandColors 
+      })
+      success('Settings saved successfully!')
+      setSaveStatus('success')
+    } catch (err) {
+      error('Failed to save settings')
+      setSaveStatus('error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleConnectSocial = async (platform) => {
+    try {
+      info(`Connecting ${platform}...`)
+      await connectSocialProfile({ platform })
+      success(`${platform} connected successfully!`)
+    } catch (err) {
+      error(`Failed to connect ${platform}`)
+    }
+  }
+
+  const handleDisconnectSocial = async (profileId) => {
+    try {
+      await disconnectSocialProfile(profileId)
+      success('Social profile disconnected successfully!')
+    } catch (err) {
+      error('Failed to disconnect social profile')
+    }
+  }
+
+  const handleSaveNotifications = async () => {
+    try {
+      setIsSaving(true)
+      info('Saving notification settings...')
+      await updateNotificationSettings(notificationSettingsState)
+      success('Notification settings saved successfully!')
+      setSaveStatus('success')
+    } catch (err) {
+      error('Failed to save notification settings')
+      setSaveStatus('error')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleRefresh = async () => {
+    try {
+      await refetchProfile()
+      success('Settings refreshed successfully')
+    } catch (err) {
+      error('Failed to refresh settings')
+    }
+  }
+
+  // Show loading skeleton
+  if (isLoading && !businessProfile && !aiPreferences) {
+    return <TableSkeleton />
+  }
+
+  // Show error state
+  if (hasError && !businessProfile && !aiPreferences) {
+    return (
+      <div className="p-6">
+        <div className="border border-red-200 bg-red-50 rounded-lg p-6">
+          <div className="flex items-center space-x-2 text-red-600">
+            <AlertCircle className="h-5 w-5" />
+            <span>Error loading settings. Please try refreshing.</span>
+          </div>
+          <button 
+            onClick={handleRefresh} 
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Loading...' : 'Retry'}
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // Enhanced Business Profile Tab
@@ -391,7 +601,7 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {
                 <label key={objective} className="flex items-center space-x-2 cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={businessProfile.businessObjectives.includes(objective)}
+                    checked={businessProfileState.businessObjectives.includes(objective)}
                     onChange={(e) => {
                       if (e.target.checked) {
                         setBusinessProfile(prev => ({ 
@@ -436,7 +646,7 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">AI Creativity Level</label>
               <select 
-                value={aiPreferences.creativityLevel}
+                value={aiPreferencesState.creativityLevel}
                 onChange={(e) => setAiPreferences(prev => ({ ...prev, creativityLevel: e.target.value }))}
                 className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100"
               >
