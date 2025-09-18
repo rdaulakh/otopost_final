@@ -50,12 +50,66 @@ import { Label } from '@/components/ui/label.jsx'
 import PlatformPreview from './previews/PlatformPreview.jsx'
 import { useTheme } from '../contexts/ThemeContext.jsx'
 
+// Import API hooks and UX components
+import { 
+  useCreateContent,
+  useUpdateContent,
+  useUploadMedia,
+  useAIContentGeneration,
+  useAIHashtagGeneration,
+  useContentSuggestions
+} from '../hooks/useApi.js'
+import { useNotifications } from './NotificationSystem.jsx'
+
 const PostEditor = ({ post, isOpen, onClose, onSave }) => {
   const { isDarkMode } = useTheme()
+  
+  // UX hooks
+  const { success, error, info } = useNotifications()
+  
+  // Real API hooks
+  const { 
+    mutate: createContent, 
+    isLoading: isCreating,
+    error: createError 
+  } = useCreateContent()
+  
+  const { 
+    mutate: updateContent, 
+    isLoading: isUpdating 
+  } = useUpdateContent()
+  
+  const { 
+    mutate: uploadMedia, 
+    isLoading: isUploading 
+  } = useUploadMedia()
+  
+  const { 
+    mutate: generateAIContent, 
+    isLoading: isGeneratingContent 
+  } = useAIContentGeneration()
+  
+  const { 
+    mutate: generateHashtags, 
+    isLoading: isGeneratingHashtags 
+  } = useAIHashtagGeneration()
+  
+  const { 
+    data: contentSuggestions,
+    isLoading: isFetchingSuggestions 
+  } = useContentSuggestions({ postType: selectedPostType })
+
+  // Component state
   const [activeTab, setActiveTab] = useState('ai-content')
-  const [editedPost, setEditedPost] = useState(post)
-  const [uploadedMedia, setUploadedMedia] = useState([])
-  const [isUploading, setIsUploading] = useState(false)
+  const [editedPost, setEditedPost] = useState(post || {
+    caption: '',
+    hashtags: '',
+    platforms: ['instagram'],
+    type: 'image',
+    media: [],
+    scheduledTime: null
+  })
+  const [uploadedMedia, setUploadedMedia] = useState(post?.media || [])
   const [aiSuggestions, setAiSuggestions] = useState([])
   const [showPreview, setShowPreview] = useState(false)
   const [selectedPostType, setSelectedPostType] = useState(post?.type || 'image')
@@ -67,6 +121,10 @@ const PostEditor = ({ post, isOpen, onClose, onSave }) => {
     trimEnd: 30
   })
   const fileInputRef = useRef(null)
+
+  // Loading states
+  const isSaving = isCreating || isUpdating
+  const isProcessing = isGeneratingContent || isGeneratingHashtags || isFetchingSuggestions
 
   // Character limits per platform
   const platformLimits = {
@@ -151,64 +209,53 @@ const PostEditor = ({ post, isOpen, onClose, onSave }) => {
   }
 
   const handleFileUpload = useCallback(async (files) => {
-    setIsUploading(true)
-    
-    // Simulate file upload process
-    for (let file of files) {
-      const mediaItem = {
-        id: Date.now() + Math.random(),
-        file,
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: URL.createObjectURL(file),
-        uploadProgress: 0,
-        aiAnalysis: null
-      }
+    try {
+      info(`Uploading ${files.length} file(s)...`)
       
-      setUploadedMedia(prev => [...prev, mediaItem])
-      
-      // Simulate upload progress
-      for (let progress = 0; progress <= 100; progress += 10) {
-        await new Promise(resolve => setTimeout(resolve, 100))
-        setUploadedMedia(prev => 
-          prev.map(item => 
-            item.id === mediaItem.id 
-              ? { ...item, uploadProgress: progress }
-              : item
-          )
+      for (let file of files) {
+        const mediaItem = {
+          id: Date.now() + Math.random(),
+          file,
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          url: URL.createObjectURL(file),
+          uploadProgress: 0,
+          aiAnalysis: null
+        }
+        
+        setUploadedMedia(prev => [...prev, mediaItem])
+        
+        // Real API upload with progress tracking
+        await uploadMedia(
+          { file, type: selectedPostType },
+          {
+            onSuccess: (response) => {
+              setUploadedMedia(prev => 
+                prev.map(item => 
+                  item.id === mediaItem.id 
+                    ? { 
+                        ...item, 
+                        uploadProgress: 100,
+                        url: response.url,
+                        aiAnalysis: response.aiAnalysis
+                      }
+                    : item
+                )
+              )
+              success(`${file.name} uploaded successfully`)
+            },
+            onError: (err) => {
+              error(`Failed to upload ${file.name}`)
+              setUploadedMedia(prev => prev.filter(item => item.id !== mediaItem.id))
+            }
+          }
         )
       }
-      
-      // Simulate AI analysis
-      const aiAnalysis = {
-        contentType: file.type.startsWith('image') ? 'image' : 'video',
-        suggestedCaption: "AI-generated caption based on visual analysis of your uploaded content. This would be dynamically created based on the actual image/video content.",
-        suggestedHashtags: ["#YourBrand", "#ContentMarketing", "#SocialMedia", "#Engagement"],
-        brandConsistency: 92,
-        performancePrediction: {
-          estimatedReach: "8,500-12,000",
-          estimatedEngagement: "7.8%",
-          confidence: 89
-        },
-        optimizationSuggestions: [
-          "Consider adding your logo in the bottom right corner",
-          "The color scheme aligns well with your brand guidelines",
-          "This type of content typically performs 23% better on Instagram"
-        ]
-      }
-      
-      setUploadedMedia(prev => 
-        prev.map(item => 
-          item.id === mediaItem.id 
-            ? { ...item, aiAnalysis }
-            : item
-        )
-      )
+    } catch (err) {
+      error('Upload failed. Please try again.')
     }
-    
-    setIsUploading(false)
-  }, [])
+  }, [uploadMedia, selectedPostType, success, error, info])
 
   const handleDrop = useCallback((e) => {
     e.preventDefault()
@@ -220,30 +267,32 @@ const PostEditor = ({ post, isOpen, onClose, onSave }) => {
     e.preventDefault()
   }, [])
 
-  const generateAISuggestions = () => {
-    const suggestions = [
-      {
-        type: 'caption',
-        suggestion: "Make the tone more conversational and add a question to boost engagement",
-        preview: "Hey entrepreneurs! 👋 Ready to transform your productivity game? These 5 hacks changed everything for me. Which one resonates with you most? 🤔"
-      },
-      {
-        type: 'hashtags',
-        suggestion: "Add trending hashtags for better discoverability",
-        preview: ["#ProductivityHacks", "#EntrepreneurLife", "#TimeManagement", "#SuccessMindset", "#BusinessTips"]
-      },
-      {
-        type: 'timing',
-        suggestion: "Post at 2:30 PM for 15% better engagement based on your audience",
-        preview: "Optimal posting time: Today at 2:30 PM EST"
-      },
-      {
-        type: 'visual',
-        suggestion: "Add your brand colors to increase brand recognition by 31%",
-        preview: "Incorporate blue (#4F46E5) and purple (#7C3AED) gradients"
-      }
-    ]
-    setAiSuggestions(suggestions)
+  const generateAISuggestions = async () => {
+    try {
+      info('Generating AI suggestions...')
+      
+      // Generate AI content suggestions
+      await generateAIContent(
+        {
+          currentCaption: editedPost.caption,
+          hashtags: editedPost.hashtags,
+          platforms: editedPost.platforms,
+          postType: selectedPostType,
+          media: uploadedMedia
+        },
+        {
+          onSuccess: (suggestions) => {
+            setAiSuggestions(suggestions)
+            success('AI suggestions generated successfully!')
+          },
+          onError: (err) => {
+            error('Failed to generate AI suggestions')
+          }
+        }
+      )
+    } catch (err) {
+      error('AI suggestion generation failed. Please try again.')
+    }
   }
 
   const applySuggestion = (suggestion) => {
@@ -268,6 +317,85 @@ const PostEditor = ({ post, isOpen, onClose, onSave }) => {
       case 'facebook': return Facebook
       case 'youtube': return Youtube
       default: return Globe
+    }
+  }
+
+  // Handle save functions
+  const handleSaveDraft = async () => {
+    try {
+      const contentData = {
+        ...editedPost,
+        media: uploadedMedia,
+        type: selectedPostType,
+        status: 'draft'
+      }
+
+      if (post?.id) {
+        await updateContent({ id: post.id, ...contentData })
+        success('Draft updated successfully!')
+      } else {
+        await createContent(contentData)
+        success('Draft saved successfully!')
+      }
+      
+      if (onSave) {
+        onSave(contentData)
+      }
+    } catch (err) {
+      error('Failed to save draft. Please try again.')
+    }
+  }
+
+  const handleSaveChanges = async () => {
+    try {
+      const contentData = {
+        ...editedPost,
+        media: uploadedMedia,
+        type: selectedPostType,
+        status: 'ready'
+      }
+
+      if (post?.id) {
+        await updateContent({ id: post.id, ...contentData })
+        success('Content updated successfully!')
+      } else {
+        await createContent(contentData)
+        success('Content created successfully!')
+      }
+      
+      if (onSave) {
+        onSave(contentData)
+      }
+      onClose()
+    } catch (err) {
+      error('Failed to save changes. Please try again.')
+    }
+  }
+
+  // Generate hashtags with AI
+  const handleGenerateHashtags = async () => {
+    try {
+      await generateHashtags(
+        {
+          caption: editedPost.caption,
+          platforms: editedPost.platforms,
+          postType: selectedPostType
+        },
+        {
+          onSuccess: (hashtags) => {
+            setEditedPost(prev => ({
+              ...prev,
+              hashtags: hashtags.join(' ')
+            }))
+            success('AI hashtags generated!')
+          },
+          onError: (err) => {
+            error('Failed to generate hashtags')
+          }
+        }
+      )
+    } catch (err) {
+      error('Hashtag generation failed. Please try again.')
     }
   }
 
@@ -1552,12 +1680,20 @@ const PostEditor = ({ post, isOpen, onClose, onSave }) => {
             </div>
             
             <div className="flex items-center space-x-3">
-              <Button variant="outline">
-                Save Draft
+              <Button 
+                variant="outline" 
+                onClick={handleSaveDraft}
+                disabled={isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Save Draft'}
               </Button>
-              <Button onClick={() => onSave(editedPost)} className="bg-green-600 hover:bg-green-700">
+              <Button 
+                onClick={handleSaveChanges} 
+                className="bg-green-600 hover:bg-green-700"
+                disabled={isSaving}
+              >
                 <Check className="h-4 w-4 mr-2" />
-                Save Changes
+                {isSaving ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </div>
