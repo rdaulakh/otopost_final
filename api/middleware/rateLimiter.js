@@ -11,10 +11,18 @@ try {
 }
 
 // Redis store for rate limiting
-const RedisStore = require('rate-limit-redis');
-const redisStore = redisClient ? new RedisStore({
-  sendCommand: (...args) => redisClient.call(...args),
-}) : undefined;
+let redisStore;
+try {
+  if (redisClient) {
+    const RedisStore = require('rate-limit-redis');
+    redisStore = new RedisStore({
+      sendCommand: (...args) => redisClient.call(...args),
+    });
+  }
+} catch (error) {
+  console.warn('Redis store for rate limiting not available, using memory store');
+  redisStore = undefined;
+}
 
 // Custom key generator based on user ID or IP
 const generateKey = (req) => {
@@ -159,7 +167,6 @@ const apiKeyLimiter = rateLimit({
 
 // Speed limiter (slows down requests instead of blocking)
 const speedLimiter = slowDown({
-  store: redisStore,
   windowMs: 15 * 60 * 1000, // 15 minutes
   delayAfter: (req) => {
     if (req.user) {
@@ -172,9 +179,9 @@ const speedLimiter = slowDown({
     }
     return 10;
   },
-  delayMs: 500, // 500ms delay per request after limit
+  delayMs: () => 500, // Fixed delay function
   maxDelayMs: 20000, // Maximum 20 second delay
-  keyGenerator: generateKey
+  validate: { delayMs: false } // Disable warning
 });
 
 // Content publishing rate limiter
