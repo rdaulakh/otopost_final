@@ -22,10 +22,92 @@ const userSchema = new mongoose.Schema({
     type: String,
     trim: true
   },
-  subscription: {
+  // Stripe customer ID
+  stripeCustomerId: {
     type: String,
-    enum: ['free', 'basic', 'premium', 'enterprise'],
-    default: 'free'
+    default: null
+  },
+  
+  // Subscription details
+  subscription: {
+    plan: {
+      type: String,
+      enum: ['free', 'pro', 'enterprise'],
+      default: 'free'
+    },
+    status: {
+      type: String,
+      enum: ['active', 'inactive', 'canceled', 'past_due', 'trialing'],
+      default: 'active'
+    },
+    stripeSubscriptionId: {
+      type: String,
+      default: null
+    },
+    currentPeriodStart: {
+      type: Date,
+      default: null
+    },
+    currentPeriodEnd: {
+      type: Date,
+      default: null
+    },
+    cancelAtPeriodEnd: {
+      type: Boolean,
+      default: false
+    },
+    features: {
+      aiGenerationsPerMonth: {
+        type: mongoose.Schema.Types.Mixed, // Can be number or 'unlimited'
+        default: 10
+      },
+      socialAccountsLimit: {
+        type: mongoose.Schema.Types.Mixed,
+        default: 2
+      },
+      postsPerMonth: {
+        type: mongoose.Schema.Types.Mixed,
+        default: 50
+      },
+      analyticsAccess: {
+        type: String,
+        enum: ['basic', 'advanced', 'premium'],
+        default: 'basic'
+      },
+      supportLevel: {
+        type: String,
+        enum: ['community', 'email', 'priority'],
+        default: 'community'
+      },
+      teamMembers: {
+        type: mongoose.Schema.Types.Mixed,
+        default: 1
+      },
+      whiteLabel: {
+        type: Boolean,
+        default: false
+      },
+      customIntegrations: {
+        type: Boolean,
+        default: false
+      }
+    }
+  },
+  
+  // Usage tracking
+  usage: {
+    aiGenerationsThisMonth: {
+      type: Number,
+      default: 0
+    },
+    postsThisMonth: {
+      type: Number,
+      default: 0
+    },
+    lastResetDate: {
+      type: Date,
+      default: Date.now
+    }
   },
   avatar: {
     type: String,
@@ -175,7 +257,9 @@ const userSchema = new mongoose.Schema({
 
 // Index for faster queries
 userSchema.index({ email: 1 });
-userSchema.index({ subscription: 1 });
+userSchema.index({ 'subscription.plan': 1 });
+userSchema.index({ 'subscription.status': 1 });
+userSchema.index({ stripeCustomerId: 1 });
 userSchema.index({ isActive: 1 });
 
 // Virtual for user's full profile completion percentage
