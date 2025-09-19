@@ -2,9 +2,15 @@ const OpenAI = require('openai');
 
 class OpenAIService {
   constructor() {
-    this.client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
+    // Initialize client only when API key is available
+    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY !== 'sk-dummy-key-for-testing') {
+      this.client = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
+    } else {
+      this.client = null;
+      console.log('OpenAI service initialized without API key - AI features will be disabled');
+    }
     
     // AI Agent configurations
     this.agents = {
