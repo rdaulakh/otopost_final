@@ -77,6 +77,7 @@ app.use("/api/content-management", require("./routes/contentManagement"));
 app.use("/api/notifications", require("./routes/notifications"));
 app.use("/api/customer-success", require("./routes/customerSuccess"));
 app.use("/api/multi-tenant", require("./routes/multiTenant"));
+app.use("/api/compliance-security", require("./routes/complianceSecurity"));
 app.use("/api/customer-analytics", require("./routes/customerAnalytics"));
 app.use("/api/ai-strategy", require("./routes/aiStrategy"));
 app.use("/api/campaigns", require("./routes/campaigns"));
