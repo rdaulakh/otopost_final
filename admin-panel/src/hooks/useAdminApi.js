@@ -411,3 +411,117 @@ export default {
   api,
   API_BASE_URL
 }
+
+
+// ============================================================================
+// ADVANCED ANALYTICS HOOKS
+// ============================================================================
+
+// Advanced Analytics Overview
+export const useAdvancedAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['advancedAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/advanced-analytics/overview', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Platform Performance Analytics
+export const usePlatformPerformance = (options = {}) => {
+  return useQuery({
+    queryKey: ['platformPerformance', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/advanced-analytics/platform-performance', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Revenue Analytics (Advanced)
+export const useAdvancedRevenueAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['advancedRevenueAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/advanced-analytics/revenue-analytics', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Custom Reports
+export const useCustomReports = () => {
+  return useQuery({
+    queryKey: ['customReports'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/advanced-analytics/custom-reports')
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 20 * 60 * 1000, // 20 minutes
+    retry: 2
+  })
+}
+
+// Create Custom Report
+export const useCreateCustomReport = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (reportData) => {
+      try {
+        const response = await api.post('/advanced-analytics/custom-reports', reportData)
+        return response.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['customReports'])
+    }
+  })
+}
+
+// Analytics Insights
+export const useAnalyticsInsights = (options = {}) => {
+  return useQuery({
+    queryKey: ['analyticsInsights', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/advanced-analytics/insights', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    cacheTime: 30 * 60 * 1000, // 30 minutes
+    retry: 2
+  })
+}
