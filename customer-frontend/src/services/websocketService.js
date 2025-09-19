@@ -18,7 +18,7 @@ class WebSocketService {
       return Promise.resolve()
     }
 
-    const serverUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000'
+    const serverUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001'
     
     return new Promise((resolve, reject) => {
       this.socket = io(serverUrl, {

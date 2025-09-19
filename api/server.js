@@ -77,6 +77,9 @@ app.use("/api/ai-content", require("./routes/aiContent"));
 app.use("/api/social-publishing", require("./routes/socialPublishing"));
 app.use("/api/twitter-auth", require("./routes/twitterAuth"));
 app.use("/api/ai-agents", require("./routes/aiAgents"));
+app.use("/api/payments", require("./routes/payments"));
+app.use("/api/upload", require("./routes/upload"));
+app.use("/api/media-library", require("./routes/mediaLibrary"));
 
 // Error handling middleware
 // app.use(errorAuditMiddleware); // Disabled for development

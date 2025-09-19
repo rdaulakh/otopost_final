@@ -355,5 +355,12 @@ module.exports = {
   rateLimitInfo,
   adminBypass,
   progressiveLimiter,
-  rateLimitMonitor
+  rateLimitMonitor,
+  paymentLimiter: createCustomLimiter({
+    windowMs: 60 * 1000, // 1 minute
+    max: 10, // 10 payment requests per minute
+    message: 'Too many payment requests, please try again later',
+    standardHeaders: true,
+    legacyHeaders: false
+  })
 };
