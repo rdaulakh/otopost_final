@@ -1,4 +1,5 @@
-import { useState } from 'react'
+
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
   User, 
@@ -22,7 +23,8 @@ import {
   Crown,
   CheckCircle,
   AlertCircle,
-  Trash2
+  Trash2,
+  Loader2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button.jsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
@@ -49,13 +51,15 @@ import {
   useUpdateNotificationSettings,
   useAccountSecurity,
   useUpdatePassword,
-  useDeleteAccount
+  useDeleteAccount,
+  useUserSubscription,
+  useUserUsageStats
 } from '../hooks/useApi.js'
 import { useNotifications } from './NotificationSystem.jsx'
 import { ProfileSkeleton } from './LoadingSkeletons.jsx'
 
 
-const UserProfile = ({ user, onUpdateUser }) => {
+const UserProfile = () => {
   const { isDarkMode } = useTheme()
   
   // UX hooks
@@ -76,18 +80,38 @@ const UserProfile = ({ user, onUpdateUser }) => {
   
   const { 
     data: socialProfilesData, 
-    isLoading: socialProfilesLoading 
+    isLoading: socialProfilesLoading,
+    error: socialProfilesError,
+    refetch: refetchSocialProfiles
   } = useSocialProfiles()
   
   const { 
     data: notificationSettingsData, 
-    isLoading: notificationSettingsLoading 
+    isLoading: notificationSettingsLoading,
+    error: notificationSettingsError,
+    refetch: refetchNotificationSettings
   } = useNotificationSettings()
   
   const { 
     data: accountSecurityData, 
-    isLoading: securityLoading 
+    isLoading: securityLoading,
+    error: securityError,
+    refetch: refetchAccountSecurity
   } = useAccountSecurity()
+
+  const { 
+    data: userSubscriptionData, 
+    isLoading: subscriptionLoading,
+    error: subscriptionError,
+    refetch: refetchSubscription
+  } = useUserSubscription()
+
+  const { 
+    data: userUsageStatsData, 
+    isLoading: usageStatsLoading,
+    error: usageStatsError,
+    refetch: refetchUsageStats
+  } = useUserUsageStats()
   
   const { 
     mutate: updateProfile,
@@ -130,24 +154,16 @@ const UserProfile = ({ user, onUpdateUser }) => {
   } = useDeleteAccount()
 
   // Loading state
-  const isLoading = profileLoading || socialProfilesLoading || notificationSettingsLoading || securityLoading
+  const isLoading = profileLoading || socialProfilesLoading || notificationSettingsLoading || securityLoading || subscriptionLoading || usageStatsLoading
 
   // Error handling
-  const hasError = profileError
+  const hasError = profileError || socialProfilesError || notificationSettingsError || securityError || subscriptionError || usageStatsError
 
-  const profileData = userProfileData || user || {
-    name: 'John Doe',
-    email: 'john@example.com',
-    phone: '+1 (555) 123-4567',
-    company: 'TechCorp Solutions',
-    jobTitle: 'Marketing Manager',
-    location: 'San Francisco, CA',
-    bio: 'Passionate about digital marketing and social media strategy.',
-    website: 'https://johndoe.com',
-    timezone: 'UTC-8',
-    avatar: null,
-    joinDate: '2024-01-15'
-  }
+  const profileData = userProfileData || {}
+  const notifications = notificationSettingsData || {}
+  const connectedAccounts = socialProfilesData?.profiles || []
+  const userSubscription = userSubscriptionData || {}
+  const userUsageStats = userUsageStatsData || {}
 
   const [formData, setFormData] = useState({
     firstName: profileData.name?.split(' ')[0] || '',
@@ -162,27 +178,30 @@ const UserProfile = ({ user, onUpdateUser }) => {
     timezone: profileData.timezone || 'UTC-5'
   })
   
-  // Notification settings from API
-  const notifications = notificationSettingsData || {
-    emailMarketing: true,
-    emailUpdates: true,
-    pushNotifications: true,
-    smsAlerts: false,
-    weeklyReports: true,
-    performanceAlerts: true
-  }
-
   const [notificationsState, setNotifications] = useState(notifications)
 
-  // Connected accounts from API
-  const connectedAccounts = socialProfilesData?.profiles || [
-    { platform: 'Instagram', connected: true, username: '@yourcompany', followers: '12.5K' },
-    { platform: 'Facebook', connected: true, username: 'Your Company', followers: '8.2K' },
-    { platform: 'LinkedIn', connected: true, username: 'Your Company', followers: '5.1K' },
-    { platform: 'Twitter', connected: false, username: '', followers: '' },
-    { platform: 'TikTok', connected: false, username: '', followers: '' },
-    { platform: 'YouTube', connected: false, username: '', followers: '' }
-  ]
+  useEffect(() => {
+    if (userProfileData) {
+      setFormData({
+        firstName: userProfileData.name?.split(' ')[0] || '',
+        lastName: userProfileData.name?.split(' ')[1] || '',
+        email: userProfileData.email || '',
+        phone: userProfileData.phone || '',
+        company: userProfileData.company || '',
+        jobTitle: userProfileData.jobTitle || '',
+        location: userProfileData.location || '',
+        bio: userProfileData.bio || '',
+        website: userProfileData.website || '',
+        timezone: userProfileData.timezone || 'UTC-5'
+      })
+    }
+  }, [userProfileData])
+
+  useEffect(() => {
+    if (notificationSettingsData) {
+      setNotifications(notificationSettingsData)
+    }
+  }, [notificationSettingsData])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -199,14 +218,23 @@ const UserProfile = ({ user, onUpdateUser }) => {
     }))
   }
 
-  const handleNotificationChange = (key, value) => {
-    setNotifications(prev => ({
-      ...prev,
+  const handleNotificationChange = async (key, value) => {
+    const updatedNotifications = {
+      ...notificationsState,
       [key]: value
-    }))
+    }
+    setNotifications(updatedNotifications)
+    try {
+      await updateNotificationSettings(updatedNotifications)
+      success("Notification settings updated successfully!")
+      refetchNotificationSettings()
+    } catch (err) {
+      error("Failed to update notification settings.")
+      setNotifications(notifications) // Rollback on error
+    }
   }
 
-      const handleAvatarUpload = async (e) => {
+  const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
@@ -233,33 +261,67 @@ const UserProfile = ({ user, onUpdateUser }) => {
   };
 
   const handleSave = async () => {
+    // Basic form validation
+    if (!formData.firstName || !formData.lastName || !formData.email) {
+      error("First Name, Last Name, and Email are required.");
+      return;
+    }
+
     try {
       await updateProfile({
         name: `${formData.firstName} ${formData.lastName}`,
+        email: formData.email,
+        phone: formData.phone,
         company: formData.company,
-        // Add other fields from formData as needed by the API
+        jobTitle: formData.jobTitle,
+        location: formData.location,
+        bio: formData.bio,
+        website: formData.website,
+        timezone: formData.timezone
       });
       success("Profile updated successfully!");
       setIsEditing(false);
       refetchProfile();
     } catch (err) {
-      error("Failed to update profile.");
+      error(`Failed to update profile: ${err.message || err}`);
+    }
+  };
+
+  const handleConnectSocialProfile = async (platform) => {
+    try {
+      await connectSocialProfile({ platform });
+      success(`${platform} connected successfully!`);
+      refetchSocialProfiles();
+    } catch (err) {
+      error(`Failed to connect ${platform}: ${err.message || err}`);
+    }
+  };
+
+  const handleDisconnectSocialProfile = async (platformId) => {
+    try {
+      await disconnectSocialProfile(platformId);
+      success("Social profile disconnected successfully!");
+      refetchSocialProfiles();
+    } catch (err) {
+      error(`Failed to disconnect social profile: ${err.message || err}`);
     }
   };
 
   const handleCancel = () => {
-    setFormData({
-      firstName: user.name?.split(' ')[0] || '',
-      lastName: user.name?.split(' ')[1] || '',
-      email: user.email || '',
-      phone: user.phone || '',
-      company: user.company || '',
-      jobTitle: user.jobTitle || '',
-      location: user.location || '',
-      bio: user.bio || '',
-      website: user.website || '',
-      timezone: user.timezone || 'UTC-5'
-    })
+    if (userProfileData) {
+      setFormData({
+        firstName: userProfileData.name?.split(' ')[0] || '',
+        lastName: userProfileData.name?.split(' ')[1] || '',
+        email: userProfileData.email || '',
+        phone: userProfileData.phone || '',
+        company: userProfileData.company || '',
+        jobTitle: userProfileData.jobTitle || '',
+        location: userProfileData.location || '',
+        bio: userProfileData.bio || '',
+        website: userProfileData.website || '',
+        timezone: userProfileData.timezone || 'UTC-5'
+      })
+    }
     setIsEditing(false)
   }
 
@@ -267,10 +329,24 @@ const UserProfile = ({ user, onUpdateUser }) => {
     { name: 'AI Content Generation', included: true },
     { name: 'Advanced Analytics', included: true },
     { name: 'Multi-Platform Posting', included: true },
-    { name: 'Team Collaboration', included: user.subscription === 'Premium' },
-    { name: 'White-label Reports', included: user.subscription === 'Premium' },
-    { name: 'Priority Support', included: user.subscription === 'Premium' }
+    { name: 'Team Collaboration', included: userSubscription.plan === 'Premium' },
+    { name: 'White-label Reports', included: userSubscription.plan === 'Premium' },
+    { name: 'Priority Support', included: userSubscription.plan === 'Premium' }
   ]
+
+  if (isLoading) {
+    return <ProfileSkeleton />;
+  }
+
+  if (hasError) {
+    return (
+      <div className="p-6 text-center text-red-500">
+        <AlertCircle className="h-12 w-12 mx-auto mb-4" />
+        <h2 className="text-xl font-semibold">Error loading profile data.</h2>
+        <p>Please try again later.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
@@ -286,11 +362,10 @@ const UserProfile = ({ user, onUpdateUser }) => {
         </div>
         <div className="flex items-center space-x-3">
           <Badge 
-            variant={user.subscription === 'Premium' ? 'default' : 'secondary'}
-            className={user.subscription === 'Premium' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : ''}
+            variant={userSubscription.plan === 'Premium' ? 'default' : 'secondary'}
+            className={userSubscription.plan === 'Premium' ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white' : ''}
           >
-            {user.subscription === 'Premium' && <Crown className="h-3 w-3 mr-1" />}
-            {user.subscription || 'Free Trial'}
+            {userSubscription.plan || 'Free Trial'}
           </Badge>
         </div>
       </div>
@@ -325,11 +400,11 @@ const UserProfile = ({ user, onUpdateUser }) => {
                   </Button>
                 ) : (
                   <div className="flex space-x-2">
-                    <Button onClick={handleSave} size="sm">
-                      <Save className="h-4 w-4 mr-2" />
-                      Save
+                    <Button onClick={handleSave} size="sm" disabled={isUpdatingProfile}>
+                      {isUpdatingProfile ? 'Saving...' : 'Save'}
+                      <Save className="h-4 w-4 ml-2" />
                     </Button>
-                    <Button onClick={handleCancel} variant="outline" size="sm">
+                    <Button onClick={handleCancel} variant="outline" size="sm" disabled={isUpdatingProfile}>
                       <X className="h-4 w-4 mr-2" />
                       Cancel
                     </Button>
@@ -342,9 +417,9 @@ const UserProfile = ({ user, onUpdateUser }) => {
               <div className="flex items-center space-x-6">
                 <div className="relative">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage src={user.avatar} />
+                    <AvatarImage src={profileData.avatar} />
                     <AvatarFallback className="text-2xl">
-                      {user.name?.split(' ').map(n => n[0]).join('') || 'U'}
+                      {profileData.name?.split(' ').map(n => n[0]).join('') || 'U'}
                     </AvatarFallback>
                   </Avatar>
                   {isEditing && (
@@ -361,17 +436,29 @@ const UserProfile = ({ user, onUpdateUser }) => {
                           as="span"
                           size="sm"
                           className="absolute -bottom-2 -right-2 rounded-full h-8 w-8 p-0"
+                          disabled={isUploadingAvatar}
                         >
-                          <Camera className="h-4 w-4" />
+                          {isUploadingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
                         </Button>
                       </label>
+                      {profileData.avatar && (
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="absolute -bottom-2 left-0 rounded-full h-8 w-8 p-0"
+                          onClick={handleAvatarDelete}
+                          disabled={isDeletingAvatar}
+                        >
+                          {isDeletingAvatar ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      )}
                     </>
                   )}
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold">{user.name}</h3>
-                  <p className="text-slate-600 dark:text-slate-400">{user.email}</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">{user.company}</p>
+                  <h3 className="text-lg font-semibold">{profileData.name}</h3>
+                  <p className="text-slate-600 dark:text-slate-400">{profileData.email}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{profileData.company}</p>
                 </div>
               </div>
 
@@ -384,7 +471,7 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     name="firstName"
                     value={formData.firstName}
                     onChange={handleInputChange}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isUpdatingProfile}
                   />
                 </div>
                 <div className="space-y-2">
@@ -394,7 +481,7 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     name="lastName"
                     value={formData.lastName}
                     onChange={handleInputChange}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isUpdatingProfile}
                   />
                 </div>
                 <div className="space-y-2">
@@ -407,7 +494,7 @@ const UserProfile = ({ user, onUpdateUser }) => {
                       type="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      disabled={!isEditing}
+                      disabled={!isEditing || isUpdatingProfile}
                       className="pl-10"
                     />
                   </div>
@@ -421,7 +508,7 @@ const UserProfile = ({ user, onUpdateUser }) => {
                       name="phone"
                       value={formData.phone}
                       onChange={handleInputChange}
-                      disabled={!isEditing}
+                      disabled={!isEditing || isUpdatingProfile}
                       className="pl-10"
                       placeholder="+1 (555) 123-4567"
                     />
@@ -436,7 +523,7 @@ const UserProfile = ({ user, onUpdateUser }) => {
                       name="company"
                       value={formData.company}
                       onChange={handleInputChange}
-                      disabled={!isEditing}
+                      disabled={!isEditing || isUpdatingProfile}
                       className="pl-10"
                     />
                   </div>
@@ -448,7 +535,7 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     name="jobTitle"
                     value={formData.jobTitle}
                     onChange={handleInputChange}
-                    disabled={!isEditing}
+                    disabled={!isEditing || isUpdatingProfile}
                     placeholder="Marketing Manager"
                   />
                 </div>
@@ -461,7 +548,7 @@ const UserProfile = ({ user, onUpdateUser }) => {
                       name="location"
                       value={formData.location}
                       onChange={handleInputChange}
-                      disabled={!isEditing}
+                      disabled={!isEditing || isUpdatingProfile}
                       className="pl-10"
                       placeholder="New York, NY"
                     />
@@ -476,46 +563,43 @@ const UserProfile = ({ user, onUpdateUser }) => {
                       name="website"
                       value={formData.website}
                       onChange={handleInputChange}
-                      disabled={!isEditing}
+                      disabled={!isEditing || isUpdatingProfile}
                       className="pl-10"
-                      placeholder="https://yourcompany.com"
                     />
                   </div>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                  disabled={!isEditing}
-                  placeholder="Tell us about yourself and your company..."
-                  rows={4}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="timezone">Timezone</Label>
-                <Select 
-                  value={formData.timezone} 
-                  onValueChange={(value) => handleSelectChange('timezone', value)}
-                  disabled={!isEditing}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="UTC-8">Pacific Time (UTC-8)</SelectItem>
-                    <SelectItem value="UTC-7">Mountain Time (UTC-7)</SelectItem>
-                    <SelectItem value="UTC-6">Central Time (UTC-6)</SelectItem>
-                    <SelectItem value="UTC-5">Eastern Time (UTC-5)</SelectItem>
-                    <SelectItem value="UTC+0">GMT (UTC+0)</SelectItem>
-                    <SelectItem value="UTC+1">Central European Time (UTC+1)</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    name="bio"
+                    value={formData.bio}
+                    onChange={handleInputChange}
+                    disabled={!isEditing || isUpdatingProfile}
+                    rows={4}
+                    placeholder="Tell us a little about yourself..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="timezone">Timezone</Label>
+                  <Select 
+                    value={formData.timezone} 
+                    onValueChange={(value) => handleSelectChange('timezone', value)}
+                    disabled={!isEditing || isUpdatingProfile}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="UTC-8">Pacific Time (UTC-8)</SelectItem>
+                      <SelectItem value="UTC-7">Mountain Time (UTC-7)</SelectItem>
+                      <SelectItem value="UTC-6">Central Time (UTC-6)</SelectItem>
+                      <SelectItem value="UTC-5">Eastern Time (UTC-5)</SelectItem>
+                      <SelectItem value="UTC+0">GMT (UTC+0)</SelectItem>
+                      <SelectItem value="UTC+1">Central European Time (UTC+1)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -535,45 +619,58 @@ const UserProfile = ({ user, onUpdateUser }) => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {connectedAccounts.map((account) => (
-                  <div key={account.platform} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-semibold">
-                        {account.platform[0]}
+                {connectedAccounts.length > 0 ? (
+                  connectedAccounts.map((account) => (
+                    <div key={account.platform} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center text-white font-semibold">
+                          {account.platform[0]}
+                        </div>
+                        <div>
+                          <h4 className="font-medium">{account.platform}</h4>
+                          {account.connected ? (
+                            <div className="flex items-center space-x-2">
+                              <p className="text-sm text-slate-600 dark:text-slate-400">{account.username}</p>
+                              <Badge variant="secondary" className="text-xs">
+                                {account.followers} followers
+                              </Badge>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Not connected</p>
+                          )}
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-medium">{account.platform}</h4>
+                      <div className="flex items-center space-x-2">
                         {account.connected ? (
-                          <div className="flex items-center space-x-2">
-                            <p className="text-sm text-slate-600 dark:text-slate-400">{account.username}</p>
-                            <Badge variant="secondary" className="text-xs">
-                              {account.followers} followers
+                          <>
+                            <Badge variant="outline" className="text-green-600 border-green-600">
+                              <CheckCircle className="h-3 w-3 mr-1" />
+                              Connected
                             </Badge>
-                          </div>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleDisconnectSocialProfile(account.platformId)} // Assuming platformId for disconnect
+                              disabled={isDisconnectingSocial}
+                            >
+                              {isDisconnectingSocial ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Disconnect
+                            </Button>
+                          </>
                         ) : (
-                          <p className="text-sm text-slate-500 dark:text-slate-400">Not connected</p>
+                          <Button 
+                            size="sm" 
+                            onClick={() => handleConnectSocialProfile(account.platform)} // Assuming platform for connect
+                            disabled={isConnectingSocial}
+                          >
+                            {isConnectingSocial ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}Connect
+                          </Button>
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      {account.connected ? (
-                        <>
-                          <Badge variant="outline" className="text-green-600 border-green-600">
-                            <CheckCircle className="h-3 w-3 mr-1" />
-                            Connected
-                          </Badge>
-                          <Button variant="outline" size="sm">
-                            Disconnect
-                          </Button>
-                        </>
-                      ) : (
-                        <Button size="sm">
-                          Connect
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-center text-slate-500 dark:text-slate-400">No social accounts connected.</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -599,8 +696,9 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     <p className="text-sm text-slate-600 dark:text-slate-400">Receive marketing emails and product updates</p>
                   </div>
                   <Switch
-                    checked={notifications.emailMarketing}
+                    checked={notificationsState.emailMarketing}
                     onCheckedChange={(checked) => handleNotificationChange('emailMarketing', checked)}
+                    disabled={isUpdatingNotifications}
                   />
                 </div>
                 
@@ -610,8 +708,9 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     <p className="text-sm text-slate-600 dark:text-slate-400">Important system notifications and updates</p>
                   </div>
                   <Switch
-                    checked={notifications.emailUpdates}
+                    checked={notificationsState.emailUpdates}
                     onCheckedChange={(checked) => handleNotificationChange('emailUpdates', checked)}
+                    disabled={isUpdatingNotifications}
                   />
                 </div>
                 
@@ -621,8 +720,9 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     <p className="text-sm text-slate-600 dark:text-slate-400">Browser push notifications for real-time updates</p>
                   </div>
                   <Switch
-                    checked={notifications.pushNotifications}
+                    checked={notificationsState.pushNotifications}
                     onCheckedChange={(checked) => handleNotificationChange('pushNotifications', checked)}
+                    disabled={isUpdatingNotifications}
                   />
                 </div>
                 
@@ -632,8 +732,9 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     <p className="text-sm text-slate-600 dark:text-slate-400">Text message alerts for critical notifications</p>
                   </div>
                   <Switch
-                    checked={notifications.smsAlerts}
+                    checked={notificationsState.smsAlerts}
                     onCheckedChange={(checked) => handleNotificationChange('smsAlerts', checked)}
+                    disabled={isUpdatingNotifications}
                   />
                 </div>
                 
@@ -643,8 +744,9 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     <p className="text-sm text-slate-600 dark:text-slate-400">Weekly performance and analytics reports</p>
                   </div>
                   <Switch
-                    checked={notifications.weeklyReports}
+                    checked={notificationsState.weeklyReports}
                     onCheckedChange={(checked) => handleNotificationChange('weeklyReports', checked)}
+                    disabled={isUpdatingNotifications}
                   />
                 </div>
                 
@@ -654,8 +756,9 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     <p className="text-sm text-slate-600 dark:text-slate-400">Alerts when posts perform exceptionally well or poorly</p>
                   </div>
                   <Switch
-                    checked={notifications.performanceAlerts}
+                    checked={notificationsState.performanceAlerts}
                     onCheckedChange={(checked) => handleNotificationChange('performanceAlerts', checked)}
+                    disabled={isUpdatingNotifications}
                   />
                 </div>
               </div>
@@ -680,32 +783,32 @@ const UserProfile = ({ user, onUpdateUser }) => {
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-2xl font-bold flex items-center">
-                      {user.subscription || 'Free Trial'}
-                      {user.subscription === 'Premium' && <Crown className="h-5 w-5 ml-2 text-yellow-500" />}
+                      {userSubscription.plan || 'Free Trial'}
+                      {userSubscription.plan === 'Premium' && <Crown className="h-5 w-5 ml-2 text-yellow-500" />}
                     </h3>
                     <p className="text-slate-600 dark:text-slate-400">
-                      {user.subscription === 'Premium' ? '$49/month' : '$0/month'}
+                      {userSubscription.price || '$0/month'}
                     </p>
                   </div>
                   <Button variant="outline">
-                    {user.subscription === 'Premium' ? 'Manage Plan' : 'Upgrade'}
+                    {userSubscription.plan === 'Premium' ? 'Manage Plan' : 'Upgrade'}
                   </Button>
                 </div>
                 
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span>Posts this month</span>
-                    <span>24 / 100</span>
+                    <span>{userUsageStats.postsUsed || 0} / {userUsageStats.postsLimit || 100}</span>
                   </div>
-                  <Progress value={24} className="h-2" />
+                  <Progress value={(userUsageStats.postsUsed / userUsageStats.postsLimit) * 100 || 0} className="h-2" />
                 </div>
                 
                 <div className="space-y-3">
                   <div className="flex justify-between text-sm">
                     <span>AI generations</span>
-                    <span>156 / 500</span>
+                    <span>{userUsageStats.aiGenerationsUsed || 0} / {userUsageStats.aiGenerationsLimit || 500}</span>
                   </div>
-                  <Progress value={31.2} className="h-2" />
+                  <Progress value={(userUsageStats.aiGenerationsUsed / userUsageStats.aiGenerationsLimit) * 100 || 0} className="h-2" />
                 </div>
               </CardContent>
             </Card>
@@ -756,10 +859,10 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     <Key className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                     <div>
                       <h4 className="font-medium">Password</h4>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">Last changed 3 months ago</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Last changed {accountSecurityData?.passwordLastChanged || 'N/A'}</p>
                     </div>
                   </div>
-                  <Button variant="outline">Change Password</Button>
+                  <Button variant="outline" onClick={() => info("Password change functionality not yet implemented.")}>Change Password</Button>
                 </div>
                 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -767,10 +870,10 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     <Smartphone className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                     <div>
                       <h4 className="font-medium">Two-Factor Authentication</h4>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">Add an extra layer of security</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{accountSecurityData?.twoFactorEnabled ? 'Enabled' : 'Disabled'}</p>
                     </div>
                   </div>
-                  <Button variant="outline">Enable 2FA</Button>
+                  <Button variant="outline" onClick={() => info("2FA functionality not yet implemented.")}>{accountSecurityData?.twoFactorEnabled ? 'Disable 2FA' : 'Enable 2FA'}</Button>
                 </div>
                 
                 <div className="flex items-center justify-between p-4 border rounded-lg">
@@ -781,7 +884,7 @@ const UserProfile = ({ user, onUpdateUser }) => {
                       <p className="text-sm text-slate-600 dark:text-slate-400">Manage your active login sessions</p>
                     </div>
                   </div>
-                  <Button variant="outline">View Sessions</Button>
+                  <Button variant="outline" onClick={() => info("View sessions functionality not yet implemented.")}>View Sessions</Button>
                 </div>
               </div>
               
@@ -791,9 +894,14 @@ const UserProfile = ({ user, onUpdateUser }) => {
                     <h4 className="font-medium text-red-600">Delete Account</h4>
                     <p className="text-sm text-slate-600 dark:text-slate-400">Permanently delete your account and all data</p>
                   </div>
-                  <Button variant="destructive" className="bg-red-600 hover:bg-red-700">
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete Account
+                  <Button 
+                    variant="destructive" 
+                    className="bg-red-600 hover:bg-red-700"
+                    onClick={() => deleteAccount()} // Assuming no confirmation for now
+                    disabled={isDeletingAccount}
+                  >
+                    {isDeletingAccount ? 'Deleting...' : 'Delete Account'}
+                    <Trash2 className="h-4 w-4 ml-2" />
                   </Button>
                 </div>
               </div>
@@ -806,4 +914,5 @@ const UserProfile = ({ user, onUpdateUser }) => {
 }
 
 export default UserProfile
+
 
