@@ -60,7 +60,7 @@ export const useAdminDashboard = (options = {}) => {
     queryKey: ['adminDashboard', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/dashboard', { params: options })
+        const response = await api.get('/admin-dashboard/overview', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -79,7 +79,7 @@ export const useSystemHealth = () => {
     queryKey: ['systemHealth'],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/system-health')
+        const response = await api.get('/admin-dashboard/system-health')
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -98,7 +98,7 @@ export const useUserAnalytics = (options = {}) => {
     queryKey: ['userAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/user-analytics', { params: options })
+        const response = await api.get('/admin-dashboard/user-analytics', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -116,7 +116,7 @@ export const useRevenueAnalytics = (options = {}) => {
     queryKey: ['revenueAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/revenue-analytics', { params: options })
+        const response = await api.get('/admin-dashboard/revenue-analytics', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -134,7 +134,7 @@ export const usePlatformStats = () => {
     queryKey: ['platformStats'],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/platform-stats')
+        const response = await api.get('/admin-dashboard/platform-stats')
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -152,7 +152,7 @@ export const useAdminAlerts = () => {
     queryKey: ['adminAlerts'],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/alerts')
+        const response = await api.get('/admin-dashboard/alerts')
         return response.data.data
       } catch (error) {
         handleApiError(error)
