@@ -41,6 +41,7 @@ import ABTestingFramework from './components/ABTestingFramework.jsx'
 import EnhancedCostOptimizer from './components/EnhancedCostOptimizer.jsx'
 import Settings from './components/Settings.jsx'
 import Sidebar from './components/Sidebar.jsx'
+import CompetitorAnalysis from './components/CompetitorAnalysis.jsx'
 
 // Import UI components
 import { Card, CardContent } from '@/components/ui/card.jsx'
@@ -253,6 +254,7 @@ function AppContent() {
     { id: 'boost', label: 'Boost Manager', icon: Zap },
     { id: 'history', label: 'Post History', icon: History },
     { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+    { id: 'competitor-analysis', label: 'Competitor Analysis', icon: Target },
     { id: 'testing', label: 'A/B Testing', icon: TestTube },
     { id: 'optimizer', label: 'Cost Optimizer', icon: DollarSign },
     { id: 'profile', label: 'Profile', icon: User },
@@ -321,12 +323,19 @@ function AppContent() {
             <UserProfile />
           </ErrorBoundary>
         )
+      case 'competitor-analysis':
+        return (
+          <ErrorBoundary>
+            <CompetitorAnalysis {...viewProps} />
+          </ErrorBoundary>
+        )
       case 'settings':
         return (
           <ErrorBoundary>
             <Settings {...viewProps} />
           </ErrorBoundary>
         )
+
       default:
         return (
           <ErrorBoundary>
