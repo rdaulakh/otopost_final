@@ -1,5 +1,20 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+// Import API hooks
+import { 
+  useApiKeys,
+  useApiEndpoints,
+  useRateLimits,
+  useAuthSettings,
+  useWebhookSettings,
+  useCreateApiKey,
+  useUpdateApiKey,
+  useDeleteApiKey,
+  useUpdateRateLimits,
+  useUpdateAuthSettings,
+  useUpdateWebhookSettings
+} from '../hooks/useApiConfiguration.js';
 import Modal from './ui/Modal';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,12 +70,13 @@ const ApiConfiguration = ({ isDarkMode = false }) => {
     session_timeout: 1800
   });
 
-  // API Keys Management
-  const [apiKeys, setApiKeys] = useState([
-    { id: 1, name: 'Production API', key: 'pk_live_51H7zaBCDEFGHIJKLMNOPQRSTUVWXYZ', status: 'active', created: '2024-01-15', last_used: '2024-09-16' },
-    { id: 2, name: 'Development API', key: 'pk_test_51H7zaBCDEFGHIJKLMNOPQRSTUVWXYZ', status: 'active', created: '2024-02-01', last_used: '2024-09-15' },
-    { id: 3, name: 'Mobile App API', key: 'pk_mobile_51H7zaBCDEFGHIJKLMNOPQRSTUVWXYZ', status: 'inactive', created: '2024-03-10', last_used: '2024-08-20' }
-  ]);
+  // Real API integration using backend routes
+  const { 
+    data: apiKeys, 
+    isLoading: apiKeysLoading, 
+    error: apiKeysError,
+    refetch: refetchApiKeys 
+  } = useApiKeys();
 
   // Webhook Configuration
   const [webhookSettings, setWebhookSettings] = useState({
@@ -72,14 +88,13 @@ const ApiConfiguration = ({ isDarkMode = false }) => {
     rate_limit: 100
   });
 
-  // API Endpoints Status
-  const [endpoints, setEndpoints] = useState([
-    { path: '/api/v1/users', method: 'GET', status: 'healthy', response_time: 45, success_rate: 99.8 },
-    { path: '/api/v1/posts', method: 'POST', status: 'healthy', response_time: 120, success_rate: 99.5 },
-    { path: '/api/v1/analytics', method: 'GET', status: 'warning', response_time: 280, success_rate: 98.2 },
-    { path: '/api/v1/campaigns', method: 'PUT', status: 'healthy', response_time: 95, success_rate: 99.9 },
-    { path: '/api/v1/webhooks', method: 'POST', status: 'error', response_time: 450, success_rate: 95.1 }
-  ]);
+  // Real API integration for endpoints status
+  const { 
+    data: endpoints, 
+    isLoading: endpointsLoading, 
+    error: endpointsError,
+    refetch: refetchEndpoints 
+  } = useApiEndpoints();
 
   const toggleApiKeyVisibility = (keyId) => {
     setShowApiKeys(prev => ({

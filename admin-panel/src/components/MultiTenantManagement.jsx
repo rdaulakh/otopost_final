@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+
+// Import multi-tenant management hooks
+import { 
+  useMultiTenantInstances,
+  useTenantPlans,
+  useTenantMetrics,
+  useResourceUsage,
+  useCreateTenant,
+  useUpdateTenant,
+  useDeleteTenant,
+  useTenantBilling
+} from '../hooks/useMultiTenantManagement.js'
 import { 
   Building2, 
   Globe, 
@@ -71,344 +83,84 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
   const [selectedPlan, setSelectedPlan] = useState('all')
   const [isCreatingTenant, setIsCreatingTenant] = useState(false)
 
-  // Multi-tenant statistics
-  const tenantStats = {
-    totalTenants: 47,
-    activeTenants: 42,
-    trialTenants: 8,
-    suspendedTenants: 3,
-    totalRevenue: 89340,
-    avgRevenuePerTenant: 1900,
-    totalUsers: 12847,
-    avgUsersPerTenant: 273,
-    resourceUtilization: 67.8,
-    storageUsed: 2.4 // TB
+  // Real API integration for multi-tenant data
+  const { 
+    data: tenantsData, 
+    isLoading: tenantsLoading, 
+    error: tenantsError,
+    refetch: refetchTenants 
+  } = useMultiTenantInstances({ 
+    status: selectedStatus, 
+    plan: selectedPlan, 
+    search: searchTerm 
+  })
+
+  const { 
+    data: tenantPlansData, 
+    isLoading: plansLoading, 
+    error: plansError,
+    refetch: refetchPlans 
+  } = useTenantPlans()
+
+  const { 
+    data: tenantMetrics, 
+    isLoading: metricsLoading, 
+    error: metricsError,
+    refetch: refetchMetrics 
+  } = useTenantMetrics()
+
+  const { 
+    data: resourceUsageData, 
+    isLoading: resourceLoading, 
+    error: resourceError,
+    refetch: refetchResource 
+  } = useResourceUsage()
+
+  // Combined loading and error states
+  const isLoading = tenantsLoading || plansLoading || metricsLoading || resourceLoading
+  const hasError = tenantsError || plansError || metricsError || resourceError
+
+  // Use ONLY real API data - NO static fallbacks
+  const tenantStats = tenantMetrics?.stats || {}
+  const tenants = tenantsData?.tenants || []
+  const tenantPlans = tenantPlansData?.plans || []
+  const resourceUsage = resourceUsageData?.usage || []
+
+  // Error handling - show error messages instead of static data
+  if (hasError) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Failed to Load Multi-Tenant Data</h3>
+            <p className="text-gray-600 mb-4">Unable to fetch multi-tenant management data from the API.</p>
+            <Button onClick={() => {
+              refetchTenants()
+              refetchPlans()
+              refetchMetrics()
+              refetchResource()
+            }}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   // Tenant instances
-  const tenants = [
-    {
-      id: 1,
-      name: 'TechStart Solutions',
-      subdomain: 'techstart',
-      customDomain: 'social.techstart.com',
-      plan: 'Enterprise',
-      status: 'active',
-      createdAt: '2024-06-15T10:00:00Z',
-      lastActivity: '2024-09-15T18:30:00Z',
-      users: 456,
-      revenue: 4890,
-      storageUsed: 125.6, // GB
-      cpuUsage: 45.2,
-      memoryUsage: 67.8,
-      apiCalls: 234567,
-      features: {
-        whiteLabel: true,
-        customDomain: true,
-        apiAccess: true,
-        advancedAnalytics: true,
-        prioritySupport: true,
-        sso: true,
-        customIntegrations: true
-      },
-      branding: {
-        logo: '/api/placeholder/120/40',
-        primaryColor: '#2563EB',
-        secondaryColor: '#1E40AF',
-        accentColor: '#3B82F6',
-        fontFamily: 'Inter',
-        customCss: true
-      },
-      contact: {
-        name: 'Sarah Johnson',
-        email: 'admin@techstart.com',
-        phone: '+1-555-0123'
-      },
-      billing: {
-        plan: 'Enterprise',
-        price: 4890,
-        billingCycle: 'monthly',
-        nextBilling: '2024-10-15',
-        paymentMethod: 'Credit Card'
-      }
-    },
-    {
-      id: 2,
-      name: 'Digital Marketing Pro',
-      subdomain: 'digitalmarketing',
-      customDomain: null,
-      plan: 'Professional',
-      status: 'active',
-      createdAt: '2024-07-20T14:30:00Z',
-      lastActivity: '2024-09-15T16:45:00Z',
-      users: 234,
-      revenue: 2490,
-      storageUsed: 78.3,
-      cpuUsage: 32.1,
-      memoryUsage: 54.2,
-      apiCalls: 156789,
-      features: {
-        whiteLabel: true,
-        customDomain: false,
-        apiAccess: true,
-        advancedAnalytics: true,
-        prioritySupport: false,
-        sso: false,
-        customIntegrations: false
-      },
-      branding: {
-        logo: '/api/placeholder/120/40',
-        primaryColor: '#10B981',
-        secondaryColor: '#059669',
-        accentColor: '#34D399',
-        fontFamily: 'Roboto',
-        customCss: false
-      },
-      contact: {
-        name: 'Michael Chen',
-        email: 'admin@digitalmarketing.pro',
-        phone: '+1-555-0456'
-      },
-      billing: {
-        plan: 'Professional',
-        price: 2490,
-        billingCycle: 'monthly',
-        nextBilling: '2024-10-20',
-        paymentMethod: 'Credit Card'
-      }
-    },
-    {
-      id: 3,
-      name: 'StartupGrow',
-      subdomain: 'startupgrow',
-      customDomain: 'app.startupgrow.io',
-      plan: 'Business',
-      status: 'trial',
-      createdAt: '2024-09-01T09:15:00Z',
-      lastActivity: '2024-09-15T12:20:00Z',
-      users: 89,
-      revenue: 0,
-      storageUsed: 23.7,
-      cpuUsage: 18.5,
-      memoryUsage: 31.4,
-      apiCalls: 45678,
-      features: {
-        whiteLabel: false,
-        customDomain: true,
-        apiAccess: true,
-        advancedAnalytics: false,
-        prioritySupport: false,
-        sso: false,
-        customIntegrations: false
-      },
-      branding: {
-        logo: '/api/placeholder/120/40',
-        primaryColor: '#8B5CF6',
-        secondaryColor: '#7C3AED',
-        accentColor: '#A78BFA',
-        fontFamily: 'Poppins',
-        customCss: false
-      },
-      contact: {
-        name: 'Emily Rodriguez',
-        email: 'founder@startupgrow.io',
-        phone: '+1-555-0789'
-      },
-      billing: {
-        plan: 'Business Trial',
-        price: 0,
-        billingCycle: 'trial',
-        nextBilling: '2024-09-30',
-        paymentMethod: 'None'
-      }
-    },
-    {
-      id: 4,
-      name: 'Enterprise Corp',
-      subdomain: 'enterprise',
-      customDomain: 'social.enterprise-corp.com',
-      plan: 'Enterprise Plus',
-      status: 'suspended',
-      createdAt: '2024-05-10T11:45:00Z',
-      lastActivity: '2024-09-10T08:30:00Z',
-      users: 678,
-      revenue: 9890,
-      storageUsed: 245.8,
-      cpuUsage: 0,
-      memoryUsage: 0,
-      apiCalls: 0,
-      features: {
-        whiteLabel: true,
-        customDomain: true,
-        apiAccess: true,
-        advancedAnalytics: true,
-        prioritySupport: true,
-        sso: true,
-        customIntegrations: true
-      },
-      branding: {
-        logo: '/api/placeholder/120/40',
-        primaryColor: '#EF4444',
-        secondaryColor: '#DC2626',
-        accentColor: '#F87171',
-        fontFamily: 'Arial',
-        customCss: true
-      },
-      contact: {
-        name: 'David Wilson',
-        email: 'it@enterprise-corp.com',
-        phone: '+1-555-0321'
-      },
-      billing: {
-        plan: 'Enterprise Plus',
-        price: 9890,
-        billingCycle: 'monthly',
-        nextBilling: '2024-10-10',
-        paymentMethod: 'Invoice'
-      }
-    }
-  ]
 
   // Tenant plans and pricing
-  const tenantPlans = [
-    {
-      id: 'starter',
-      name: 'Starter',
-      price: 490,
-      billingCycle: 'monthly',
-      maxUsers: 50,
-      maxStorage: 10, // GB
-      apiCallsLimit: 10000,
-      features: {
-        whiteLabel: false,
-        customDomain: false,
-        apiAccess: true,
-        advancedAnalytics: false,
-        prioritySupport: false,
-        sso: false,
-        customIntegrations: false
-      },
-      resourceLimits: {
-        cpu: 2,
-        memory: 4, // GB
-        bandwidth: 100 // GB
-      }
-    },
-    {
-      id: 'professional',
-      name: 'Professional',
-      price: 2490,
-      billingCycle: 'monthly',
-      maxUsers: 250,
-      maxStorage: 100,
-      apiCallsLimit: 100000,
-      features: {
-        whiteLabel: true,
-        customDomain: false,
-        apiAccess: true,
-        advancedAnalytics: true,
-        prioritySupport: false,
-        sso: false,
-        customIntegrations: false
-      },
-      resourceLimits: {
-        cpu: 4,
-        memory: 8,
-        bandwidth: 500
-      }
-    },
-    {
-      id: 'business',
-      name: 'Business',
-      price: 4890,
-      billingCycle: 'monthly',
-      maxUsers: 500,
-      maxStorage: 500,
-      apiCallsLimit: 500000,
-      features: {
-        whiteLabel: true,
-        customDomain: true,
-        apiAccess: true,
-        advancedAnalytics: true,
-        prioritySupport: true,
-        sso: true,
-        customIntegrations: false
-      },
-      resourceLimits: {
-        cpu: 8,
-        memory: 16,
-        bandwidth: 1000
-      }
-    },
-    {
-      id: 'enterprise',
-      name: 'Enterprise',
-      price: 9890,
-      billingCycle: 'monthly',
-      maxUsers: 1000,
-      maxStorage: 1000,
-      apiCallsLimit: 1000000,
-      features: {
-        whiteLabel: true,
-        customDomain: true,
-        apiAccess: true,
-        advancedAnalytics: true,
-        prioritySupport: true,
-        sso: true,
-        customIntegrations: true
-      },
-      resourceLimits: {
-        cpu: 16,
-        memory: 32,
-        bandwidth: 2000
-      }
-    }
-  ]
 
   // Resource usage data
-  const resourceUsageData = [
-    { date: '2024-09-09', cpu: 45.2, memory: 67.8, storage: 2.1, bandwidth: 1.8 },
-    { date: '2024-09-10', cpu: 48.1, memory: 69.2, storage: 2.2, bandwidth: 2.1 },
-    { date: '2024-09-11', cpu: 42.8, memory: 65.4, storage: 2.2, bandwidth: 1.9 },
-    { date: '2024-09-12', cpu: 51.3, memory: 71.6, storage: 2.3, bandwidth: 2.3 },
-    { date: '2024-09-13', cpu: 47.9, memory: 68.9, storage: 2.3, bandwidth: 2.0 },
-    { date: '2024-09-14', cpu: 44.6, memory: 66.7, storage: 2.4, bandwidth: 1.8 },
-    { date: '2024-09-15', cpu: 49.2, memory: 70.1, storage: 2.4, bandwidth: 2.2 }
-  ]
 
   // Tenant revenue data
-  const tenantRevenueData = [
-    { month: 'May', revenue: 67890, tenants: 38 },
-    { month: 'Jun', revenue: 72340, tenants: 41 },
-    { month: 'Jul', revenue: 78920, tenants: 43 },
-    { month: 'Aug', revenue: 84560, tenants: 45 },
-    { month: 'Sep', revenue: 89340, tenants: 47 }
-  ]
 
   // Feature usage distribution
-  const featureUsageData = [
-    { feature: 'White Label', usage: 78, color: '#3B82F6' },
-    { feature: 'Custom Domain', usage: 65, color: '#10B981' },
-    { feature: 'API Access', usage: 92, color: '#8B5CF6' },
-    { feature: 'Advanced Analytics', usage: 71, color: '#F59E0B' },
-    { feature: 'SSO', usage: 45, color: '#EF4444' },
-    { feature: 'Custom Integrations', usage: 32, color: '#06B6D4' }
-  ]
 
-  const tabs = [
-    { id: 'tenants', name: 'Tenants', icon: Building2 },
-    { id: 'plans', name: 'Plans & Pricing', icon: Package },
-    { id: 'resources', name: 'Resources', icon: Server },
-    { id: 'branding', name: 'White Label', icon: Palette },
-    { id: 'analytics', name: 'Analytics', icon: BarChart3 }
-  ]
 
-  const statusOptions = [
-    { id: 'active', name: 'Active', color: 'bg-green-100 text-green-800' },
-    { id: 'trial', name: 'Trial', color: 'bg-blue-100 text-blue-800' },
-    { id: 'suspended', name: 'Suspended', color: 'bg-red-100 text-red-800' },
-    { id: 'pending', name: 'Pending', color: 'bg-yellow-100 text-yellow-800' }
-  ]
 
   const getStatusBadge = (status) => {
     const statusConfig = statusOptions.find(s => s.id === status)

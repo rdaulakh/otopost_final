@@ -1,5 +1,18 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { motion } from 'framer-motion'
+
+// Import subscription management hooks
+import { 
+  useSubscriptions,
+  useSubscriptionPlans,
+  useSubscriptionMetrics,
+  useBillingData,
+  useRevenueAnalytics,
+  useCreateSubscription,
+  useUpdateSubscription,
+  useCancelSubscription,
+  useProcessPayment
+} from '../hooks/useSubscriptionManagement.js'
 import { 
   CreditCard, 
   Users, 
@@ -127,13 +140,6 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
   }))
 
   // Original subscription plans (keeping the design)
-  const subscriptionPlans = [
-    {
-      id: 'starter',
-      name: 'Starter',
-      price: 29,
-      interval: 'month',
-      features: ['5 Social Accounts', '50 Posts/Month', 'Basic Analytics', 'Email Support'],
       color: isDarkMode ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-800',
       icon: Zap,
       popular: false
@@ -201,20 +207,7 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
     }
   }
 
-  const statusOptions = [
-    { id: 'active', name: 'Active', color: isDarkMode ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800', icon: CheckCircle },
-    { id: 'trial', name: 'Trial', color: isDarkMode ? 'bg-yellow-600 text-white' : 'bg-yellow-100 text-yellow-800', icon: Clock },
-    { id: 'past_due', name: 'Past Due', color: isDarkMode ? 'bg-red-600 text-white' : 'bg-red-100 text-red-800', icon: AlertCircle },
-    { id: 'cancelled', name: 'Cancelled', color: isDarkMode ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-800', icon: XCircle }
-  ]
 
-  const filterOptions = [
-    { id: 'all', name: 'All Subscriptions', count: subscriptions.length },
-    { id: 'active', name: 'Active', count: subscriptions.filter(s => s.status === 'active').length },
-    { id: 'trial', name: 'Trial', count: subscriptions.filter(s => s.status === 'trial').length },
-    { id: 'past_due', name: 'Past Due', count: subscriptions.filter(s => s.status === 'past_due').length },
-    { id: 'cancelled', name: 'Cancelled', count: subscriptions.filter(s => s.status === 'cancelled').length }
-  ]
 
   // Calculate metrics (using API data when available, fallback to calculated)
   const metrics = {
@@ -228,20 +221,7 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
   }
 
   // Chart data
-  const revenueData = [
-    { month: 'Jan', mrr: 8500, subscriptions: 120 },
-    { month: 'Feb', mrr: 9200, subscriptions: 135 },
-    { month: 'Mar', mrr: 10100, subscriptions: 158 },
-    { month: 'Apr', mrr: 10800, subscriptions: 172 },
-    { month: 'May', mrr: 11500, subscriptions: 189 },
-    { month: 'Jun', mrr: 12340, subscriptions: 210 },
-  ]
 
-  const planDistribution = [
-    { name: 'Starter', value: subscriptions.filter(s => s.plan === 'Starter').length, color: '#6B7280' },
-    { name: 'Pro', value: subscriptions.filter(s => s.plan === 'Pro').length, color: '#3B82F6' },
-    { name: 'Premium', value: subscriptions.filter(s => s.plan === 'Premium').length, color: '#8B5CF6' }
-  ]
 
   // Filter and sort subscriptions
   const filteredSubscriptions = useMemo(() => {

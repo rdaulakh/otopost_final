@@ -69,6 +69,21 @@ app.use("/api/realtime", require("./routes/realtime"));
 app.use("/api/security", require("./routes/security"));
 app.use("/api/profile", require("./routes/profile"));
 app.use("/api/admin", require("./routes/admin"));
+app.use("/api/monitoring", require("./routes/monitoring"));
+app.use("/api/support", require("./routes/support"));
+app.use("/api/subscriptions", require("./routes/subscriptions"));
+app.use("/api/configuration", require("./routes/configuration"));
+app.use("/api/content-management", require("./routes/contentManagement"));
+app.use("/api/notifications", require("./routes/notifications"));
+app.use("/api/customer-success", require("./routes/customerSuccess"));
+app.use("/api/multi-tenant", require("./routes/multiTenant"));
+app.use("/api/compliance-security", require("./routes/complianceSecurity"));
+app.use("/api/admin-dashboard", require("./routes/adminDashboard"));
+app.use("/api/user-management", require("./routes/userManagement"));
+app.use("/api/team-management", require("./routes/teamManagement"));
+app.use("/api/advanced-analytics", require("./routes/advancedAnalytics"));
+app.use("/api/revenue-dashboard", require("./routes/revenueDashboard"));
+app.use("/api/customer-dashboard", require("./routes/customerDashboard"));
 app.use("/api/customer-analytics", require("./routes/customerAnalytics"));
 app.use("/api/ai-strategy", require("./routes/aiStrategy"));
 app.use("/api/campaigns", require("./routes/campaigns"));
@@ -81,6 +96,11 @@ app.use("/api/payments", require("./routes/payments"));
 app.use("/api/upload", require("./routes/upload"));
 app.use("/api/media-library", require("./routes/mediaLibrary"));
 
+// Additional API Routes for Static Data Removal
+app.use("/api/api-configuration", require("./routes/apiConfiguration"));
+app.use("/api/security-settings", require("./routes/securitySettings"));
+app.use("/api/white-label", require("./routes/whiteLabelSettings"));
+
 // Error handling middleware
 // app.use(errorAuditMiddleware); // Disabled for development
 
@@ -90,3 +110,5 @@ initializeSocketService(io);
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+app.use('/api/post-history', require('./routes/postHistory'));
+app.use('/api/user-profile', require('./routes/userProfile'));

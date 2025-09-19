@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+
+// Import compliance security hooks
+import { 
+  useComplianceFrameworks,
+  useSecurityEvents,
+  useComplianceMetrics,
+  useSecurityTrends,
+  useAccessControlData,
+  useUpdateComplianceFramework,
+  useCreateSecurityEvent,
+  useUpdateSecurityEvent
+} from '../hooks/useComplianceSecurity.js'
 import { 
   Shield, 
   Lock, 
@@ -44,66 +56,83 @@ const ComplianceSecurity = ({ data = {}, onDataUpdate = () => {}, isDarkMode = f
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
 
-  // Security metrics
-  const securityMetrics = {
-    securityScore: 94.5,
-    activeThreats: 0,
-    blockedAttempts: 1247,
-    vulnerabilities: 2,
-    complianceScore: 98.2,
-    dataBreaches: 0,
-    lastSecurityAudit: '2024-08-15',
-    sslCertificateExpiry: '2025-03-15'
+  // Real API integration for compliance security data
+  const { 
+    data: complianceMetrics, 
+    isLoading: metricsLoading, 
+    error: metricsError,
+    refetch: refetchMetrics 
+  } = useComplianceMetrics({ timeRange: selectedTimeRange })
+
+  const { 
+    data: complianceFrameworks, 
+    isLoading: frameworksLoading, 
+    error: frameworksError,
+    refetch: refetchFrameworks 
+  } = useComplianceFrameworks()
+
+  const { 
+    data: securityEventsData, 
+    isLoading: eventsLoading, 
+    error: eventsError,
+    refetch: refetchEvents 
+  } = useSecurityEvents({ 
+    category: selectedCategory, 
+    search: searchTerm,
+    timeRange: selectedTimeRange 
+  })
+
+  const { 
+    data: securityTrendsData, 
+    isLoading: trendsLoading,
+    refetch: refetchTrends 
+  } = useSecurityTrends({ timeRange: selectedTimeRange })
+
+  const { 
+    data: accessControlData, 
+    isLoading: accessLoading,
+    refetch: refetchAccess 
+  } = useAccessControlData()
+
+  // Combined loading state
+  const isLoading = metricsLoading || frameworksLoading || eventsLoading || trendsLoading || accessLoading
+
+  // Use ONLY real API data - NO static fallbacks, show errors instead
+  const securityMetrics = complianceMetrics?.metrics || {}
+  const securityEvents = securityEventsData?.events || []
+  const securityTrends = securityTrendsData?.trends || []
+  const complianceDistribution = complianceMetrics?.distribution || []
+  const accessControl = accessControlData?.data || []
+
+  // Error handling - show error messages instead of static data
+  const hasError = metricsError || frameworksError || eventsError || trendsError || accessLoading
+  
+  if (hasError) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Failed to Load Compliance Data</h3>
+            <p className="text-gray-600 mb-4">Unable to fetch compliance and security data from the API.</p>
+            <Button onClick={() => {
+              refetchMetrics()
+              refetchFrameworks()
+              refetchEvents()
+              refetchTrends()
+              refetchAccess()
+            }}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
-  // Compliance frameworks
-  const complianceFrameworks = [
-    {
-      name: 'GDPR',
-      status: 'compliant',
-      score: 98.5,
-      lastAudit: '2024-07-15',
-      requirements: 47,
-      completed: 46,
-      pending: 1,
-      description: 'General Data Protection Regulation'
-    },
-    {
-      name: 'SOC 2 Type II',
-      status: 'compliant',
-      score: 96.8,
-      lastAudit: '2024-06-20',
-      requirements: 32,
-      completed: 31,
-      pending: 1,
-      description: 'Service Organization Control 2'
-    },
-    {
-      name: 'ISO 27001',
-      status: 'in_progress',
-      score: 87.3,
-      lastAudit: '2024-05-10',
-      requirements: 114,
-      completed: 99,
-      pending: 15,
-      description: 'Information Security Management'
-    },
-    {
-      name: 'CCPA',
-      status: 'compliant',
-      score: 99.1,
-      lastAudit: '2024-08-01',
-      requirements: 23,
-      completed: 23,
-      pending: 0,
-      description: 'California Consumer Privacy Act'
-    }
-  ]
-
-  // Security events and audit logs
-  const securityEvents = [
+  // All static arrays removed - using only API data
     {
       id: 1,
       type: 'login_attempt',
@@ -184,45 +213,12 @@ const ComplianceSecurity = ({ data = {}, onDataUpdate = () => {}, isDarkMode = f
   }
 
   // Security trends data
-  const securityTrendsData = [
-    { date: '2024-09-09', threats: 12, blocked: 145, vulnerabilities: 3 },
-    { date: '2024-09-10', threats: 8, blocked: 167, vulnerabilities: 2 },
-    { date: '2024-09-11', threats: 15, blocked: 134, vulnerabilities: 4 },
-    { date: '2024-09-12', threats: 6, blocked: 189, vulnerabilities: 1 },
-    { date: '2024-09-13', threats: 11, blocked: 156, vulnerabilities: 2 },
-    { date: '2024-09-14', threats: 4, blocked: 178, vulnerabilities: 1 },
-    { date: '2024-09-15', threats: 0, blocked: 198, vulnerabilities: 2 }
-  ]
 
   // Compliance status distribution
-  const complianceDistribution = [
-    { name: 'Compliant', value: 85, color: '#10B981' },
-    { name: 'In Progress', value: 12, color: '#F59E0B' },
-    { name: 'Non-Compliant', value: 3, color: '#EF4444' }
-  ]
 
   // Access control data
-  const accessControlData = [
-    { role: 'Super Admin', users: 2, permissions: 100 },
-    { role: 'Admin', users: 5, permissions: 85 },
-    { role: 'Support', users: 12, permissions: 45 },
-    { role: 'Viewer', users: 23, permissions: 15 }
-  ]
 
-  const eventTypes = [
-    { id: 'login_attempt', name: 'Login Attempts', icon: Key, color: 'text-blue-600' },
-    { id: 'data_access', name: 'Data Access', icon: Database, color: 'text-green-600' },
-    { id: 'permission_change', name: 'Permission Changes', icon: UserCheck, color: 'text-purple-600' },
-    { id: 'api_access', name: 'API Access', icon: Globe, color: 'text-orange-600' },
-    { id: 'data_deletion', name: 'Data Deletion', icon: FileCheck, color: 'text-red-600' }
-  ]
 
-  const severityLevels = [
-    { id: 'low', name: 'Low', color: 'bg-green-100 text-green-800' },
-    { id: 'medium', name: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
-    { id: 'high', name: 'High', color: 'bg-red-100 text-red-800' },
-    { id: 'critical', name: 'Critical', color: 'bg-red-200 text-red-900' }
-  ]
 
   const getEventIcon = (type) => {
     const eventType = eventTypes.find(t => t.id === type)

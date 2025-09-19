@@ -1,5 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+
+// Import customer success hooks
+import { 
+  useCustomerSegments,
+  useCustomerHealthScores,
+  useCustomerJourney,
+  useCustomerMetrics,
+  useCustomerOutreach,
+  useUpdateCustomerHealth,
+  useCreateOutreach
+} from '../hooks/useCustomerSuccess.js'
 import { 
   Users, 
   TrendingUp, 
@@ -62,161 +73,80 @@ const CustomerSuccess = ({ data = {}, onDataUpdate = () => {}, isDarkMode = fals
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const [activeTab, setActiveTab] = useState('overview')
 
-  // Customer success metrics
-  const successMetrics = {
-    totalCustomers: 2847,
-    activeCustomers: 2156,
-    churnRate: 2.3,
-    avgHealthScore: 78.5,
-    nps: 67,
-    csat: 4.2,
-    onboardingCompletion: 89.3,
-    timeToValue: 4.2,
-    expansionRevenue: 23.5,
-    retentionRate: 94.7
+  // Real API integration for customer success data
+  const { 
+    data: customerMetrics, 
+    isLoading: metricsLoading, 
+    error: metricsError,
+    refetch: refetchMetrics 
+  } = useCustomerMetrics({ timeRange: selectedTimeRange })
+
+  const { 
+    data: customerSegments, 
+    isLoading: segmentsLoading, 
+    error: segmentsError,
+    refetch: refetchSegments 
+  } = useCustomerSegments({ segment: selectedSegment })
+
+  const { 
+    data: healthScoresData, 
+    isLoading: healthLoading, 
+    error: healthError,
+    refetch: refetchHealth 
+  } = useCustomerHealthScores({ healthScore: selectedHealthScore })
+
+  const { 
+    data: journeyData, 
+    isLoading: journeyLoading, 
+    error: journeyError,
+    refetch: refetchJourney 
+  } = useCustomerJourney()
+
+  // Combined loading and error states
+  const isLoading = metricsLoading || segmentsLoading || healthLoading || journeyLoading
+  const hasError = metricsError || segmentsError || healthError || journeyError
+
+  // Use ONLY real API data - NO static fallbacks
+  const successMetrics = customerMetrics?.metrics || {}
+  const segments = customerSegments?.segments || []
+  const healthScores = healthScoresData?.scores || []
+  const journeyStages = journeyData?.stages || []
+
+  // Error handling - show error messages instead of static data
+  if (hasError) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Failed to Load Customer Success Data</h3>
+            <p className="text-gray-600 mb-4">Unable to fetch customer success data from the API.</p>
+            <Button onClick={() => {
+              refetchMetrics()
+              refetchSegments()
+              refetchHealth()
+              refetchJourney()
+            }}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   // Customer health scores and segments
-  const customerSegments = [
-    {
-      name: 'Champions',
-      count: 456,
-      percentage: 16.0,
-      healthScore: 90,
-      churnRisk: 'low',
-      color: '#10B981',
-      description: 'Highly engaged power users'
-    },
-    {
-      name: 'Advocates',
-      count: 623,
-      percentage: 21.9,
-      healthScore: 82,
-      churnRisk: 'low',
-      color: '#3B82F6',
-      description: 'Satisfied and loyal customers'
-    },
-    {
-      name: 'Satisfied',
-      count: 892,
-      percentage: 31.3,
-      healthScore: 75,
-      churnRisk: 'medium',
-      color: '#8B5CF6',
-      description: 'Content but not fully engaged'
-    },
-    {
-      name: 'At Risk',
-      count: 534,
-      percentage: 18.8,
-      healthScore: 58,
-      churnRisk: 'high',
-      color: '#F59E0B',
-      description: 'Showing signs of disengagement'
-    },
-    {
-      name: 'Critical',
-      count: 342,
-      percentage: 12.0,
-      healthScore: 35,
-      churnRisk: 'critical',
-      color: '#EF4444',
-      description: 'High risk of churning soon'
-    }
-  ]
 
   // Customer journey stages
-  const journeyStages = [
-    {
-      stage: 'Trial Started',
-      customers: 1247,
-      conversionRate: 78.5,
-      avgDuration: '7 days',
-      dropoffRate: 21.5
-    },
-    {
-      stage: 'Onboarding',
-      customers: 978,
-      conversionRate: 89.3,
-      avgDuration: '3 days',
-      dropoffRate: 10.7
-    },
-    {
-      stage: 'First Value',
-      customers: 873,
-      conversionRate: 92.1,
-      avgDuration: '4.2 days',
-      dropoffRate: 7.9
-    },
-    {
-      stage: 'Active User',
-      customers: 804,
-      conversionRate: 95.8,
-      avgDuration: '30 days',
-      dropoffRate: 4.2
-    },
-    {
-      stage: 'Power User',
-      customers: 456,
-      conversionRate: 67.3,
-      avgDuration: '90 days',
-      dropoffRate: 32.7
-    }
-  ]
 
   // Onboarding completion data
-  const onboardingSteps = [
-    { step: 'Account Setup', completion: 98.5, avgTime: '2 min' },
-    { step: 'Connect Social Accounts', completion: 94.2, avgTime: '5 min' },
-    { step: 'AI Agent Configuration', completion: 87.8, avgTime: '8 min' },
-    { step: 'First Post Creation', completion: 82.3, avgTime: '12 min' },
-    { step: 'Schedule First Campaign', completion: 76.9, avgTime: '15 min' },
-    { step: 'Review Analytics', completion: 69.4, avgTime: '10 min' }
-  ]
 
   // Customer health trends
-  const healthTrendData = [
-    { date: '2024-09-09', champions: 445, advocates: 612, satisfied: 878, atRisk: 523, critical: 356 },
-    { date: '2024-09-10', champions: 448, advocates: 618, satisfied: 885, atRisk: 518, critical: 348 },
-    { date: '2024-09-11', champions: 452, advocates: 621, satisfied: 889, atRisk: 512, critical: 345 },
-    { date: '2024-09-12', champions: 454, advocates: 619, satisfied: 892, atRisk: 508, critical: 342 },
-    { date: '2024-09-13', champions: 456, advocates: 623, satisfied: 890, atRisk: 515, critical: 340 },
-    { date: '2024-09-14', champions: 458, advocates: 625, satisfied: 888, atRisk: 520, critical: 338 },
-    { date: '2024-09-15', champions: 456, advocates: 623, satisfied: 892, atRisk: 534, critical: 342 }
-  ]
 
   // Churn prediction data
-  const churnPredictionData = [
-    { month: 'Jan', predicted: 2.1, actual: 2.3 },
-    { month: 'Feb', predicted: 2.4, actual: 2.2 },
-    { month: 'Mar', predicted: 2.8, actual: 2.9 },
-    { month: 'Apr', predicted: 2.5, actual: 2.4 },
-    { month: 'May', predicted: 2.2, actual: 2.1 },
-    { month: 'Jun', predicted: 2.0, actual: 2.0 },
-    { month: 'Jul', predicted: 1.9, actual: 1.8 },
-    { month: 'Aug', predicted: 2.1, actual: 2.0 },
-    { month: 'Sep', predicted: 2.3, actual: null }
-  ]
 
   // Individual customer data
-  const customers = [
-    {
-      id: 1,
-      name: 'Sarah Johnson',
-      email: 'sarah@techstart.com',
-      company: 'TechStart Inc.',
-      plan: 'Premium',
-      healthScore: 92,
-      segment: 'Champions',
-      joinDate: '2024-06-15',
-      lastActivity: '2024-09-15T18:30:00Z',
-      totalRevenue: 2340,
-      nps: 9,
-      onboardingProgress: 100,
-      riskLevel: 'low',
-      nextAction: 'Upsell opportunity',
-      csm: 'John Smith',
-      tags: ['power-user', 'advocate', 'expansion-ready']
     },
     {
       id: 2,
@@ -257,12 +187,6 @@ const CustomerSuccess = ({ data = {}, onDataUpdate = () => {}, isDarkMode = fals
   ]
 
   // Success playbooks
-  const successPlaybooks = [
-    {
-      id: 1,
-      name: 'New User Onboarding',
-      description: 'Complete onboarding sequence for new signups',
-      triggers: ['user_signup', 'trial_start'],
       steps: 6,
       completion: 89.3,
       status: 'active'
@@ -303,13 +227,6 @@ const CustomerSuccess = ({ data = {}, onDataUpdate = () => {}, isDarkMode = fals
     return colors[risk] || (isDarkMode ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-800')
   }
 
-  const tabs = [
-    { id: 'overview', name: 'Overview', icon: BarChart3 },
-    { id: 'customers', name: 'Customers', icon: Users },
-    { id: 'onboarding', name: 'Onboarding', icon: UserPlus },
-    { id: 'playbooks', name: 'Playbooks', icon: FileText },
-    { id: 'analytics', name: 'Analytics', icon: TrendingUp }
-  ]
 
   const renderOverviewTab = () => (
     <div className="space-y-6">

@@ -7,6 +7,19 @@ import ApiConfiguration from './ApiConfiguration';
 import SecuritySettings from './SecuritySettings';
 import WhiteLabelSettings from './WhiteLabelSettings';
 import { motion } from 'framer-motion'
+
+// Import platform configuration hooks
+import { 
+  usePlatformSettings,
+  useAIAgentConfigs,
+  useSystemSettings,
+  useAPIConfigurations,
+  useFeatureFlags,
+  useIntegrationSettings,
+  useUpdatePlatformSettings,
+  useUpdateAIAgentConfig,
+  useUpdateSystemSettings
+} from '../hooks/usePlatformConfiguration.js'
 import { 
   Settings, 
   Zap, 
@@ -209,26 +222,7 @@ const PlatformConfiguration = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
     }
   })
 
-  const tabs = [
-    { id: 'ai_agents', name: 'AI Agents', icon: Zap },
-    { id: 'system', name: 'System Settings', icon: Settings },
-    { id: 'api', name: 'API Configuration', icon: Code },
-    { id: 'team', name: 'Team Management', icon: Users },
-    { id: 'features', name: 'Feature Flags', icon: ToggleLeft },
-    { id: 'integrations', name: 'Integrations', icon: Globe },
-    { id: 'security', name: 'Security', icon: Shield },
-    { id: 'branding', name: 'White Label', icon: Palette }
-  ]
 
-  const performanceModes = [
-    { value: 'fast', label: 'Fast', description: 'Optimized for speed' },
-    { value: 'balanced', label: 'Balanced', description: 'Balance of speed and quality' },
-    { value: 'optimized', label: 'Optimized', description: 'Best performance' },
-    { value: 'creative', label: 'Creative', description: 'Enhanced creativity' },
-    { value: 'analytical', label: 'Analytical', description: 'Deep analysis focus' },
-    { value: 'responsive', label: 'Responsive', description: 'Quick response time' },
-    { value: 'precise', label: 'Precise', description: 'Maximum accuracy' }
-  ]
 
   const handleSaveChanges = async () => {
     setIsLoading(true)

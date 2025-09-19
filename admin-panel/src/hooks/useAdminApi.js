@@ -60,7 +60,7 @@ export const useAdminDashboard = (options = {}) => {
     queryKey: ['adminDashboard', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/dashboard', { params: options })
+        const response = await api.get('/admin-dashboard/overview', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -79,7 +79,7 @@ export const useSystemHealth = () => {
     queryKey: ['systemHealth'],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/system-health')
+        const response = await api.get('/admin-dashboard/system-health')
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -98,7 +98,7 @@ export const useUserAnalytics = (options = {}) => {
     queryKey: ['userAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/user-analytics', { params: options })
+        const response = await api.get('/user-management/analytics', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -116,7 +116,7 @@ export const useRevenueAnalytics = (options = {}) => {
     queryKey: ['revenueAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/revenue-analytics', { params: options })
+        const response = await api.get('/admin-dashboard/revenue-analytics', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -134,7 +134,7 @@ export const usePlatformStats = () => {
     queryKey: ['platformStats'],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/platform-stats')
+        const response = await api.get('/admin-dashboard/platform-stats')
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -152,7 +152,7 @@ export const useAdminAlerts = () => {
     queryKey: ['adminAlerts'],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/alerts')
+        const response = await api.get('/admin-dashboard/alerts')
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -175,7 +175,7 @@ export const useUsersList = (options = {}) => {
     queryKey: ['usersList', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/users', { params: options })
+        const response = await api.get('/user-management/users', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -195,7 +195,7 @@ export const useCreateUser = () => {
   return useMutation({
     mutationFn: async (userData) => {
       try {
-        const response = await api.post('/admin/users', userData)
+        const response = await api.post('/user-management/users', userData)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -216,7 +216,7 @@ export const useUpdateUser = () => {
   return useMutation({
     mutationFn: async ({ id, ...userData }) => {
       try {
-        const response = await api.put(`/admin/users/${id}`, userData)
+        const response = await api.put(`/user-management/users/${id}`, userData)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -237,7 +237,7 @@ export const useDeleteUser = () => {
   return useMutation({
     mutationFn: async (userId) => {
       try {
-        const response = await api.delete(`/admin/users/${userId}`)
+        const response = await api.delete(`/user-management/users/${userId}`)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -410,4 +410,212 @@ export { api }
 export default {
   api,
   API_BASE_URL
+}
+
+
+// ============================================================================
+// ADVANCED ANALYTICS HOOKS
+// ============================================================================
+
+// Advanced Analytics Overview
+export const useAdvancedAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['advancedAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/advanced-analytics/overview', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Platform Performance Analytics
+export const usePlatformPerformance = (options = {}) => {
+  return useQuery({
+    queryKey: ['platformPerformance', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/advanced-analytics/platform-performance', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Revenue Analytics (Advanced)
+export const useAdvancedRevenueAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['advancedRevenueAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/advanced-analytics/revenue-analytics', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Custom Reports
+export const useCustomReports = () => {
+  return useQuery({
+    queryKey: ['customReports'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/advanced-analytics/custom-reports')
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 20 * 60 * 1000, // 20 minutes
+    retry: 2
+  })
+}
+
+// Create Custom Report
+export const useCreateCustomReport = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (reportData) => {
+      try {
+        const response = await api.post('/advanced-analytics/custom-reports', reportData)
+        return response.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['customReports'])
+    }
+  })
+}
+
+// Analytics Insights
+export const useAnalyticsInsights = (options = {}) => {
+  return useQuery({
+    queryKey: ['analyticsInsights', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/advanced-analytics/insights', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    cacheTime: 30 * 60 * 1000, // 30 minutes
+    retry: 2
+  })
+}
+
+// ============================================================================
+// REVENUE DASHBOARD HOOKS
+// ============================================================================
+
+// Revenue Metrics
+export const useRevenueMetrics = (options = {}) => {
+  return useQuery({
+    queryKey: ['revenueMetrics', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/revenue-dashboard/metrics', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Revenue Analytics (Detailed)
+export const useDetailedRevenueAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['detailedRevenueAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/revenue-dashboard/analytics', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Subscription Analytics
+export const useSubscriptionAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['subscriptionAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/revenue-dashboard/subscriptions', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Cohort Analysis
+export const useCohortAnalysis = (options = {}) => {
+  return useQuery({
+    queryKey: ['cohortAnalysis', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/revenue-dashboard/cohorts', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 20 * 60 * 1000, // 20 minutes
+    retry: 2
+  })
+}
+
+// Revenue Forecasting
+export const useRevenueForecasting = (options = {}) => {
+  return useQuery({
+    queryKey: ['revenueForecasting', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/revenue-dashboard/forecasting', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    cacheTime: 30 * 60 * 1000, // 30 minutes
+    retry: 2
+  })
 }

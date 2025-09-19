@@ -829,3 +829,184 @@ export const useCreateABTest = () => {
   });
 
 };
+
+// ============================================================================
+// DASHBOARD COMPATIBILITY HOOKS
+// ============================================================================
+
+// Social Profiles
+export const useSocialProfiles = () => {
+  return useQuery({
+    queryKey: ['socialProfiles'],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-dashboard/social-profiles')
+        return response.data
+      } catch (error) {
+        console.error('Social profiles error:', error)
+        throw error
+      }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 20 * 60 * 1000, // 20 minutes
+    retry: 2
+  })
+}
+
+// Analytics Overview (alias for dashboard compatibility)
+export const useAnalyticsOverview = (timeRange = '7d') => {
+  return useQuery({
+    queryKey: ['analyticsOverview', timeRange],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-dashboard/analytics', { params: { timeRange } })
+        return response.data
+      } catch (error) {
+        console.error('Analytics overview error:', error)
+        throw error
+      }
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    cacheTime: 8 * 60 * 1000, // 8 minutes
+    retry: 2
+  })
+}
+
+// Content List (alias for dashboard compatibility)
+export const useContentList = (options = {}) => {
+  return useQuery({
+    queryKey: ['contentList', options],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-dashboard/content', { params: options })
+        return response.data
+      } catch (error) {
+        console.error('Content list error:', error)
+        throw error
+      }
+    },
+    staleTime: 1 * 60 * 1000, // 1 minute
+    cacheTime: 3 * 60 * 1000, // 3 minutes
+    keepPreviousData: true,
+    retry: 2
+  })
+}
+
+// AI Agents (alias for dashboard compatibility)
+export const useAIAgents = () => {
+  return useQuery({
+    queryKey: ['aiAgents'],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-dashboard/ai-agents')
+        return response.data
+      } catch (error) {
+        console.error('AI agents error:', error)
+        throw error
+      }
+    },
+    staleTime: 30 * 1000, // 30 seconds
+    cacheTime: 2 * 60 * 1000, // 2 minutes
+    refetchInterval: 60 * 1000, // Refetch every minute for real-time updates
+    retry: 2
+  })
+}
+
+// ============================================================================
+// CUSTOMER ANALYTICS HOOKS
+// ============================================================================
+
+// Performance Metrics
+export const usePerformanceMetrics = (options = {}) => {
+  return useQuery({
+    queryKey: ['performanceMetrics', options],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-analytics/performance', { params: options })
+        return response.data
+      } catch (error) {
+        console.error('Performance metrics error:', error)
+        throw error
+      }
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    cacheTime: 8 * 60 * 1000, // 8 minutes
+    retry: 2
+  })
+}
+
+// Content Statistics
+export const useContentStats = (options = {}) => {
+  return useQuery({
+    queryKey: ['contentStats', options],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-analytics/content-stats', { params: options })
+        return response.data
+      } catch (error) {
+        console.error('Content stats error:', error)
+        throw error
+      }
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    cacheTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2
+  })
+}
+
+// Platform Analytics
+export const usePlatformAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['platformAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-analytics/platform-breakdown', { params: options })
+        return response.data
+      } catch (error) {
+        console.error('Platform analytics error:', error)
+        throw error
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Engagement Analytics
+export const useEngagementAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['engagementAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-analytics/engagement', { params: options })
+        return response.data
+      } catch (error) {
+        console.error('Engagement analytics error:', error)
+        throw error
+      }
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    cacheTime: 8 * 60 * 1000, // 8 minutes
+    retry: 2
+  })
+}
+
+// Audience Analytics
+export const useAudienceAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['audienceAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-analytics/audience', { params: options })
+        return response.data
+      } catch (error) {
+        console.error('Audience analytics error:', error)
+        throw error
+      }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 20 * 60 * 1000, // 20 minutes
+    retry: 2
+  })
+}
