@@ -140,7 +140,13 @@ const NotificationCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = f
         </Card>
       </div>
     )
-  }// Alert rules and configurations
+  }
+
+  // Alert rules and configurations
+  const alertRules = [
+    {
+      id: 'high-cpu',
+      name: 'High CPU Usage',
       recipients: ['ops-team@aisocialmedia.com', '#alerts'],
       enabled: true,
       triggered: 12,

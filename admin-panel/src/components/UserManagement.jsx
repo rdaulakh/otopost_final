@@ -259,7 +259,7 @@ const UserManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false
     setIsViewUserModalOpen(true);
   };
 
-  const handleDeleteUser = (user) => {
+  const handleDeleteUserClick = (user) => {
     setDeletingUser(user);
     setIsDeleteUserModalOpen(true);
   };
@@ -468,7 +468,7 @@ const UserManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false
     // In real implementation, this would call API
   }
 
-  const handleBulkAction = (action) => {
+  const handleBulkActionClick = (action) => {
     console.log(`${action} users:`, selectedUsers)
     // In real implementation, this would call API
   }
@@ -635,13 +635,13 @@ const UserManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false
                     <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                       {selectedUsers.length} selected
                     </span>
-                    <Button variant='outline' size='sm' onClick={() => handleBulkAction('suspend')} className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700 bg-slate-700' : ''}>
+                    <Button variant='outline' size='sm' onClick={() => handleBulkActionClick('suspend')} className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700 bg-slate-700' : ''}>
                       Suspend
                     </Button>
-                    <Button variant='outline' size='sm' onClick={() => handleBulkAction('activate')} className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700 bg-slate-700' : ''}>
+                    <Button variant='outline' size='sm' onClick={() => handleBulkActionClick('activate')} className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700 bg-slate-700' : ''}>
                       Activate
                     </Button>
-                    <Button variant='outline' size='sm' onClick={() => handleBulkAction('delete')} className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700 bg-slate-700' : ''}>
+                    <Button variant='outline' size='sm' onClick={() => handleBulkActionClick('delete')} className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700 bg-slate-700' : ''}>
                       Delete
                     </Button>
                   </div>
@@ -795,7 +795,7 @@ const UserManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false
                             <Button
                               variant='ghost'
                               size='sm'
-                              onClick={() => handleDeleteUser(user)}
+                              onClick={() => handleDeleteUserClick(user)}
                               className={isDarkMode ? 'text-slate-300 hover:bg-slate-700' : ''}
                             >
                               <Trash2 className='h-4 w-4 text-red-500' />
