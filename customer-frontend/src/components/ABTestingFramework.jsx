@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
   TestTube,
@@ -29,7 +29,9 @@ import {
   ArrowDownRight,
   Filter,
   Search,
-  MoreHorizontal
+  MoreHorizontal,
+  Loader2,
+  RefreshCw
 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
@@ -38,6 +40,7 @@ import { Button } from '@/components/ui/button.jsx'
 import { Progress } from '@/components/ui/progress.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
 import { useTheme } from '../contexts/ThemeContext.jsx'
+import { useABTests, useABTestResults, useABTestMetrics, useCreateABTest } from '../hooks/useApi.js'
 
 import {
   LineChart,
@@ -59,758 +62,580 @@ import {
 
 const ABTestingFramework = ({ data, user, onDataUpdate }) => {
   const { isDarkMode } = useTheme()
-
-  console.log('ABTestingFramework component loaded')
   const [activeTab, setActiveTab] = useState('experiments')
   const [selectedExperiment, setSelectedExperiment] = useState(null)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
-  // A/B Testing data
-  const [testingData] = useState({
-    experiments: [
-      {
-        id: 1,
-        name: 'Instagram Carousel vs Single Image',
-        description: 'Testing carousel posts vs single image posts for SaaS product features',
-        status: 'running',
-        startDate: '2024-01-08',
-        endDate: '2024-01-15',
-        platform: 'instagram',
-        objective: 'engagement',
-        variants: [
-          {
-            id: 'A',
-            name: 'Carousel Post',
-            type: 'carousel',
-            description: '5-slide carousel showcasing product features',
-            traffic: 50,
-            metrics: {
-              impressions: 12500,
-              likes: 890,
-              comments: 67,
-              shares: 34,
-              saves: 156,
-              engagementRate: 9.2,
-              clickThroughRate: 2.8,
-              conversionRate: 1.4
-            }
-          },
-          {
-            id: 'B',
-            name: 'Single Image',
-            type: 'image',
-            description: 'Single hero image with key product benefit',
-            traffic: 50,
-            metrics: {
-              impressions: 12300,
-              likes: 745,
-              comments: 43,
-              shares: 21,
-              saves: 98,
-              engagementRate: 7.4,
-              clickThroughRate: 2.1,
-              conversionRate: 0.9
-            }
-          }
-        ],
-        confidence: 94.2,
-        winner: 'A',
-        significance: 'high',
-        daysRemaining: 2
-      },
-      {
-        id: 2,
-        name: 'LinkedIn Post Timing Test',
-        description: 'Testing optimal posting times for B2B SaaS content',
-        status: 'completed',
-        startDate: '2024-01-01',
-        endDate: '2024-01-07',
-        platform: 'linkedin',
-        objective: 'reach',
-        variants: [
-          {
-            id: 'A',
-            name: '9:00 AM EST',
-            type: 'timing',
-            description: 'Morning business hours posting',
-            traffic: 33.3,
-            metrics: {
-              impressions: 8900,
-              likes: 234,
-              comments: 45,
-              shares: 67,
-              engagementRate: 3.9,
-              clickThroughRate: 4.2,
-              conversionRate: 2.1
-            }
-          },
-          {
-            id: 'B',
-            name: '1:00 PM EST',
-            type: 'timing',
-            description: 'Lunch break posting',
-            traffic: 33.3,
-            metrics: {
-              impressions: 9200,
-              likes: 298,
-              comments: 52,
-              shares: 89,
-              engagementRate: 4.8,
-              clickThroughRate: 5.1,
-              conversionRate: 2.7
-            }
-          },
-          {
-            id: 'C',
-            name: '6:00 PM EST',
-            type: 'timing',
-            description: 'Evening after-work posting',
-            traffic: 33.3,
-            metrics: {
-              impressions: 8700,
-              likes: 187,
-              comments: 31,
-              shares: 43,
-              engagementRate: 3.0,
-              clickThroughRate: 3.1,
-              conversionRate: 1.5
-            }
-          }
-        ],
-        confidence: 98.7,
-        winner: 'B',
-        significance: 'very_high',
-        daysRemaining: 0
-      },
-      {
-        id: 3,
-        name: 'Twitter Thread vs Single Tweet',
-        description: 'Testing thread format vs single tweet for thought leadership',
-        status: 'draft',
-        startDate: '2024-01-16',
-        endDate: '2024-01-23',
-        platform: 'twitter',
-        objective: 'engagement',
-        variants: [
-          {
-            id: 'A',
-            name: 'Twitter Thread',
-            type: 'thread',
-            description: '8-tweet thread on AI trends',
-            traffic: 50,
-            metrics: null
-          },
-          {
-            id: 'B',
-            name: 'Single Tweet',
-            type: 'tweet',
-            description: 'Single comprehensive tweet',
-            traffic: 50,
-            metrics: null
-          }
-        ],
-        confidence: null,
-        winner: null,
-        significance: null,
-        daysRemaining: null
-      },
-      {
-        id: 4,
-        name: 'Facebook Video vs Image Post',
-        description: 'Testing video content vs static image for product demos',
-        status: 'paused',
-        startDate: '2024-01-05',
-        endDate: '2024-01-12',
-        platform: 'facebook',
-        objective: 'conversions',
-        variants: [
-          {
-            id: 'A',
-            name: 'Product Demo Video',
-            type: 'video',
-            description: '60-second product demonstration',
-            traffic: 50,
-            metrics: {
-              impressions: 15600,
-              likes: 432,
-              comments: 89,
-              shares: 156,
-              engagementRate: 4.3,
-              clickThroughRate: 3.8,
-              conversionRate: 2.2
-            }
-          },
-          {
-            id: 'B',
-            name: 'Static Image',
-            type: 'image',
-            description: 'High-quality product screenshot',
-            traffic: 50,
-            metrics: {
-              impressions: 15200,
-              likes: 298,
-              comments: 45,
-              shares: 87,
-              engagementRate: 2.8,
-              clickThroughRate: 2.1,
-              conversionRate: 1.1
-            }
-          }
-        ],
-        confidence: 89.3,
-        winner: 'A',
-        significance: 'high',
-        daysRemaining: null
-      }
-    ],
-    templates: [
-      {
-        id: 1,
-        name: 'Content Format Test',
-        description: 'Compare different content formats (carousel, video, image)',
-        category: 'content',
-        platforms: ['instagram', 'facebook', 'linkedin'],
-        objectives: ['engagement', 'reach', 'conversions']
-      },
-      {
-        id: 2,
-        name: 'Posting Time Optimization',
-        description: 'Find optimal posting times for your audience',
-        category: 'timing',
-        platforms: ['all'],
-        objectives: ['reach', 'engagement']
-      },
-      {
-        id: 3,
-        name: 'Caption Length Test',
-        description: 'Test short vs long captions for engagement',
-        category: 'copy',
-        platforms: ['instagram', 'facebook'],
-        objectives: ['engagement', 'saves']
-      },
-      {
-        id: 4,
-        name: 'CTA Optimization',
-        description: 'Test different call-to-action phrases',
-        category: 'copy',
-        platforms: ['all'],
-        objectives: ['conversions', 'clicks']
-      },
-      {
-        id: 5,
-        name: 'Hashtag Strategy Test',
-        description: 'Compare hashtag strategies and quantities',
-        category: 'hashtags',
-        platforms: ['instagram', 'twitter'],
-        objectives: ['reach', 'discovery']
-      }
-    ],
-    insights: [
-      {
-        id: 1,
-        title: 'Carousel Posts Drive 24% Higher Engagement',
-        description: 'Multi-slide carousel posts consistently outperform single images across all platforms',
-        impact: 'high',
-        confidence: 94.2,
-        recommendation: 'Increase carousel post frequency to 60% of content mix'
-      },
-      {
-        id: 2,
-        title: 'Lunch Time Posts Perform Best on LinkedIn',
-        description: '1:00 PM EST shows 23% higher engagement than morning or evening posts',
-        impact: 'medium',
-        confidence: 98.7,
-        recommendation: 'Schedule LinkedIn posts between 12:00-2:00 PM EST'
-      },
-      {
-        id: 3,
-        title: 'Video Content Doubles Conversion Rates',
-        description: 'Product demo videos achieve 2x higher conversion rates than static images',
-        impact: 'very_high',
-        confidence: 89.3,
-        recommendation: 'Prioritize video content for product-focused posts'
-      }
-    ]
-  })
+  // Real API integration
+  const { 
+    data: abTests, 
+    isLoading: testsLoading, 
+    error: testsError,
+    refetch: refetchTests 
+  } = useABTests()
 
+  const { 
+    data: testResults, 
+    isLoading: resultsLoading, 
+    error: resultsError,
+    refetch: refetchResults 
+  } = useABTestResults({ testId: selectedExperiment?.id })
+
+  const { 
+    data: testMetrics, 
+    isLoading: metricsLoading, 
+    error: metricsError,
+    refetch: refetchMetrics 
+  } = useABTestMetrics()
+
+  const createABTestMutation = useCreateABTest()
+
+  // Combined loading state
+  const isLoading = testsLoading || resultsLoading || metricsLoading
+
+  // Combined error state
+  const hasError = testsError || resultsError || metricsError
+
+  // Refresh all data
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    try {
+      await Promise.all([
+        refetchTests(),
+        refetchResults(),
+        refetchMetrics()
+      ])
+      onDataUpdate?.()
+    } catch (error) {
+      console.error('Failed to refresh A/B testing data:', error)
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
+
+  // Auto-refresh every 2 minutes for active tests
+  useEffect(() => {
+    const interval = setInterval(handleRefresh, 2 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Handle experiment selection
+  const handleExperimentSelect = (experiment) => {
+    setSelectedExperiment(experiment)
+  }
+
+  // Handle experiment action (start, pause, stop)
+  const handleExperimentAction = async (experimentId, action) => {
+    try {
+      // API call to update experiment status
+      console.log(`${action} experiment ${experimentId}`)
+      await handleRefresh()
+    } catch (error) {
+      console.error(`Failed to ${action} experiment:`, error)
+    }
+  }
+
+  // Get status color
   const getStatusColor = (status) => {
-    switch (status) {
-      case 'running': return 'text-green-600 bg-green-100'
-      case 'completed': return 'text-blue-600 bg-blue-100'
-      case 'paused': return 'text-orange-600 bg-orange-100'
-      case 'draft': return 'text-slate-600 dark:text-slate-400 bg-slate-100'
-      default: return 'text-slate-600 dark:text-slate-400 bg-slate-100'
+    switch (status?.toLowerCase()) {
+      case 'running':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+      case 'paused':
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+      case 'completed':
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+      case 'draft':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+      default:
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
     }
   }
 
-  const getSignificanceColor = (significance) => {
-    switch (significance) {
-      case 'very_high': return 'text-green-600'
-      case 'high': return 'text-blue-600'
-      case 'medium': return 'text-orange-600'
-      case 'low': return 'text-red-600'
-      default: return 'text-slate-600 dark:text-slate-400'
+  // Get status icon
+  const getStatusIcon = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'running':
+        return Play
+      case 'paused':
+        return Pause
+      case 'completed':
+        return CheckCircle
+      case 'draft':
+        return Clock
+      default:
+        return AlertCircle
     }
   }
 
-  const getImpactColor = (impact) => {
-    switch (impact) {
-      case 'very_high': return 'text-red-600 bg-red-100'
-      case 'high': return 'text-orange-600 bg-orange-100'
-      case 'medium': return 'text-blue-600 bg-blue-100'
-      case 'low': return 'text-green-600 bg-green-100'
-      default: return 'text-slate-600 dark:text-slate-400 bg-slate-100'
-    }
+  // Format percentage
+  const formatPercentage = (num) => {
+    if (!num) return '0%'
+    return `${num.toFixed(1)}%`
   }
 
-  const formatMetric = (value, type) => {
-    if (!value) return 'N/A'
-    switch (type) {
-      case 'percentage': return `${value}%`
-      case 'number': return value.toLocaleString()
-      case 'currency': return `$${value.toFixed(2)}`
-      default: return value
-    }
+  // Format number
+  const formatNumber = (num) => {
+    if (!num) return '0'
+    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
+    return num.toString()
   }
 
-  const ExperimentCard = ({ experiment }) => (
-    <Card className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => setSelectedExperiment(experiment)}>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900">{experiment.name}</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{experiment.description}</p>
-          </div>
-          <Badge className={`text-xs ${getStatusColor(experiment.status)}`}>
-            {experiment.status}
-          </Badge>
-        </div>
+  // Calculate statistical significance
+  const calculateSignificance = (variantA, variantB) => {
+    if (!variantA || !variantB) return 0
+    // Simplified significance calculation
+    const diff = Math.abs(variantA.conversionRate - variantB.conversionRate)
+    const pooled = (variantA.conversions + variantB.conversions) / (variantA.visitors + variantB.visitors)
+    const se = Math.sqrt(pooled * (1 - pooled) * (1/variantA.visitors + 1/variantB.visitors))
+    const zScore = diff / se
+    return Math.min(99.9, (1 - 2 * (1 - 0.5 * (1 + Math.erf(zScore / Math.sqrt(2))))) * 100)
+  }
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Platform</p>
-            <p className="font-medium capitalize">{experiment.platform}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Objective</p>
-            <p className="font-medium capitalize">{experiment.objective}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Variants</p>
-            <p className="font-medium">{experiment.variants.length}</p>
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400">Duration</p>
-            <p className="font-medium">
-              {experiment.daysRemaining !== null 
-                ? experiment.daysRemaining > 0 
-                  ? `${experiment.daysRemaining} days left`
-                  : 'Completed'
-                : 'Not started'
-              }
-            </p>
-          </div>
-        </div>
+  // Error state
+  if (hasError && !isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <AlertCircle className="h-12 w-12 text-red-500" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Failed to load A/B testing data
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+          We're having trouble loading your A/B testing experiments. Please try refreshing.
+        </p>
+        <Button onClick={handleRefresh} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Try Again
+        </Button>
+      </div>
+    )
+  }
 
-        {experiment.status === 'running' || experiment.status === 'completed' ? (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Test Progress</span>
-              <span className="text-sm text-slate-600 dark:text-slate-400">
-                {experiment.confidence ? `${experiment.confidence}% confidence` : 'Collecting data...'}
-              </span>
-            </div>
-            
-            {experiment.confidence && (
-              <Progress value={experiment.confidence} className="h-2" />
-            )}
-
-            {experiment.winner && (
-              <div className="flex items-center space-x-2">
-                <Award className="h-4 w-4 text-yellow-500" />
-                <span className="text-sm font-medium">
-                  Winner: Variant {experiment.winner}
-                </span>
-                {experiment.significance && (
-                  <Badge className={`text-xs ${getSignificanceColor(experiment.significance)}`}>
-                    {experiment.significance.replace('_', ' ')} significance
-                  </Badge>
-                )}
-              </div>
-            )}
-
-            <div className="grid grid-cols-2 gap-4">
-              {experiment.variants.slice(0, 2).map((variant) => (
-                <div key={variant.id} className="p-3 bg-slate-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Variant {variant.id}</span>
-                    {experiment.winner === variant.id && (
-                      <Award className="h-4 w-4 text-yellow-500" />
-                    )}
-                  </div>
-                  {variant.metrics && (
-                    <div className="space-y-1">
-                      <div className="flex justify-between text-xs">
-                        <span>Engagement:</span>
-                        <span className="font-medium">{variant.metrics.engagementRate}%</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span>CTR:</span>
-                        <span className="font-medium">{variant.metrics.clickThroughRate}%</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-slate-600 dark:text-slate-400">
-              {experiment.status === 'draft' ? 'Ready to launch' : 'Test paused'}
-            </span>
-            <Button size="sm" variant="outline">
-              {experiment.status === 'draft' ? (
-                <>
-                  <Play className="h-4 w-4 mr-2" />
-                  Start Test
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4 mr-2" />
-                  Resume
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  )
-
-  const TemplateCard = ({ template }) => (
-    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900">{template.name}</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{template.description}</p>
-          </div>
-          <Badge className="text-xs text-blue-600 bg-blue-100">
-            {template.category}
-          </Badge>
-        </div>
-
-        <div className="space-y-3">
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Platforms</p>
-            <div className="flex flex-wrap gap-1">
-              {template.platforms.map((platform, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {platform}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Objectives</p>
-            <div className="flex flex-wrap gap-1">
-              {template.objectives.map((objective, index) => (
-                <Badge key={index} variant="outline" className="text-xs">
-                  {objective}
-                </Badge>
-              ))}
-            </div>
-          </div>
-
-          <Button className="w-full mt-4" size="sm">
-            <Plus className="h-4 w-4 mr-2" />
-            Create Test
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  )
-
-  const InsightCard = ({ insight }) => (
-    <Card>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between mb-3">
-          <div>
-            <h3 className="font-semibold text-slate-900">{insight.title}</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{insight.description}</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Badge className={`text-xs ${getImpactColor(insight.impact)}`}>
-              {insight.impact} impact
-            </Badge>
-            <span className="text-sm font-medium text-green-600">
-              {insight.confidence}% confidence
-            </span>
-          </div>
-        </div>
-        
-        <div className="p-3 bg-blue-50 rounded-lg">
-          <p className="text-sm font-medium text-blue-900">Recommendation:</p>
-          <p className="text-sm text-blue-700 mt-1">{insight.recommendation}</p>
-        </div>
-      </CardContent>
-    </Card>
-  )
+  // Loading state
+  if (isLoading && !abTests) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] space-y-4">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+          Loading A/B Testing Framework
+        </h3>
+        <p className="text-gray-600 dark:text-gray-400">
+          Fetching your experiments and results...
+        </p>
+      </div>
+    )
+  }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center">
+            <TestTube className="h-8 w-8 mr-3 text-blue-500" />
             A/B Testing Framework
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
-            Test, optimize, and improve your social media performance
+          <p className="text-gray-600 dark:text-gray-400 mt-1">
+            Design, run, and analyze experiments to optimize your content performance
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export Results
+        
+        <div className="flex items-center gap-3">
+          <Button 
+            onClick={handleRefresh} 
+            variant="outline" 
+            size="sm"
+            disabled={isRefreshing}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-          <Button size="sm">
+          
+          <Button onClick={() => setShowCreateModal(true)}>
             <Plus className="h-4 w-4 mr-2" />
             New Experiment
           </Button>
         </div>
       </div>
 
-      {/* Overview Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* Overview Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Active Tests</p>
-                <p className="text-2xl font-bold text-slate-900">
-                  {testingData.experiments.filter(exp => exp.status === 'running').length}
-                </p>
-              </div>
-              <TestTube className="h-8 w-8 text-blue-600" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Active Experiments</CardTitle>
+            <TestTube className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {testMetrics?.activeExperiments || 0}
             </div>
+            <p className="text-xs text-muted-foreground">
+              {testMetrics?.totalExperiments || 0} total experiments
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Completed Tests</p>
-                <p className="text-2xl font-bold text-slate-900">
-                  {testingData.experiments.filter(exp => exp.status === 'completed').length}
-                </p>
-              </div>
-              <CheckCircle className="h-8 w-8 text-green-600" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Avg. Lift</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatPercentage(testMetrics?.averageLift)}
             </div>
+            <p className="text-xs text-muted-foreground">
+              Across all completed tests
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Avg. Improvement</p>
-                <p className="text-2xl font-bold text-slate-900">+24%</p>
-                <p className="text-sm text-green-600">engagement rate</p>
-              </div>
-              <TrendingUp className="h-8 w-8 text-green-600" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Significant Results</CardTitle>
+            <Award className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {testMetrics?.significantResults || 0}
             </div>
+            <p className="text-xs text-muted-foreground">
+              Out of {testMetrics?.completedExperiments || 0} completed
+            </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Success Rate</p>
-                <p className="text-2xl font-bold text-slate-900">87%</p>
-                <p className="text-sm text-blue-600">significant results</p>
-              </div>
-              <Target className="h-8 w-8 text-purple-600" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Visitors</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {formatNumber(testMetrics?.totalVisitors)}
             </div>
+            <p className="text-xs text-muted-foreground">
+              Across all experiments
+            </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Tabs */}
+      {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="experiments">Experiments</TabsTrigger>
-          <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="results">Results</TabsTrigger>
           <TabsTrigger value="insights">Insights</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
 
         {/* Experiments Tab */}
         <TabsContent value="experiments" className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="relative">
-                <Search className="h-4 w-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Search experiments..."
-                  className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-              <Button variant="outline" size="sm">
-                <Filter className="h-4 w-4 mr-2" />
-                Filter
-              </Button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {testingData.experiments.map((experiment) => (
-              <ExperimentCard key={experiment.id} experiment={experiment} />
-            ))}
+          <div className="grid gap-6">
+            {abTests?.experiments?.map((experiment) => {
+              const StatusIcon = getStatusIcon(experiment.status)
+              return (
+                <motion.div
+                  key={experiment.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="cursor-pointer"
+                  onClick={() => handleExperimentSelect(experiment)}
+                >
+                  <Card className={`transition-all duration-200 hover:shadow-lg ${
+                    selectedExperiment?.id === experiment.id ? 'ring-2 ring-blue-500' : ''
+                  }`}>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <StatusIcon className="h-5 w-5 text-gray-500" />
+                          <div>
+                            <CardTitle className="text-lg">{experiment.name}</CardTitle>
+                            <CardDescription>{experiment.description}</CardDescription>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Badge className={getStatusColor(experiment.status)}>
+                            {experiment.status}
+                          </Badge>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                          <p className="text-sm text-gray-500">Platform</p>
+                          <p className="font-medium capitalize">{experiment.platform}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Objective</p>
+                          <p className="font-medium capitalize">{experiment.objective}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Duration</p>
+                          <p className="font-medium">
+                            {new Date(experiment.startDate).toLocaleDateString()} - 
+                            {new Date(experiment.endDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-500">Progress</p>
+                          <div className="flex items-center space-x-2">
+                            <Progress value={experiment.progress || 0} className="flex-1" />
+                            <span className="text-sm font-medium">{experiment.progress || 0}%</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {experiment.variants && (
+                        <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {experiment.variants.map((variant, index) => (
+                            <div key={index} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <h4 className="font-medium">{variant.name}</h4>
+                                <Badge variant="outline">{formatPercentage(variant.traffic)}</Badge>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2 text-sm">
+                                <div>
+                                  <p className="text-gray-500">Visitors</p>
+                                  <p className="font-medium">{formatNumber(variant.visitors)}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Conversions</p>
+                                  <p className="font-medium">{variant.conversions}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Rate</p>
+                                  <p className="font-medium">{formatPercentage(variant.conversionRate)}</p>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      
+                      <div className="mt-4 flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          {experiment.status === 'running' && (
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleExperimentAction(experiment.id, 'pause')
+                              }}
+                            >
+                              <Pause className="h-4 w-4 mr-1" />
+                              Pause
+                            </Button>
+                          )}
+                          {experiment.status === 'paused' && (
+                            <Button 
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleExperimentAction(experiment.id, 'resume')
+                              }}
+                            >
+                              <Play className="h-4 w-4 mr-1" />
+                              Resume
+                            </Button>
+                          )}
+                          <Button size="sm" variant="outline">
+                            <Eye className="h-4 w-4 mr-1" />
+                            View Details
+                          </Button>
+                        </div>
+                        
+                        {experiment.significance && (
+                          <div className="text-sm">
+                            <span className="text-gray-500">Significance: </span>
+                            <span className={`font-medium ${
+                              experiment.significance >= 95 ? 'text-green-600' : 
+                              experiment.significance >= 80 ? 'text-yellow-600' : 'text-gray-600'
+                            }`}>
+                              {formatPercentage(experiment.significance)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              )
+            })}
+            
+            {(!abTests?.experiments || abTests.experiments.length === 0) && (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <TestTube className="h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                    No experiments yet
+                  </h3>
+                  <p className="text-gray-500 text-center mb-4">
+                    Create your first A/B test to start optimizing your content performance.
+                  </p>
+                  <Button onClick={() => setShowCreateModal(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Your First Experiment
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
 
-        {/* Templates Tab */}
-        <TabsContent value="templates" className="space-y-6">
-          <div className="text-center py-4">
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">
-              Pre-built Test Templates
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400">
-              Start with proven test frameworks to optimize your social media performance
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {testingData.templates.map((template) => (
-              <TemplateCard key={template.id} template={template} />
-            ))}
-          </div>
+        {/* Results Tab */}
+        <TabsContent value="results" className="space-y-6">
+          {selectedExperiment ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <BarChart3 className="h-5 w-5 mr-2" />
+                  {selectedExperiment.name} - Results
+                </CardTitle>
+                <CardDescription>
+                  Detailed performance analysis and statistical significance
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {testResults?.chartData && (
+                  <div className="h-80 mb-6">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={testResults.chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="date" />
+                        <YAxis />
+                        <Tooltip />
+                        <Legend />
+                        {testResults.variants?.map((variant, index) => (
+                          <Line 
+                            key={variant.name}
+                            type="monotone" 
+                            dataKey={variant.name.toLowerCase().replace(' ', '_')}
+                            stroke={variant.color || `hsl(${index * 120}, 70%, 50%)`}
+                            strokeWidth={2}
+                            name={variant.name}
+                          />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {testResults?.variants?.map((variant, index) => (
+                    <div key={index} className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <h4 className="font-medium mb-3">{variant.name}</h4>
+                      <div className="space-y-2">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-500">Visitors</span>
+                          <span className="font-medium">{formatNumber(variant.visitors)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-500">Conversions</span>
+                          <span className="font-medium">{variant.conversions}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-500">Conversion Rate</span>
+                          <span className="font-medium">{formatPercentage(variant.conversionRate)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-sm text-gray-500">Confidence</span>
+                          <span className={`font-medium ${
+                            variant.confidence >= 95 ? 'text-green-600' : 
+                            variant.confidence >= 80 ? 'text-yellow-600' : 'text-gray-600'
+                          }`}>
+                            {formatPercentage(variant.confidence)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <BarChart3 className="h-12 w-12 text-gray-400 mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
+                  Select an experiment
+                </h3>
+                <p className="text-gray-500 text-center">
+                  Choose an experiment from the list to view detailed results and analysis.
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Insights Tab */}
         <TabsContent value="insights" className="space-y-6">
-          <div className="text-center py-4">
-            <h3 className="text-lg font-semibold text-slate-900 mb-2">
-              AI-Powered Insights
-            </h3>
-            <p className="text-slate-600 dark:text-slate-400">
-              Actionable recommendations based on your A/B test results
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            {testingData.insights.map((insight) => (
-              <InsightCard key={insight.id} insight={insight} />
-            ))}
-          </div>
-        </TabsContent>
-
-        {/* Analytics Tab */}
-        <TabsContent value="analytics" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Test Performance Over Time</CardTitle>
-                <CardDescription>Engagement improvements from A/B tests</CardDescription>
+                <CardTitle className="flex items-center">
+                  <Activity className="h-5 w-5 mr-2" />
+                  Performance Insights
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={[
-                      { month: 'Oct', baseline: 5.2, optimized: 5.2 },
-                      { month: 'Nov', baseline: 5.4, optimized: 6.1 },
-                      { month: 'Dec', baseline: 5.1, optimized: 6.8 },
-                      { month: 'Jan', baseline: 5.3, optimized: 7.4 }
-                    ]}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="month" />
-                      <YAxis />
-                      <Tooltip formatter={(value) => [`${value}%`, '']} />
-                      <Legend />
-                      <Line type="monotone" dataKey="baseline" stroke="#94A3B8" name="Baseline" />
-                      <Line type="monotone" dataKey="optimized" stroke="#3B82F6" name="Optimized" />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+              <CardContent className="space-y-4">
+                {testMetrics?.insights?.map((insight, index) => (
+                  <div key={index} className="flex items-start space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <Zap className="h-5 w-5 text-yellow-500 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white">
+                        {insight.title}
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {insight.description}
+                      </p>
+                      <Badge variant="outline" className="mt-2">
+                        {insight.category}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Test Categories</CardTitle>
-                <CardDescription>Distribution of test types</CardDescription>
+                <CardTitle className="flex items-center">
+                  <Target className="h-5 w-5 mr-2" />
+                  Recommendations
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="h-64">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: 'Content Format', value: 35, color: '#3B82F6' },
-                          { name: 'Timing', value: 25, color: '#10B981' },
-                          { name: 'Copy', value: 20, color: '#8B5CF6' },
-                          { name: 'Hashtags', value: 12, color: '#F59E0B' },
-                          { name: 'CTA', value: 8, color: '#EF4444' }
-                        ]}
-                        cx="50%"
-                        cy="50%"
-                        outerRadius={80}
-                        dataKey="value"
-                        label={({ name, value }) => `${name}: ${value}%`}
-                      >
-                        {[
-                          { name: 'Content Format', value: 35, color: '#3B82F6' },
-                          { name: 'Timing', value: 25, color: '#10B981' },
-                          { name: 'Copy', value: 20, color: '#8B5CF6' },
-                          { name: 'Hashtags', value: 12, color: '#F59E0B' },
-                          { name: 'CTA', value: 8, color: '#EF4444' }
-                        ].map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
+              <CardContent className="space-y-4">
+                {testMetrics?.recommendations?.map((rec, index) => (
+                  <div key={index} className="flex items-start space-x-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
+                    <Award className="h-5 w-5 text-blue-500 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-gray-900 dark:text-white">
+                        {rec.title}
+                      </h4>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        {rec.description}
+                      </p>
+                      <div className="flex items-center space-x-2 mt-2">
+                        <Badge variant={rec.priority === 'high' ? 'destructive' : rec.priority === 'medium' ? 'default' : 'secondary'}>
+                          {rec.priority} priority
+                        </Badge>
+                        <span className="text-xs text-gray-500">
+                          Expected lift: {formatPercentage(rec.expectedLift)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Platform Performance Comparison</CardTitle>
-              <CardDescription>A/B test success rates by platform</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={[
-                    { platform: 'Instagram', tests: 12, successful: 10, successRate: 83.3 },
-                    { platform: 'LinkedIn', tests: 8, successful: 7, successRate: 87.5 },
-                    { platform: 'Twitter', tests: 6, successful: 5, successRate: 83.3 },
-                    { platform: 'Facebook', tests: 4, successful: 4, successRate: 100 }
-                  ]}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="platform" />
-                    <YAxis />
-                    <Tooltip formatter={(value, name) => [
-                      name === 'successRate' ? `${value}%` : value,
-                      name === 'tests' ? 'Total Tests' : 
-                      name === 'successful' ? 'Successful Tests' : 'Success Rate'
-                    ]} />
-                    <Legend />
-                    <Bar dataKey="tests" fill="#94A3B8" name="Total Tests" />
-                    <Bar dataKey="successful" fill="#3B82F6" name="Successful Tests" />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>
@@ -818,4 +643,3 @@ const ABTestingFramework = ({ data, user, onDataUpdate }) => {
 }
 
 export default ABTestingFramework
-
