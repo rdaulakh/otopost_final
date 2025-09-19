@@ -1,5 +1,13 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+
+// Import cost optimizer hooks - using existing hooks
+import { 
+  useCostOptimization,
+  useCostAnalytics,
+  useBudgetRecommendations,
+  useUpdateBudget
+} from '../hooks/useCustomerApi.js'
 import { 
   DollarSign,
   TrendingUp,
