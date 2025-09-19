@@ -51,7 +51,7 @@ import {
   useUpdatePassword,
   useDeleteAccount
 } from '../hooks/useApi.js'
-import { useNotifications } from './NotificationSystem.jsx'
+import { useNotificationSystem } from './NotificationSystem.jsx'
 import { ProfileSkeleton } from './LoadingSkeletons.jsx'
 
 
@@ -59,7 +59,7 @@ const UserProfile = ({ user, onUpdateUser }) => {
   const { isDarkMode } = useTheme()
   
   // UX hooks
-  const { success, error, info } = useNotifications()
+  const { success, error, info } = useNotificationSystem()
 
   // Component state
   const [isEditing, setIsEditing] = useState(false)

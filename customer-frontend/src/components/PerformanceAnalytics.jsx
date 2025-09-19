@@ -42,7 +42,7 @@ import {
   useContentAnalytics,
   usePerformanceAnalytics
 } from '../hooks/useCustomerApi.js'
-import { useNotifications } from './NotificationSystem.jsx'
+import { useNotificationSystem } from './NotificationSystem.jsx'
 import { AnalyticsSkeleton } from './LoadingSkeletons.jsx'
 
 import {
@@ -72,7 +72,7 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
   const [selectedPlatform, setSelectedPlatform] = useState('all')
 
   // UX hooks
-  const { success, error, info } = useNotifications()
+  const { success, error, info } = useNotificationSystem()
 
   // Real API calls for analytics data
   const { 

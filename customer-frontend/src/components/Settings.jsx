@@ -71,7 +71,7 @@ import {
   useSubscriptionInfo,
   useUpdateSubscription
 } from '../hooks/useApi.js'
-import { useNotifications } from './NotificationSystem.jsx'
+import { useNotificationSystem } from './NotificationSystem.jsx'
 import { TableSkeleton } from './LoadingSkeletons.jsx'
 
 
@@ -79,7 +79,7 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
   const { isDarkMode } = useTheme()
   
   // UX hooks
-  const { success, error, info } = useNotifications()
+  const { success, error, info } = useNotificationSystem()
 
   // Component state
   const [activeTab, setActiveTab] = useState('business')
