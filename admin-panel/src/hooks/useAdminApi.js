@@ -98,7 +98,7 @@ export const useUserAnalytics = (options = {}) => {
     queryKey: ['userAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin-dashboard/user-analytics', { params: options })
+        const response = await api.get('/user-management/analytics', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -175,7 +175,7 @@ export const useUsersList = (options = {}) => {
     queryKey: ['usersList', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/admin/users', { params: options })
+        const response = await api.get('/user-management/users', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -195,7 +195,7 @@ export const useCreateUser = () => {
   return useMutation({
     mutationFn: async (userData) => {
       try {
-        const response = await api.post('/admin/users', userData)
+        const response = await api.post('/user-management/users', userData)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -216,7 +216,7 @@ export const useUpdateUser = () => {
   return useMutation({
     mutationFn: async ({ id, ...userData }) => {
       try {
-        const response = await api.put(`/admin/users/${id}`, userData)
+        const response = await api.put(`/user-management/users/${id}`, userData)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -237,7 +237,7 @@ export const useDeleteUser = () => {
   return useMutation({
     mutationFn: async (userId) => {
       try {
-        const response = await api.delete(`/admin/users/${userId}`)
+        const response = await api.delete(`/user-management/users/${userId}`)
         return response.data
       } catch (error) {
         handleApiError(error)
