@@ -71,6 +71,7 @@ app.use("/api/profile", require("./routes/profile"));
 app.use("/api/admin", require("./routes/admin"));
 app.use("/api/monitoring", require("./routes/monitoring"));
 app.use("/api/support", require("./routes/support"));
+app.use("/api/subscriptions", require("./routes/subscriptions"));
 app.use("/api/customer-analytics", require("./routes/customerAnalytics"));
 app.use("/api/ai-strategy", require("./routes/aiStrategy"));
 app.use("/api/campaigns", require("./routes/campaigns"));
