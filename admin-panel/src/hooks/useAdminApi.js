@@ -525,3 +525,97 @@ export const useAnalyticsInsights = (options = {}) => {
     retry: 2
   })
 }
+
+// ============================================================================
+// REVENUE DASHBOARD HOOKS
+// ============================================================================
+
+// Revenue Metrics
+export const useRevenueMetrics = (options = {}) => {
+  return useQuery({
+    queryKey: ['revenueMetrics', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/revenue-dashboard/metrics', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Revenue Analytics (Detailed)
+export const useDetailedRevenueAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['detailedRevenueAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/revenue-dashboard/analytics', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Subscription Analytics
+export const useSubscriptionAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['subscriptionAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/revenue-dashboard/subscriptions', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Cohort Analysis
+export const useCohortAnalysis = (options = {}) => {
+  return useQuery({
+    queryKey: ['cohortAnalysis', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/revenue-dashboard/cohorts', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 20 * 60 * 1000, // 20 minutes
+    retry: 2
+  })
+}
+
+// Revenue Forecasting
+export const useRevenueForecasting = (options = {}) => {
+  return useQuery({
+    queryKey: ['revenueForecasting', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/revenue-dashboard/forecasting', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    cacheTime: 30 * 60 * 1000, // 30 minutes
+    retry: 2
+  })
+}
