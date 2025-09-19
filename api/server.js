@@ -98,6 +98,7 @@ app.use("/api/media-library", require("./routes/mediaLibrary"));
 
 // Additional API Routes for Static Data Removal
 app.use("/api/api-configuration", require("./routes/apiConfiguration"));
+app.use("/api/security-settings", require("./routes/securitySettings"));
 
 // Error handling middleware
 // app.use(errorAuditMiddleware); // Disabled for development

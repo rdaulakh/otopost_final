@@ -1,5 +1,17 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+// Import security settings hooks
+import { 
+  useSecurityMetrics,
+  useSecurityEvents,
+  useAuditLogs,
+  useAccessControl,
+  usePrivacySettings,
+  useUpdateAccessControl,
+  useUpdatePrivacySettings,
+  useSecurityScan
+} from '../hooks/useSecuritySettings.js';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -31,33 +43,25 @@ const SecuritySettings = ({ isDarkMode = false }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
 
-  // Security Score and Metrics
-  const [securityMetrics, setSecurityMetrics] = useState({
-    overall_score: 94.5,
-    last_scan: '2024-09-16 14:30:00',
-    vulnerabilities: {
-      critical: 0,
-      high: 1,
-      medium: 3,
-      low: 7
-    },
-    compliance_status: {
-      gdpr: 'compliant',
-      soc2: 'compliant',
-      iso27001: 'in_progress',
-      ccpa: 'compliant',
-      hipaa: 'not_applicable'
-    }
-  });
+  // Real API integration for security metrics
+  const { 
+    data: securityMetrics, 
+    isLoading: metricsLoading, 
+    error: metricsError,
+    refetch: refetchMetrics 
+  } = useSecurityMetrics();
 
-  // Security Events
-  const [securityEvents, setSecurityEvents] = useState([
-    { id: 1, type: 'login_attempt', severity: 'medium', user: 'admin@company.com', ip: '192.168.1.100', timestamp: '2024-09-16 14:25:00', status: 'blocked' },
-    { id: 2, type: 'api_access', severity: 'low', user: 'api_user_123', ip: '10.0.0.50', timestamp: '2024-09-16 14:20:00', status: 'allowed' },
-    { id: 3, type: 'data_export', severity: 'high', user: 'john.doe@company.com', ip: '192.168.1.105', timestamp: '2024-09-16 14:15:00', status: 'flagged' },
-    { id: 4, type: 'password_change', severity: 'low', user: 'jane.smith@company.com', ip: '192.168.1.110', timestamp: '2024-09-16 14:10:00', status: 'completed' },
-    { id: 5, type: 'privilege_escalation', severity: 'critical', user: 'system_admin', ip: '127.0.0.1', timestamp: '2024-09-16 14:05:00', status: 'investigated' }
-  ]);
+  // Real API integration for security events
+  const [eventsPage, setEventsPage] = useState(1);
+  const [eventsFilters, setEventsFilters] = useState({});
+  const { 
+    data: securityEventsData, 
+    isLoading: eventsLoading, 
+    error: eventsError,
+    refetch: refetchEvents 
+  } = useSecurityEvents({ page: eventsPage, limit: 10, ...eventsFilters });
+  
+  const securityEvents = securityEventsData?.data || [];
 
   // Access Control Settings
   const [accessControl, setAccessControl] = useState({
@@ -85,14 +89,17 @@ const SecuritySettings = ({ isDarkMode = false }) => {
     }
   });
 
-  // Audit Logs
-  const [auditLogs, setAuditLogs] = useState([
-    { id: 1, action: 'User Login', user: 'admin@company.com', resource: 'Admin Dashboard', timestamp: '2024-09-16 14:30:00', ip: '192.168.1.100', result: 'Success' },
-    { id: 2, action: 'Data Export', user: 'john.doe@company.com', resource: 'Customer Database', timestamp: '2024-09-16 14:25:00', ip: '192.168.1.105', result: 'Success' },
-    { id: 3, action: 'Permission Change', user: 'admin@company.com', resource: 'User Management', timestamp: '2024-09-16 14:20:00', ip: '192.168.1.100', result: 'Success' },
-    { id: 4, action: 'API Key Generation', user: 'system_admin', resource: 'API Management', timestamp: '2024-09-16 14:15:00', ip: '127.0.0.1', result: 'Success' },
-    { id: 5, action: 'Failed Login', user: 'unknown@hacker.com', resource: 'Login Page', timestamp: '2024-09-16 14:10:00', ip: '203.0.113.1', result: 'Blocked' }
-  ]);
+  // Real API integration for audit logs
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditFilters, setAuditFilters] = useState({});
+  const { 
+    data: auditLogsData, 
+    isLoading: auditLoading, 
+    error: auditError,
+    refetch: refetchAuditLogs 
+  } = useAuditLogs({ page: auditPage, limit: 10, ...auditFilters });
+  
+  const auditLogs = auditLogsData?.data || [];
 
   // Data Privacy Settings
   const [privacySettings, setPrivacySettings] = useState({
