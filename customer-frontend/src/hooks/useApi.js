@@ -220,9 +220,13 @@ export const useAnalyzeAudience = () => {
   });
 };
 
-export const useAnalyzeCompetitors = () => {
-  return useMutation({
-    mutationFn: (competitorData) => apiHelpers.post(API_ENDPOINTS.AI.ANALYZE_COMPETITORS, competitorData),
+export const useAnalyzeCompetitors = (competitorName) => {
+  return useQuery({
+    queryKey: [QUERY_KEYS.AI_ANALYZE_COMPETITORS, competitorName],
+    queryFn: () => apiHelpers.post(API_ENDPOINTS.AI.ANALYZE_COMPETITORS, { competitorName }),
+    enabled: !!competitorName,
+    refetchInterval: 60000, // Auto-refresh every 60 seconds
+    select: (data) => data.data,
   });
 };
 

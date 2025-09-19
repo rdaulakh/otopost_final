@@ -1,37 +1,40 @@
 import React, { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { useAnalyzeCompetitors } from '../hooks/useApi';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { RefreshCw, Target, TrendingUp, TrendingDown, Users, MessageCircle, Share2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
 
 const CompetitorAnalysis = () => {
-  const [competitorName, setCompetitorName] = useState('');
-  const [analysisTrigger, setAnalysisTrigger] = useState(0);
+  const [competitorNameInput, setCompetitorNameInput] = useState('');
+  const [activeCompetitorName, setActiveCompetitorName] = useState('');
 
-  const { data, isLoading, isError, error, refetch } = useQuery({
-    queryKey: ['competitorAnalysis', competitorName, analysisTrigger],
-    queryFn: () => useAnalyzeCompetitors().mutationFn({ competitorName }),
-    enabled: !!competitorName && analysisTrigger > 0,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-  });
+  const { data, isLoading, isError, error, refetch } = useAnalyzeCompetitors(activeCompetitorName);
 
   const handleAnalyze = () => {
-    if (competitorName.trim()) {
-      setAnalysisTrigger(prev => prev + 1);
+    if (competitorNameInput.trim()) {
+      setActiveCompetitorName(competitorNameInput);
     }
   };
 
   const handleRefresh = () => {
-    refetch();
+    if (activeCompetitorName) {
+      refetch();
+    }
   };
+
+  useEffect(() => {
+    // Optionally, clear results if input is cleared
+    if (!competitorNameInput.trim()) {
+      setActiveCompetitorName('');
+    }
+  }, [competitorNameInput]);
 
   if (isError) {
     return (
       <div className="p-6 text-center text-red-500 dark:text-red-400">
-        Error: {error.message || 'Failed to fetch competitor analysis data.'}
+        Error: {error?.message || 'Failed to fetch competitor analysis data.'}
         <Button onClick={handleRefresh} className="ml-4">Retry</Button>
       </div>
     );
@@ -49,27 +52,27 @@ const CompetitorAnalysis = () => {
           </p>
         </div>
         <div className="flex items-center space-x-3">
-          <input
+          <Input
             type="text"
             placeholder="Enter competitor name or URL"
             className="px-4 py-2 border rounded-md dark:bg-slate-700 dark:border-slate-600 dark:text-white"
-            value={competitorName}
-            onChange={(e) => setCompetitorName(e.target.value)}
+            value={competitorNameInput}
+            onChange={(e) => setCompetitorNameInput(e.target.value)}
           />
-          <Button onClick={handleAnalyze} disabled={isLoading || !competitorName.trim()}>
+          <Button onClick={handleAnalyze} disabled={isLoading || !competitorNameInput.trim()}>
             {isLoading ? 'Analyzing...' : 'Analyze Competitor'}
           </Button>
-          <Button onClick={handleRefresh} disabled={isLoading} variant="outline" size="sm">
+          <Button onClick={handleRefresh} disabled={isLoading || !activeCompetitorName} variant="outline" size="sm">
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
         </div>
       </div>
 
-      {isLoading && (
+      {isLoading && activeCompetitorName && (
         <div className="text-center py-8">
           <RefreshCw className="h-8 w-8 animate-spin text-blue-500 mx-auto" />
-          <p className="mt-2 text-slate-600 dark:text-slate-400">Analyzing competitor data...</p>
+          <p className="mt-2 text-slate-600 dark:text-slate-400">Analyzing competitor data for {activeCompetitorName}...</p>
         </div>
       )}
 
@@ -154,7 +157,7 @@ const CompetitorAnalysis = () => {
         </div>
       )}
 
-      {!data && !isLoading && !isError && (
+      {!activeCompetitorName && !isLoading && !isError && (
         <div className="text-center py-8 text-slate-500 dark:text-slate-400">
           Enter a competitor name or URL above to start the analysis.
         </div>
