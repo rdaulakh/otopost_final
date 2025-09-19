@@ -1418,3 +1418,120 @@ export const useAnalyticsAudience = (options = {}) => {
     retry: 2
   })
 }
+
+// ============================================================================
+// STRATEGY PLANNER HOOKS
+// ============================================================================
+
+// Get All Strategies
+export const useStrategies = () => {
+  return useQuery({
+    queryKey: ['strategies'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/ai-strategy/strategies')
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Generate New Strategy
+export const useGenerateStrategy = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (strategyData) => {
+      try {
+        const response = await api.post('/ai-strategy/generate', strategyData)
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['strategies'] })
+      queryClient.invalidateQueries({ queryKey: ['strategyPerformance'] })
+    }
+  })
+}
+
+// Update Strategy
+export const useUpdateStrategy = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ strategyId, updates }) => {
+      try {
+        const response = await api.put(`/ai-strategy/strategies/${strategyId}`, updates)
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['strategies'] })
+      queryClient.invalidateQueries({ queryKey: ['strategyPerformance'] })
+    }
+  })
+}
+
+// AI Analysis
+export const useAIAnalysis = (options = {}) => {
+  return useQuery({
+    queryKey: ['aiAnalysis', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/ai-strategy/analysis', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 20 * 60 * 1000, // 20 minutes
+    retry: 2
+  })
+}
+
+// Strategy Performance
+export const useStrategyPerformance = (strategyId = null) => {
+  return useQuery({
+    queryKey: ['strategyPerformance', strategyId],
+    queryFn: async () => {
+      try {
+        const url = strategyId ? `/ai-strategy/performance/${strategyId}` : '/ai-strategy/performance'
+        const response = await api.get(url)
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    cacheTime: 8 * 60 * 1000, // 8 minutes
+    retry: 2
+  })
+}
+
+// Strategy Recommendations
+export const useStrategyRecommendations = () => {
+  return useQuery({
+    queryKey: ['strategyRecommendations'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/ai-strategy/recommendations')
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 15 * 60 * 1000, // 15 minutes
+    cacheTime: 30 * 60 * 1000, // 30 minutes
+    retry: 2
+  })
+}
