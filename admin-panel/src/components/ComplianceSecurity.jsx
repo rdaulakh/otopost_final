@@ -1,5 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+
+// Import compliance security hooks
+import { 
+  useComplianceFrameworks,
+  useSecurityEvents,
+  useComplianceMetrics,
+  useSecurityTrends,
+  useAccessControlData,
+  useUpdateComplianceFramework,
+  useCreateSecurityEvent,
+  useUpdateSecurityEvent
+} from '../hooks/useComplianceSecurity.js'
 import { 
   Shield, 
   Lock, 
@@ -44,63 +56,51 @@ const ComplianceSecurity = ({ data = {}, onDataUpdate = () => {}, isDarkMode = f
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d')
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
 
-  // Security metrics
-  const securityMetrics = {
-    securityScore: 94.5,
-    activeThreats: 0,
-    blockedAttempts: 1247,
-    vulnerabilities: 2,
-    complianceScore: 98.2,
-    dataBreaches: 0,
-    lastSecurityAudit: '2024-08-15',
-    sslCertificateExpiry: '2025-03-15'
-  }
+  // Real API integration for compliance security data
+  const { 
+    data: complianceMetrics, 
+    isLoading: metricsLoading, 
+    error: metricsError,
+    refetch: refetchMetrics 
+  } = useComplianceMetrics({ timeRange: selectedTimeRange })
 
-  // Compliance frameworks
-  const complianceFrameworks = [
-    {
-      name: 'GDPR',
-      status: 'compliant',
-      score: 98.5,
-      lastAudit: '2024-07-15',
-      requirements: 47,
-      completed: 46,
-      pending: 1,
-      description: 'General Data Protection Regulation'
-    },
-    {
-      name: 'SOC 2 Type II',
-      status: 'compliant',
-      score: 96.8,
-      lastAudit: '2024-06-20',
-      requirements: 32,
-      completed: 31,
-      pending: 1,
-      description: 'Service Organization Control 2'
-    },
-    {
-      name: 'ISO 27001',
-      status: 'in_progress',
-      score: 87.3,
-      lastAudit: '2024-05-10',
-      requirements: 114,
-      completed: 99,
-      pending: 15,
-      description: 'Information Security Management'
-    },
-    {
-      name: 'CCPA',
-      status: 'compliant',
-      score: 99.1,
-      lastAudit: '2024-08-01',
-      requirements: 23,
-      completed: 23,
-      pending: 0,
-      description: 'California Consumer Privacy Act'
-    }
-  ]
+  const { 
+    data: complianceFrameworks, 
+    isLoading: frameworksLoading, 
+    error: frameworksError,
+    refetch: refetchFrameworks 
+  } = useComplianceFrameworks()
+
+  const { 
+    data: securityEventsData, 
+    isLoading: eventsLoading, 
+    error: eventsError,
+    refetch: refetchEvents 
+  } = useSecurityEvents({ 
+    category: selectedCategory, 
+    search: searchTerm,
+    timeRange: selectedTimeRange 
+  })
+
+  const { 
+    data: securityTrendsData, 
+    isLoading: trendsLoading,
+    refetch: refetchTrends 
+  } = useSecurityTrends({ timeRange: selectedTimeRange })
+
+  const { 
+    data: accessControlData, 
+    isLoading: accessLoading,
+    refetch: refetchAccess 
+  } = useAccessControlData()
+
+  // Combined loading state
+  const isLoading = metricsLoading || frameworksLoading || eventsLoading || trendsLoading || accessLoading
+
+  // Use real API data with fallbacks
+  const securityMetrics = complianceMetrics?.metrics || {}
+  const securityEvents = securityEventsData?.events || []
 
   // Security events and audit logs
   const securityEvents = [
