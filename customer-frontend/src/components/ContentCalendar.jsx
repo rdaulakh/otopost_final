@@ -161,66 +161,7 @@ const ContentCalendar = ({ data: fallbackData, onDataUpdate }) => {
     setTimeout(() => setActionStatus(null), 5000)
   }
 
-  // Fallback to mock behavior if API is not available
-  const handlePostActionFallback = async (postId, action, feedback = null) => {
-    setIsProcessing(true)
-    setActionStatus(null)
-
-    // Simulate API call
-    setTimeout(() => {
-      // Mock update logic here
-      setActionStatus({
-        type: action === 'approved' ? 'success' : 'warning',
-        message: action === 'approved' 
-          ? 'Content approved and scheduled successfully!' 
-          : 'Content rejected. AI will create a new version.'
-      })
-        posts: prev.posts.map(post => 
-          post.id === postId 
-            ? { ...post, status: action, feedback }
-            : post
-        ),
-        approvedPosts: action === 'approved' ? prev.approvedPosts + 1 : prev.approvedPosts,
-        rejectedPosts: action === 'rejected' ? prev.rejectedPosts + 1 : prev.rejectedPosts
-      }))
-
-      setIsProcessing(false)
-      setActionStatus({
-        type: 'success',
-        message: action === 'approved' 
-          ? 'Post approved! AI will schedule it automatically.' 
-          : action === 'rejected'
-          ? 'Post rejected. AI is creating a replacement...'
-          : 'Changes requested. AI is updating the content...'
-      })
-
-      // If rejected, simulate AI creating replacement
-      if (action === 'rejected') {
-        setTimeout(() => {
-          setContentBatch(prev => ({
-            ...prev,
-            posts: prev.posts.map(post => 
-              post.id === postId 
-                ? { 
-                    ...post, 
-                    status: 'pending',
-                    title: post.title + ' (Revised)',
-                    confidenceScore: Math.min(95, post.confidenceScore + 5),
-                    aiReasoning: 'Revised based on user feedback with improved targeting and messaging'
-                  }
-                : post
-            )
-          }))
-          setActionStatus({
-            type: 'info',
-            message: 'New version ready for review! AI has incorporated your feedback.'
-          })
-        }, 3000)
-      }
-
-      setTimeout(() => setActionStatus(null), 5000)
-    }, 1500)
-  }
+  // Real API integration only - no mock fallbacks
 
   const getStatusColor = (status) => {
     switch (status) {

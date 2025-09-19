@@ -1,7 +1,7 @@
 const helmet = require('helmet');
 const hpp = require('hpp');
 const compression = require('compression');
-const { auditLogger, AUDIT_EVENTS, RISK_LEVELS } = require('./auditLogger');
+// const { auditLogger, AUDIT_EVENTS, RISK_LEVELS } = require('./auditLogger'); // Temporarily disabled
 
 // Security configuration
 const securityConfig = {
@@ -79,7 +79,7 @@ const ipFilter = (req, res, next) => {
   
   // Check blacklist
   if (blacklistedIPs.includes(clientIP)) {
-    auditLogger.logSecurityEvent(AUDIT_EVENTS.UNAUTHORIZED_ACCESS, {
+    // auditLogger.logSecurityEvent(AUDIT_EVENTS.UNAUTHORIZED_ACCESS, {
       ip: clientIP,
       reason: 'IP blacklisted',
       url: req.originalUrl
@@ -94,7 +94,7 @@ const ipFilter = (req, res, next) => {
   // Check admin whitelist for admin routes
   if (req.originalUrl.startsWith('/api/admin') && adminWhitelistIPs.length > 0) {
     if (!adminWhitelistIPs.includes(clientIP)) {
-      auditLogger.logSecurityEvent(AUDIT_EVENTS.UNAUTHORIZED_ACCESS, {
+      // auditLogger.logSecurityEvent(AUDIT_EVENTS.UNAUTHORIZED_ACCESS, {
         ip: clientIP,
         reason: 'IP not in admin whitelist',
         url: req.originalUrl
@@ -156,7 +156,7 @@ const suspiciousActivityDetector = (req, res, next) => {
     const suspiciousData = bodyCheck.found ? bodyCheck : 
                           queryCheck.found ? queryCheck : paramsCheck;
     
-    auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
+    // auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
       ip: req.ip,
       userAgent: req.get('User-Agent'),
       url: req.originalUrl,
@@ -182,7 +182,7 @@ const requestSizeLimiter = (maxSize = '10mb') => {
     const maxSizeBytes = parseSize(maxSize);
     
     if (contentLength > maxSizeBytes) {
-      auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
+      // auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
         ip: req.ip,
         reason: 'Request size too large',
         contentLength,
@@ -224,7 +224,7 @@ const userAgentValidator = (req, res, next) => {
   
   // Block requests without user agent (potential bots)
   if (!userAgent) {
-    auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
+    // auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
       ip: req.ip,
       reason: 'Missing User-Agent header',
       url: req.originalUrl
@@ -250,7 +250,7 @@ const userAgentValidator = (req, res, next) => {
   
   for (const pattern of maliciousPatterns) {
     if (pattern.test(userAgent)) {
-      auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
+      // auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
         ip: req.ip,
         reason: 'Malicious User-Agent detected',
         userAgent,
@@ -271,7 +271,7 @@ const userAgentValidator = (req, res, next) => {
 const methodValidator = (allowedMethods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']) => {
   return (req, res, next) => {
     if (!allowedMethods.includes(req.method)) {
-      auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
+      // auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
         ip: req.ip,
         reason: 'Invalid HTTP method',
         method: req.method,
@@ -304,7 +304,7 @@ const corsSecurityHeaders = (req, res, next) => {
   
   // Enhanced CORS validation
   if (origin && !allowedOrigins.includes(origin)) {
-    auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
+    // auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
       ip: req.ip,
       reason: 'Invalid CORS origin',
       origin,
@@ -329,7 +329,7 @@ const apiKeyValidator = (req, res, next) => {
   if (apiKey) {
     // Validate API key format
     if (!/^[a-zA-Z0-9]{32,64}$/.test(apiKey)) {
-      auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
+      // auditLogger.logSecurityEvent(AUDIT_EVENTS.SUSPICIOUS_ACTIVITY, {
         ip: req.ip,
         reason: 'Invalid API key format',
         url: req.originalUrl
@@ -343,7 +343,7 @@ const apiKeyValidator = (req, res, next) => {
     
     // Here you would validate the API key against your database
     // For now, we'll just log the usage
-    auditLogger.log(AUDIT_EVENTS.SYSTEM_INFO, {
+    // auditLogger.log(AUDIT_EVENTS.SYSTEM_INFO, {
       apiKeyUsed: true,
       apiKeyPrefix: apiKey.substring(0, 8) + '...',
       endpoint: req.originalUrl

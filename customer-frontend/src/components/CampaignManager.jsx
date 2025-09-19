@@ -80,95 +80,17 @@ const CampaignManager = () => {
   // Error handling
   const hasError = campaignListError
 
-  // Use real API data with fallback to mock data
-  const campaigns = campaignListData?.campaigns || [
-    {
-      id: 1,
-      name: 'SaaS Lead Generation Q4 2025',
-      platform: 'LinkedIn',
-      status: 'Active',
-      spend: 456,
-      roas: 5.2,
-      conversions: 23,
-      objective: 'Lead Generation',
-      budget: 500,
-      startDate: '2025-10-01',
-      endDate: 'Ongoing'
-    },
-    {
-      id: 2,
-      name: 'App Downloads Campaign',
-      platform: 'Meta',
-      status: 'Active',
-      spend: 234,
-      roas: 3.8,
-      conversions: 45,
-      objective: 'App Downloads',
-      budget: 300,
-      startDate: '2025-10-05',
-      endDate: '2025-11-05'
-    },
-    {
-      id: 3,
-      name: 'Brand Awareness Drive',
-      platform: 'Google',
-      status: 'Paused',
-      spend: 123,
-      roas: 2.1,
-      conversions: 8,
-      objective: 'Brand Awareness',
-      budget: 200,
-      startDate: '2025-09-15',
-      endDate: '2025-10-15'
-    },
-    {
-      id: 4,
-      name: 'Product Demo Campaign',
-      platform: 'Meta',
-      status: 'Active',
-      spend: 345,
-      roas: 4.7,
-      conversions: 34,
-      objective: 'Video Views',
-      budget: 400,
-      startDate: '2025-10-10',
-      endDate: 'Ongoing'
-    }
-  ]
+  // Use real API data only - no mock fallbacks
+  const campaigns = campaignListData?.campaigns || []
 
   const campaignStats = campaignStatsData || {
-    totalSpend: 1158,
-    totalConversions: 110,
-    averageROAS: 4.0,
-    activeCampaigns: 3
+    totalSpend: 0,
+    totalConversions: 0,
+    averageROAS: 0,
+    activeCampaigns: 0
   }
 
-  const aiRecommendations = aiRecommendationsData?.recommendations || [
-    {
-      id: 1,
-      type: 'budget',
-      priority: 'high',
-      message: 'Increase LinkedIn budget by 15% - predicted +28% lead generation',
-      action: 'Increase Budget',
-      impact: '+28% leads'
-    },
-    {
-      id: 2,
-      type: 'pause',
-      priority: 'medium',
-      message: 'Pause underperforming Google Ads campaign "Brand Awareness"',
-      action: 'Pause Campaign',
-      impact: 'Save $77/week'
-    },
-    {
-      id: 3,
-      type: 'boost',
-      priority: 'high',
-      message: 'Boost top organic post from yesterday - 89% viral potential',
-      action: 'Boost Post',
-      impact: '+340% reach'
-    }
-  ]
+  const aiRecommendations = aiRecommendationsData?.recommendations || []
 
   // Handle campaign operations
   const handleCreateCampaign = async (campaignData) => {
