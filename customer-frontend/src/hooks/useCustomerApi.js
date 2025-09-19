@@ -1324,3 +1324,97 @@ export const useCustomerSubscription = () => {
     retry: 2
   })
 }
+
+// ============================================================================
+// PERFORMANCE ANALYTICS HOOKS
+// ============================================================================
+
+// Analytics Performance (Detailed)
+export const useAnalyticsPerformance = (options = {}) => {
+  return useQuery({
+    queryKey: ['analyticsPerformance', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/customer-analytics/performance', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    cacheTime: 8 * 60 * 1000, // 8 minutes
+    retry: 2
+  })
+}
+
+// Content Analytics (Performance)
+export const useContentAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['contentAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/customer-analytics/content-performance', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// Performance Analytics (Main)
+export const usePerformanceAnalytics = (options = {}) => {
+  return useQuery({
+    queryKey: ['performanceAnalytics', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/customer-analytics/performance-overview', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    cacheTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2
+  })
+}
+
+// Engagement Analytics (Performance)
+export const useAnalyticsEngagement = (options = {}) => {
+  return useQuery({
+    queryKey: ['analyticsEngagement', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/customer-analytics/engagement', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    cacheTime: 8 * 60 * 1000, // 8 minutes
+    retry: 2
+  })
+}
+
+// Audience Analytics (Performance)
+export const useAnalyticsAudience = (options = {}) => {
+  return useQuery({
+    queryKey: ['analyticsAudience', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/customer-analytics/audience', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 20 * 60 * 1000, // 20 minutes
+    retry: 2
+  })
+}
