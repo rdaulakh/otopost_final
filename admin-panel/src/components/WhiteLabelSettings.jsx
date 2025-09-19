@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useAdminApi } from '../hooks/useAdminApi';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { handleFileUpload } from '../utils/fileUpload';
 import { Badge } from '@/components/ui/badge';
@@ -36,96 +38,325 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
   const [activeTab, setActiveTab] = useState('branding');
 
   // Branding Settings
-  const [brandingSettings, setBrandingSettings] = useState({
-    company_name: 'Your Company Name',
-    company_logo: '/api/placeholder/200/80',
-    favicon: '/api/placeholder/32/32',
-    primary_color: '#3B82F6',
-    secondary_color: '#1E40AF',
-    accent_color: '#F59E0B',
-    background_color: '#F8FAFC',
-    text_color: '#1F2937',
-    font_family: 'Inter',
+  const { get, post } = useAdminApi();
+  const queryClient = useQueryClient();
+
+  const { data: brandingSettings, isLoading: isLoadingBranding, isError: isErrorBranding, error: brandingError } = useQuery({
+    queryKey: ["whiteLabelBrandingSettings"],
+    queryFn: async () => {
+      const response = await get("/admin/settings/whitelabel/branding");
+      return response.data;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    refetchOnWindowFocus: false,
+  });
+
+  const { mutate: updateBrandingSettings } = useMutation({
+    mutationFn: async (newSettings) => {
+      const response = await post("/admin/settings/whitelabel/branding", newSettings);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["whiteLabelBrandingSettings"]);
+      setHasChanges(false);
+      setIsLoading(false);
+    },
+    onError: (error) => {
+      console.error("Failed to update branding settings:", error);
+      setIsLoading(false);
+      // Optionally, show an error message to the user
+    },
+  });
+
+  useEffect(() => {
+    if (brandingSettings) {
+      setBrandingSettingsState(brandingSettings);
+    }
+  }, [brandingSettings]);
+
+  const [brandingSettingsState, setBrandingSettingsState] = useState({
+    company_name: '',
+    company_logo: '',
+    favicon: '',
+    primary_color: '',
+    secondary_color: '',
+    accent_color: '',
+    background_color: '',
+    text_color: '',
+    font_family: '',
     custom_css: '',
-    footer_text: '© 2024 Your Company Name. All rights reserved.',
-    support_email: 'support@yourcompany.com',
-    support_phone: '+1 (555) 123-4567'
+    footer_text: '',
+    support_email: '',
+    support_phone: ''
   });
 
   // Domain Settings
-  const [domainSettings, setDomainSettings] = useState({
-    custom_domain: 'app.yourcompany.com',
-    ssl_enabled: true,
-    subdomain_prefix: 'app',
-    redirect_www: true,
-    force_https: true,
-    dns_status: 'configured'
+  const [domainSettingsState, setDomainSettingsState] = useState({
+    custom_domain: '',
+    ssl_enabled: false,
+    subdomain_prefix: '',
+    redirect_www: false,
+    force_https: false,
+    dns_status: '',
   });
+
+  const { data: domainSettings, isLoading: isLoadingDomains, isError: isErrorDomains, error: domainError } = useQuery({
+    queryKey: ["whiteLabelDomainSettings"],
+    queryFn: async () => {
+      const response = await get("/admin/settings/whitelabel/domains");
+      return response.data;
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+
+  const { mutate: updateDomainSettings } = useMutation({
+    mutationFn: async (newSettings) => {
+      const response = await post("/admin/settings/whitelabel/domains", newSettings);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["whiteLabelDomainSettings"]);
+      setHasChanges(false);
+      setIsLoading(false);
+    },
+    onError: (error) => {
+      console.error("Failed to update domain settings:", error);
+      setIsLoading(false);
+    },
+  });
+
+  useEffect(() => {
+    if (domainSettings) {
+      setDomainSettingsState(domainSettings);
+    }
+  }, [domainSettings]);
 
   // White Label Instances
-  const [instances, setInstances] = useState([
-    { 
-      id: 1, 
-      name: 'Enterprise Client A', 
-      domain: 'client-a.yourapp.com', 
-      status: 'active', 
-      users: 150, 
-      created: '2024-01-15',
-      plan: 'Enterprise',
-      custom_branding: true
+  const [instancesState, setInstancesState] = useState([]);
+
+  const { data: instances, isLoading: isLoadingInstances, isError: isErrorInstances, error: instancesError } = useQuery({
+    queryKey: ["whiteLabelInstances"],
+    queryFn: async () => {
+      const response = await get("/admin/settings/whitelabel/instances");
+      return response.data;
     },
-    { 
-      id: 2, 
-      name: 'Startup Client B', 
-      domain: 'client-b.yourapp.com', 
-      status: 'active', 
-      users: 25, 
-      created: '2024-02-20',
-      plan: 'Pro',
-      custom_branding: true
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+
+  const { mutate: createInstance } = useMutation({
+    mutationFn: async (newInstance) => {
+      const response = await post("/admin/settings/whitelabel/instances", newInstance);
+      return response.data;
     },
-    { 
-      id: 3, 
-      name: 'Agency Client C', 
-      domain: 'client-c.yourapp.com', 
-      status: 'pending', 
-      users: 0, 
-      created: '2024-03-10',
-      plan: 'Premium',
-      custom_branding: false
+    onSuccess: () => {
+      queryClient.invalidateQueries(["whiteLabelInstances"]);
+      setHasChanges(false);
+      setIsLoading(false);
+    },
+    onError: (error) => {
+      console.error("Failed to create instance:", error);
+      setIsLoading(false);
+    },
+  });
+
+  const { mutate: updateInstance } = useMutation({
+    mutationFn: async ({ id, updatedInstance }) => {
+      const response = await post(`/admin/settings/whitelabel/instances/${id}`, updatedInstance);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["whiteLabelInstances"]);
+      setHasChanges(false);
+      setIsLoading(false);
+    },
+    onError: (error) => {
+      console.error("Failed to update instance:", error);
+      setIsLoading(false);
+    },
+  });
+
+  const { mutate: deleteInstance } = useMutation({
+    mutationFn: async (id) => {
+      const response = await get(`/admin/settings/whitelabel/instances/${id}/delete`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["whiteLabelInstances"]);
+      setHasChanges(false);
+      setIsLoading(false);
+    },
+    onError: (error) => {
+      console.error("Failed to delete instance:", error);
+      setIsLoading(false);
+    },
+  });
+
+  useEffect(() => {
+    if (instances) {
+      setInstancesState(instances);
     }
-  ]);
+  }, [instances]);
 
   // Email Templates
-  const [emailTemplates, setEmailTemplates] = useState([
-    { id: 1, name: 'Welcome Email', subject: 'Welcome to {{company_name}}!', status: 'active', last_modified: '2024-09-15' },
-    { id: 2, name: 'Password Reset', subject: 'Reset your {{company_name}} password', status: 'active', last_modified: '2024-09-10' },
-    { id: 3, name: 'Invoice Notification', subject: 'Your {{company_name}} invoice is ready', status: 'active', last_modified: '2024-09-05' },
-    { id: 4, name: 'Feature Update', subject: 'New features in {{company_name}}', status: 'draft', last_modified: '2024-09-01' }
-  ]);
+  const [emailTemplatesState, setEmailTemplatesState] = useState([]);
+
+  const { data: emailTemplates, isLoading: isLoadingEmailTemplates, isError: isErrorEmailTemplates, error: emailTemplatesError } = useQuery({
+    queryKey: ["whiteLabelEmailTemplates"],
+    queryFn: async () => {
+      const response = await get("/admin/settings/whitelabel/email-templates");
+      return response.data;
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+
+  const { mutate: createEmailTemplate } = useMutation({
+    mutationFn: async (newTemplate) => {
+      const response = await post("/admin/settings/whitelabel/email-templates", newTemplate);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["whiteLabelEmailTemplates"]);
+      setHasChanges(false);
+      setIsLoading(false);
+    },
+    onError: (error) => {
+      console.error("Failed to create email template:", error);
+      setIsLoading(false);
+    },
+  });
+
+  const { mutate: updateEmailTemplate } = useMutation({
+    mutationFn: async ({ id, updatedTemplate }) => {
+      const response = await post(`/admin/settings/whitelabel/email-templates/${id}`, updatedTemplate);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["whiteLabelEmailTemplates"]);
+      setHasChanges(false);
+      setIsLoading(false);
+    },
+    onError: (error) => {
+      console.error("Failed to update email template:", error);
+      setIsLoading(false);
+    },
+  });
+
+  const { mutate: deleteEmailTemplate } = useMutation({
+    mutationFn: async (id) => {
+      const response = await get(`/admin/settings/whitelabel/email-templates/${id}/delete`);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["whiteLabelEmailTemplates"]);
+      setHasChanges(false);
+      setIsLoading(false);
+    },
+    onError: (error) => {
+      console.error("Failed to delete email template:", error);
+      setIsLoading(false);
+    },
+  });
+
+  useEffect(() => {
+    if (emailTemplates) {
+      setEmailTemplatesState(emailTemplates);
+    }
+  }, [emailTemplates]);
 
   // Feature Customization
-  const [featureCustomization, setFeatureCustomization] = useState({
-    hide_powered_by: true,
-    custom_login_page: true,
+  const [featureCustomizationState, setFeatureCustomizationState] = useState({
+    hide_powered_by: false,
+    custom_login_page: false,
     custom_dashboard: false,
-    white_label_mobile_app: true,
+    white_label_mobile_app: false,
     custom_help_docs: false,
-    branded_emails: true,
+    branded_emails: false,
     custom_onboarding: false,
-    api_whitelabeling: true
+    api_whitelabeling: false
   });
+
+  const { data: featureCustomization, isLoading: isLoadingFeatures, isError: isErrorFeatures, error: featuresError } = useQuery({
+    queryKey: ["whiteLabelFeatureCustomization"],
+    queryFn: async () => {
+      const response = await get("/admin/settings/whitelabel/features");
+      return response.data;
+    },
+    staleTime: 1000 * 60 * 5,
+    refetchOnWindowFocus: false,
+  });
+
+  const { mutate: updateFeatureCustomization } = useMutation({
+    mutationFn: async (newSettings) => {
+      const response = await post("/admin/settings/whitelabel/features", newSettings);
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["whiteLabelFeatureCustomization"]);
+      setHasChanges(false);
+      setIsLoading(false);
+    },
+    onError: (error) => {
+      console.error("Failed to update feature customization:", error);
+      setIsLoading(false);
+    },
+  });
+
+  useEffect(() => {
+    if (featureCustomization) {
+      setFeatureCustomizationState(featureCustomization);
+    }
+  }, [featureCustomization]);
 
   const handleSaveChanges = async () => {
     setIsLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    setIsLoading(false);
-    setHasChanges(false);
+    try {
+      switch (activeTab) {
+        case 'branding':
+          await updateBrandingSettings(brandingSettingsState);
+          break;
+        case 'domains':
+          await updateDomainSettings(domainSettingsState);
+          break;
+        case 'features':
+          await updateFeatureCustomization(featureCustomizationState);
+          break;
+        default:
+          console.warn("No save handler for active tab:", activeTab);
+          break;
+      }
+    } catch (error) {
+      console.error("Error saving changes:", error);
+      // Optionally, show an error message to the user
+    } finally {
+      setIsLoading(false);
+      setHasChanges(false);
+    }
   };
 
-  const handleFileUpload = (type) => {
-    // Simulate file upload
-    console.log(`Uploading ${type}...`);
+  const handleFileUpload = async (e, type, callback) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setIsLoading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("type", type); // e.g., 'logo', 'favicon'
+
+    try {
+      const response = await post("/admin/settings/whitelabel/upload-asset", formData, { headers: { 'Content-Type': 'multipart/form-data' } });
+      if (response.data && response.data.url) {
+        callback(response.data.url);
+        setHasChanges(true);
+      }
+    } catch (error) {
+      console.error("File upload failed:", error);
+      // Optionally, show an error message to the user
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getStatusColor = (status) => {
@@ -165,9 +396,9 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
               </label>
               <input
                 type="text"
-                value={brandingSettings.company_name}
+                value={brandingSettingsState.company_name}
                 onChange={(e) => {
-                  setBrandingSettings(prev => ({ ...prev, company_name: e.target.value }));
+                  setBrandingSettingsState(prev => ({ ...prev, company_name: e.target.value }));
                   setHasChanges(true);
                 }}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
@@ -183,9 +414,9 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
               </label>
               <input
                 type="email"
-                value={brandingSettings.support_email}
+                value={brandingSettingsState.support_email}
                 onChange={(e) => {
-                  setBrandingSettings(prev => ({ ...prev, support_email: e.target.value }));
+                  setBrandingSettingsState(prev => ({ ...prev, support_email: e.target.value }));
                   setHasChanges(true);
                 }}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
@@ -201,9 +432,9 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
               </label>
               <input
                 type="tel"
-                value={brandingSettings.support_phone}
+                value={brandingSettingsState.support_phone}
                 onChange={(e) => {
-                  setBrandingSettings(prev => ({ ...prev, support_phone: e.target.value }));
+                  setBrandingSettingsState(prev => ({ ...prev, support_phone: e.target.value }));
                   setHasChanges(true);
                 }}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
@@ -219,9 +450,9 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
               </label>
               <input
                 type="text"
-                value={brandingSettings.footer_text}
+                value={brandingSettingsState.footer_text}
                 onChange={(e) => {
-                  setBrandingSettings(prev => ({ ...prev, footer_text: e.target.value }));
+                  setBrandingSettingsState(prev => ({ ...prev, footer_text: e.target.value }));
                   setHasChanges(true);
                 }}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
@@ -251,11 +482,11 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
               </label>
               <div className={`border-2 border-dashed rounded-lg p-6 text-center ${isDarkMode ? 'border-slate-600 bg-slate-700/50' : 'border-gray-300'}`}>
                 <img 
-                  src={brandingSettings.company_logo} 
+                  src={brandingSettingsState.company_logo} 
                   alt="Company Logo" 
                   className="mx-auto h-16 w-auto mb-4"
                 />
-                <input type="file" id="logo-upload" className="hidden" onChange={(e) => handleFileUpload(e, (dataUrl) => setBrandingSettings(prev => ({...prev, company_logo: dataUrl})))} />
+                <input type="file" id="logo-upload" className="hidden" onChange={(e) => handleFileUpload(e, 'company_logo', (dataUrl) => setBrandingSettingsState(prev => ({...prev, company_logo: dataUrl})))} />
 <Button variant="outline" onClick={() => document.getElementById("logo-upload").click()} className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700 bg-slate-700' : ''}>
                   <Upload className="h-4 w-4 mr-2" />
                   Upload Logo
@@ -269,11 +500,11 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
               </label>
               <div className={`border-2 border-dashed rounded-lg p-6 text-center ${isDarkMode ? 'border-slate-600 bg-slate-700/50' : 'border-gray-300'}`}>
                 <img 
-                  src={brandingSettings.favicon} 
+                  src={brandingSettingsState.favicon} 
                   alt="Favicon" 
                   className="mx-auto h-8 w-8 mb-4"
                 />
-                <input type="file" id="favicon-upload" className="hidden" onChange={(e) => handleFileUpload(e, (dataUrl) => setBrandingSettings(prev => ({...prev, favicon: dataUrl})))} />
+                <input type="file" id="favicon-upload" className="hidden" onChange={(e) => handleFileUpload(e, 'favicon', (dataUrl) => setBrandingSettingsState(prev => ({...prev, favicon: dataUrl})))} />
 <Button variant="outline" onClick={() => document.getElementById("favicon-upload").click()} className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700 bg-slate-700' : ''}>
                   <Upload className="h-4 w-4 mr-2" />
                   Upload Favicon
@@ -313,7 +544,7 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
                   </label>
                   <div 
                     className="w-6 h-6 rounded border shadow-sm"
-                    style={{ backgroundColor: brandingSettings[key] }}
+                    style={{ backgroundColor: brandingSettingsState[key] }}
                   />
                 </div>
                 <p className={`text-xs mb-3 leading-relaxed ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
@@ -322,9 +553,9 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
                 <div className="flex items-center space-x-2">
                   <input
                     type="color"
-                    value={brandingSettings[key]}
+                    value={brandingSettingsState[key]}
                     onChange={(e) => {
-                      setBrandingSettings(prev => ({ ...prev, [key]: e.target.value }));
+                      setBrandingSettingsState(prev => ({ ...prev, [key]: e.target.value }));
                       setHasChanges(true);
                     }}
                     className={`w-10 h-8 border rounded cursor-pointer transition-all hover:scale-105 ${
@@ -335,9 +566,9 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
                   />
                   <input
                     type="text"
-                    value={brandingSettings[key]}
+                    value={brandingSettingsState[key]}
                     onChange={(e) => {
-                      setBrandingSettings(prev => ({ ...prev, [key]: e.target.value }));
+                      setBrandingSettingsState(prev => ({ ...prev, [key]: e.target.value }));
                       setHasChanges(true);
                     }}
                     className={`flex-1 px-3 py-2 border rounded focus:ring-2 focus:ring-blue-500 font-mono text-sm ${
@@ -369,16 +600,16 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
                 <div className="space-y-2">
                   <button 
                     className="px-3 py-2 rounded text-white text-sm font-medium transition-all hover:opacity-90"
-                    style={{ backgroundColor: brandingSettings.primary_color }}
+                    style={{ backgroundColor: brandingSettingsState.primary_color }}
                   >
                     Primary Button
                   </button>
                   <button 
                     className="px-3 py-2 rounded text-sm font-medium border transition-all hover:opacity-90"
                     style={{ 
-                      backgroundColor: brandingSettings.background_color,
-                      color: brandingSettings.text_color,
-                      borderColor: brandingSettings.primary_color
+                      backgroundColor: brandingSettingsState.background_color,
+                      color: brandingSettingsState.text_color,
+                      borderColor: brandingSettingsState.primary_color
                     }}
                   >
                     Secondary Button
@@ -493,9 +724,9 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
               </label>
               <input
                 type="text"
-                value={domainSettings.custom_domain}
+                value={domainSettingsState.custom_domain}
                 onChange={(e) => {
-                  setDomainSettings(prev => ({ ...prev, custom_domain: e.target.value }));
+                  setDomainSettingsState(prev => ({ ...prev, custom_domain: e.target.value }));
                   setHasChanges(true);
                 }}
                 className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
@@ -511,8 +742,8 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
                 DNS Status
               </label>
               <div className="flex items-center space-x-2">
-                <Badge className={getStatusColor(domainSettings.dns_status)}>
-                  {domainSettings.dns_status}
+                <Badge className={getStatusColor(domainSettingsState.dns_status)}>
+                  {domainSettingsState.dns_status}
                 </Badge>
                 <Button variant="outline" size="sm">
                   <RefreshCw className="h-4 w-4 mr-2" />
@@ -532,9 +763,9 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
                 <input
                   type="checkbox"
                   id={key}
-                  checked={domainSettings[key]}
+                  checked={domainSettingsState[key]}
                   onChange={(e) => {
-                    setDomainSettings(prev => ({ ...prev, [key]: e.target.checked }));
+                    setDomainSettingsState(prev => ({ ...prev, [key]: e.target.checked }));
                     setHasChanges(true);
                   }}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
@@ -579,7 +810,7 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {instances.map((instance) => (
+          {instancesState.map((instance) => (
             <div key={instance.id} className={`flex items-center justify-between p-4 border rounded-lg ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200'}`}>
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-2">
@@ -640,7 +871,7 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {emailTemplates.map((template) => (
+          {emailTemplatesState.map((template) => (
             <div key={template.id} className={`flex items-center justify-between p-4 border rounded-lg ${isDarkMode ? 'border-slate-700 bg-slate-800' : 'border-gray-200'}`}>
               <div className="flex-1">
                 <div className="flex items-center space-x-3 mb-1">
@@ -683,7 +914,7 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {Object.entries(featureCustomization).map(([key, enabled]) => (
+          {Object.entries(featureCustomizationState).map(([key, enabled]) => (
             <div key={key} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
               <div>
                 <h4 className={`font-medium capitalize ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
@@ -698,7 +929,7 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
                   type="checkbox"
                   checked={enabled}
                   onChange={(e) => {
-                    setFeatureCustomization(prev => ({ ...prev, [key]: e.target.checked }));
+                    setFeatureCustomizationState(prev => ({ ...prev, [key]: e.target.checked }));
                     setHasChanges(true);
                   }}
                   className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
