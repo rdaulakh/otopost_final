@@ -1535,3 +1535,119 @@ export const useStrategyRecommendations = () => {
     retry: 2
   })
 }
+
+// ============================================================================
+// AI PERFORMANCE LEARNING HOOKS
+// ============================================================================
+
+// AI Learning Insights
+export const useAILearningInsights = () => {
+  return useQuery({
+    queryKey: ['aiLearningInsights'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/ai-strategy/learning-insights')
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 15 * 60 * 1000, // 15 minutes
+    retry: 2
+  })
+}
+
+// AI Agent Performance
+export const useAIAgentPerformance = () => {
+  return useQuery({
+    queryKey: ['aiAgentPerformance'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/ai-strategy/agent-performance')
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+    retry: 2
+  })
+}
+
+// AI Learning Progress
+export const useAILearningProgress = () => {
+  return useQuery({
+    queryKey: ['aiLearningProgress'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/ai-strategy/learning-progress')
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    cacheTime: 8 * 60 * 1000, // 8 minutes
+    refetchInterval: 60 * 1000, // Refetch every minute for real-time updates
+    retry: 2
+  })
+}
+
+// AI Optimization Recommendations
+export const useAIOptimizationRecommendations = () => {
+  return useQuery({
+    queryKey: ['aiOptimizationRecommendations'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/ai-strategy/optimization-recommendations')
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 20 * 60 * 1000, // 20 minutes
+    retry: 2
+  })
+}
+
+// Implement AI Recommendation
+export const useImplementAIRecommendation = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ recommendationId, action }) => {
+      try {
+        const response = await api.post(`/ai-strategy/implement-recommendation/${recommendationId}`, { action })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['aiLearningInsights'] })
+      queryClient.invalidateQueries({ queryKey: ['aiAgentPerformance'] })
+      queryClient.invalidateQueries({ queryKey: ['aiOptimizationRecommendations'] })
+    }
+  })
+}
+
+// AI Performance Metrics
+export const useAIPerformanceMetrics = (timeRange = '30d') => {
+  return useQuery({
+    queryKey: ['aiPerformanceMetrics', timeRange],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/ai-strategy/performance-metrics', { params: { timeRange } })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 12 * 60 * 1000, // 12 minutes
+    retry: 2
+  })
+}

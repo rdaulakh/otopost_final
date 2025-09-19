@@ -21,7 +21,8 @@ import {
   RefreshCw,
   BookOpen,
   Award,
-  Activity
+  Activity,
+  Loader2
 } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.jsx'
@@ -31,11 +32,65 @@ import { Progress } from '@/components/ui/progress.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
 import { useTheme } from '../contexts/ThemeContext.jsx'
 
+// Import API hooks
+import { 
+  useAILearningInsights,
+  useAIAgentPerformance,
+  useAILearningProgress,
+  useAIOptimizationRecommendations,
+  useImplementAIRecommendation,
+  useAIPerformanceMetrics
+} from '../hooks/useCustomerApi.js'
 
 const AIPerformanceLearning = ({ data, user, onDataUpdate }) => {
   const { isDarkMode } = useTheme()
+  const [timeRange, setTimeRange] = useState('30d')
 
-  const [learningInsights, setLearningInsights] = useState([
+  // Real API integration using backend routes
+  const { 
+    data: learningInsights, 
+    isLoading: insightsLoading, 
+    error: insightsError,
+    refetch: refetchInsights 
+  } = useAILearningInsights()
+
+  const { 
+    data: agentPerformance, 
+    isLoading: performanceLoading, 
+    error: performanceError,
+    refetch: refetchPerformance 
+  } = useAIAgentPerformance()
+
+  const { 
+    data: learningProgress, 
+    isLoading: progressLoading,
+    refetch: refetchProgress 
+  } = useAILearningProgress()
+
+  const { 
+    data: optimizationRecommendations, 
+    isLoading: recommendationsLoading,
+    refetch: refetchRecommendations 
+  } = useAIOptimizationRecommendations()
+
+  const { 
+    data: performanceMetrics, 
+    isLoading: metricsLoading 
+  } = useAIPerformanceMetrics(timeRange)
+
+  const { 
+    mutate: implementRecommendation, 
+    isLoading: isImplementing 
+  } = useImplementAIRecommendation()
+
+  // Combined loading state
+  const isLoading = insightsLoading || performanceLoading || progressLoading || recommendationsLoading || metricsLoading
+
+  // Combined error state
+  const hasError = insightsError || performanceError
+
+  // Fallback data for when API is not available
+  const fallbackLearningInsights = [
     {
       id: 1,
       agent: 'Content Direction Generator',
