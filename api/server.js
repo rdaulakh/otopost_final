@@ -83,6 +83,7 @@ app.use("/api/user-management", require("./routes/userManagement"));
 app.use("/api/team-management", require("./routes/teamManagement"));
 app.use("/api/advanced-analytics", require("./routes/advancedAnalytics"));
 app.use("/api/revenue-dashboard", require("./routes/revenueDashboard"));
+app.use("/api/customer-dashboard", require("./routes/customerDashboard"));
 app.use("/api/customer-analytics", require("./routes/customerAnalytics"));
 app.use("/api/ai-strategy", require("./routes/aiStrategy"));
 app.use("/api/campaigns", require("./routes/campaigns"));

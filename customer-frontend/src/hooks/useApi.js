@@ -825,3 +825,85 @@ export const useCreateABTest = () => {
   });
 
 };
+
+// ============================================================================
+// DASHBOARD COMPATIBILITY HOOKS
+// ============================================================================
+
+// Social Profiles
+export const useSocialProfiles = () => {
+  return useQuery({
+    queryKey: ['socialProfiles'],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-dashboard/social-profiles')
+        return response.data
+      } catch (error) {
+        console.error('Social profiles error:', error)
+        throw error
+      }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 20 * 60 * 1000, // 20 minutes
+    retry: 2
+  })
+}
+
+// Analytics Overview (alias for dashboard compatibility)
+export const useAnalyticsOverview = (timeRange = '7d') => {
+  return useQuery({
+    queryKey: ['analyticsOverview', timeRange],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-dashboard/analytics', { params: { timeRange } })
+        return response.data
+      } catch (error) {
+        console.error('Analytics overview error:', error)
+        throw error
+      }
+    },
+    staleTime: 3 * 60 * 1000, // 3 minutes
+    cacheTime: 8 * 60 * 1000, // 8 minutes
+    retry: 2
+  })
+}
+
+// Content List (alias for dashboard compatibility)
+export const useContentList = (options = {}) => {
+  return useQuery({
+    queryKey: ['contentList', options],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-dashboard/content', { params: options })
+        return response.data
+      } catch (error) {
+        console.error('Content list error:', error)
+        throw error
+      }
+    },
+    staleTime: 1 * 60 * 1000, // 1 minute
+    cacheTime: 3 * 60 * 1000, // 3 minutes
+    keepPreviousData: true,
+    retry: 2
+  })
+}
+
+// AI Agents (alias for dashboard compatibility)
+export const useAIAgents = () => {
+  return useQuery({
+    queryKey: ['aiAgents'],
+    queryFn: async () => {
+      try {
+        const response = await apiHelpers.get('/customer-dashboard/ai-agents')
+        return response.data
+      } catch (error) {
+        console.error('AI agents error:', error)
+        throw error
+      }
+    },
+    staleTime: 30 * 1000, // 30 seconds
+    cacheTime: 2 * 60 * 1000, // 2 minutes
+    refetchInterval: 60 * 1000, // Refetch every minute for real-time updates
+    retry: 2
+  })
+}
