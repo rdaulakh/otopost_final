@@ -96,6 +96,9 @@ app.use("/api/payments", require("./routes/payments"));
 app.use("/api/upload", require("./routes/upload"));
 app.use("/api/media-library", require("./routes/mediaLibrary"));
 
+// Additional API Routes for Static Data Removal
+app.use("/api/api-configuration", require("./routes/apiConfiguration"));
+
 // Error handling middleware
 // app.use(errorAuditMiddleware); // Disabled for development
 
