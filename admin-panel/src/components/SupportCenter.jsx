@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react'
-import { motion } from 'framer-motion'
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import { 
   MessageSquare, 
   Users, 
@@ -29,190 +29,69 @@ import {
   MessageCircle,
   HeadphonesIcon,
   Zap
-} from 'lucide-react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
-import { format } from 'date-fns'
+} from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { LineChart, Line, AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { format } from 'date-fns';
+import useSupportCenter from '../hooks/useSupportCenter';
 
 const SupportCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false }) => {
-  const [selectedFilter, setSelectedFilter] = useState('all')
-  const [selectedPriority, setSelectedPriority] = useState('all')
-  const [searchTerm, setSearchTerm] = useState('')
-  const [selectedTicket, setSelectedTicket] = useState(null)
-  const [sortBy, setSortBy] = useState('created_at')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const {
+    supportMetrics,
+    tickets,
+    supportTeam,
+    analytics,
+    selectedTicket,
+    loading,
+    error,
+    fetchTickets,
+    fetchTicketDetails,
+    updateTicket,
+    addMessage,
+    refreshAllData,
+    setSelectedTicket
+  } = useSupportCenter();
 
-  // Support metrics
-  const supportMetrics = {
-    totalTickets: 1247,
-    openTickets: 23,
-    resolvedToday: 45,
-    avgResponseTime: '2.3 hours',
-    avgResolutionTime: '18.5 hours',
-    customerSatisfaction: 4.7,
-    firstResponseRate: 94.2,
-    resolutionRate: 87.5
-  }
+  const [selectedFilter, setSelectedFilter] = useState('all');
+  const [selectedPriority, setSelectedPriority] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [selectedTimeRange, setSelectedTimeRange] = useState('7d');
+  const [pagination, setPagination] = useState({ current: 1, pages: 1, total: 0, limit: 20 });
+  const [lastRefresh, setLastRefresh] = useState(new Date());
 
-  // Mock ticket data
-  const tickets = [
-    {
-      id: 'TKT-001',
-      subject: 'Unable to connect Instagram account',
-      customer: {
-        name: 'Sarah Johnson',
-        email: 'sarah@techstart.com',
-        plan: 'Premium',
-        avatar: '/api/placeholder/40/40'
-      },
-      status: 'open',
-      priority: 'high',
-      category: 'technical',
-      assignee: 'John Smith',
-      created_at: '2024-09-15T14:30:00Z',
-      updated_at: '2024-09-15T16:45:00Z',
-      messages: 3,
-      tags: ['instagram', 'connection', 'api'],
-      satisfaction: null
-    },
-    {
-      id: 'TKT-002',
-      subject: 'Billing question about Pro plan upgrade',
-      customer: {
-        name: 'Michael Chen',
-        email: 'michael@growthco.io',
-        plan: 'Pro',
-        avatar: '/api/placeholder/40/40'
-      },
-      status: 'pending',
-      priority: 'medium',
-      category: 'billing',
-      assignee: 'Lisa Wang',
-      created_at: '2024-09-15T10:15:00Z',
-      updated_at: '2024-09-15T12:30:00Z',
-      messages: 5,
-      tags: ['billing', 'upgrade', 'pro-plan'],
-      satisfaction: null
-    },
-    {
-      id: 'TKT-003',
-      subject: 'Feature request: Bulk post scheduling',
-      customer: {
-        name: 'Emily Rodriguez',
-        email: 'emily@digitalagency.com',
-        plan: 'Premium',
-        avatar: '/api/placeholder/40/40'
-      },
-      status: 'resolved',
-      priority: 'low',
-      category: 'feature_request',
-      assignee: 'David Kim',
-      created_at: '2024-09-14T16:20:00Z',
-      updated_at: '2024-09-15T09:15:00Z',
-      messages: 8,
-      tags: ['feature-request', 'scheduling', 'bulk'],
-      satisfaction: 5
-    },
-    {
-      id: 'TKT-004',
-      subject: 'AI content generation not working',
-      customer: {
-        name: 'James Wilson',
-        email: 'james@consulting.biz',
-        plan: 'Pro',
-        avatar: '/api/placeholder/40/40'
-      },
-      status: 'in_progress',
-      priority: 'high',
-      category: 'technical',
-      assignee: 'John Smith',
-      created_at: '2024-09-15T08:45:00Z',
-      updated_at: '2024-09-15T11:20:00Z',
-      messages: 12,
-      tags: ['ai', 'content-generation', 'bug'],
-      satisfaction: null
-    },
-    {
-      id: 'TKT-005',
-      subject: 'Account deletion request',
-      customer: {
-        name: 'Lisa Wang',
-        email: 'lisa@ecommerce.shop',
-        plan: 'Starter',
-        avatar: '/api/placeholder/40/40'
-      },
-      status: 'closed',
-      priority: 'medium',
-      category: 'account',
-      assignee: 'Lisa Wang',
-      created_at: '2024-09-13T14:10:00Z',
-      updated_at: '2024-09-14T16:30:00Z',
-      messages: 6,
-      tags: ['account', 'deletion', 'gdpr'],
-      satisfaction: 4
-    }
-  ]
+  // Load initial data
+  useEffect(() => {
+    refreshAllData(selectedTimeRange);
+    setLastRefresh(new Date());
+  }, [refreshAllData, selectedTimeRange]);
 
-  // Support team members
-  const supportTeam = [
-    {
-      name: 'John Smith',
-      role: 'Senior Support Engineer',
-      avatar: '/api/placeholder/40/40',
-      activeTickets: 8,
-      resolvedToday: 12,
-      avgRating: 4.8,
-      status: 'online'
-    },
-    {
-      name: 'Lisa Wang',
-      role: 'Support Specialist',
-      avatar: '/api/placeholder/40/40',
-      activeTickets: 5,
-      resolvedToday: 9,
-      avgRating: 4.6,
-      status: 'online'
-    },
-    {
-      name: 'David Kim',
-      role: 'Technical Support',
-      avatar: '/api/placeholder/40/40',
-      activeTickets: 3,
-      resolvedToday: 7,
-      avgRating: 4.9,
-      status: 'away'
-    }
-  ]
+  // Fetch tickets when filters change
+  useEffect(() => {
+    const filters = {
+      page: pagination.current,
+      limit: pagination.limit,
+      status: selectedFilter,
+      priority: selectedPriority,
+      search: searchTerm,
+      sortBy,
+      sortOrder
+    };
 
-  // Support analytics data
-  const ticketVolumeData = [
-    { date: '2024-09-09', tickets: 45, resolved: 42 },
-    { date: '2024-09-10', tickets: 52, resolved: 48 },
-    { date: '2024-09-11', tickets: 38, resolved: 41 },
-    { date: '2024-09-12', tickets: 61, resolved: 55 },
-    { date: '2024-09-13', tickets: 47, resolved: 49 },
-    { date: '2024-09-14', tickets: 55, resolved: 52 },
-    { date: '2024-09-15', tickets: 43, resolved: 45 }
-  ]
+    fetchTickets(filters).then((result) => {
+      if (result && result.pagination) {
+        setPagination(result.pagination);
+      }
+    });
+  }, [selectedFilter, selectedPriority, searchTerm, sortBy, sortOrder, pagination.current, fetchTickets]);
 
-  const categoryDistribution = [
-    { name: 'Technical', value: 45, color: '#3B82F6' },
-    { name: 'Billing', value: 25, color: '#10B981' },
-    { name: 'Feature Request', value: 15, color: '#8B5CF6' },
-    { name: 'Account', value: 10, color: '#F59E0B' },
-    { name: 'Other', value: 5, color: '#6B7280' }
-  ]
-
-  const responseTimeData = [
-    { hour: '00:00', avgTime: 3.2 },
-    { hour: '04:00', avgTime: 2.8 },
-    { hour: '08:00', avgTime: 1.5 },
-    { hour: '12:00', avgTime: 2.1 },
-    { hour: '16:00', avgTime: 1.8 },
-    { hour: '20:00', avgTime: 2.5 }
-  ]
+  const handleManualRefresh = async () => {
+    await refreshAllData(selectedTimeRange);
+    setLastRefresh(new Date());
+  };
 
   const statusOptions = [
     { id: 'open', name: 'Open', color: 'bg-blue-100 text-blue-800', icon: MessageCircle },
@@ -220,14 +99,14 @@ const SupportCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false 
     { id: 'pending', name: 'Pending', color: 'bg-orange-100 text-orange-800', icon: AlertCircle },
     { id: 'resolved', name: 'Resolved', color: 'bg-green-100 text-green-800', icon: CheckCircle },
     { id: 'closed', name: 'Closed', color: 'bg-gray-100 text-gray-800', icon: XCircle }
-  ]
+  ];
 
   const priorityOptions = [
     { id: 'low', name: 'Low', color: 'bg-gray-100 text-gray-800' },
     { id: 'medium', name: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
     { id: 'high', name: 'High', color: 'bg-red-100 text-red-800' },
     { id: 'urgent', name: 'Urgent', color: 'bg-red-200 text-red-900' }
-  ]
+  ];
 
   const categoryOptions = [
     { id: 'technical', name: 'Technical', icon: Zap },
@@ -235,109 +114,97 @@ const SupportCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false 
     { id: 'feature_request', name: 'Feature Request', icon: Star },
     { id: 'account', name: 'Account', icon: Users },
     { id: 'other', name: 'Other', icon: MoreHorizontal }
-  ]
+  ];
 
   const filterOptions = [
-    { id: 'all', name: 'All Tickets', count: tickets.length },
-    { id: 'open', name: 'Open', count: tickets.filter(t => t.status === 'open').length },
-    { id: 'in_progress', name: 'In Progress', count: tickets.filter(t => t.status === 'in_progress').length },
-    { id: 'pending', name: 'Pending', count: tickets.filter(t => t.status === 'pending').length },
-    { id: 'resolved', name: 'Resolved', count: tickets.filter(t => t.status === 'resolved').length }
-  ]
-
-  // Filter and sort tickets
-  const filteredTickets = useMemo(() => {
-    let filtered = tickets.filter(ticket => {
-      const matchesSearch = ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           ticket.customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           ticket.customer.email.toLowerCase().includes(searchTerm.toLowerCase())
-      
-      const matchesFilter = selectedFilter === 'all' || ticket.status === selectedFilter
-      const matchesPriority = selectedPriority === 'all' || ticket.priority === selectedPriority
-      
-      return matchesSearch && matchesFilter && matchesPriority
-    })
-
-    // Sort tickets
-    filtered.sort((a, b) => {
-      let aValue = a[sortBy]
-      let bValue = b[sortBy]
-      
-      if (sortBy === 'created_at' || sortBy === 'updated_at') {
-        aValue = new Date(aValue)
-        bValue = new Date(bValue)
-      }
-      
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1
-      } else {
-        return aValue < bValue ? 1 : -1
-      }
-    })
-
-    return filtered
-  }, [tickets, searchTerm, selectedFilter, selectedPriority, sortBy, sortOrder])
+    { id: 'all', name: 'All Tickets', count: supportMetrics.tickets.totalTickets },
+    { id: 'open', name: 'Open', count: supportMetrics.tickets.openTickets },
+    { id: 'in_progress', name: 'In Progress', count: supportMetrics.tickets.inProgressTickets },
+    { id: 'pending', name: 'Pending', count: supportMetrics.tickets.pendingTickets },
+    { id: 'resolved', name: 'Resolved', count: supportMetrics.tickets.closedTickets }
+  ];
 
   const getStatusBadge = (status) => {
-    const statusConfig = statusOptions.find(s => s.id === status)
-    const Icon = statusConfig?.icon || MessageCircle
+    const statusConfig = statusOptions.find(s => s.id === status);
+    const Icon = statusConfig?.icon || MessageCircle;
     
-    // Dark mode badge colors
     const getDarkModeColor = (status) => {
       switch (status) {
-        case 'open': return 'bg-blue-600 text-white'
-        case 'in_progress': return 'bg-yellow-600 text-white'
-        case 'pending': return 'bg-orange-600 text-white'
-        case 'resolved': return 'bg-green-600 text-white'
-        case 'closed': return 'bg-gray-600 text-white'
-        default: return 'bg-gray-600 text-white'
+        case 'open': return 'bg-blue-600 text-white';
+        case 'in_progress': return 'bg-yellow-600 text-white';
+        case 'pending': return 'bg-orange-600 text-white';
+        case 'resolved': return 'bg-green-600 text-white';
+        case 'closed': return 'bg-gray-600 text-white';
+        default: return 'bg-gray-600 text-white';
       }
-    }
+    };
     
     return (
       <Badge className={isDarkMode ? getDarkModeColor(status) : (statusConfig?.color || 'bg-gray-100 text-gray-800')}>
         <Icon className="h-3 w-3 mr-1" />
         {statusConfig?.name || status}
       </Badge>
-    )
-  }
+    );
+  };
 
   const getPriorityBadge = (priority) => {
-    const priorityConfig = priorityOptions.find(p => p.id === priority)
+    const priorityConfig = priorityOptions.find(p => p.id === priority);
     
-    // Dark mode badge colors
     const getDarkModeColor = (priority) => {
       switch (priority) {
-        case 'low': return 'bg-gray-600 text-white'
-        case 'medium': return 'bg-yellow-600 text-white'
-        case 'high': return 'bg-red-600 text-white'
-        case 'urgent': return 'bg-red-700 text-white'
-        default: return 'bg-gray-600 text-white'
+        case 'low': return 'bg-gray-600 text-white';
+        case 'medium': return 'bg-yellow-600 text-white';
+        case 'high': return 'bg-red-600 text-white';
+        case 'urgent': return 'bg-red-700 text-white';
+        default: return 'bg-gray-600 text-white';
       }
-    }
+    };
     
     return (
       <Badge className={isDarkMode ? getDarkModeColor(priority) : (priorityConfig?.color || 'bg-gray-100 text-gray-800')}>
         {priorityConfig?.name || priority}
       </Badge>
-    )
-  }
+    );
+  };
 
   const getCategoryIcon = (category) => {
-    const categoryConfig = categoryOptions.find(c => c.id === category)
-    const Icon = categoryConfig?.icon || MoreHorizontal
-    return <Icon className="h-4 w-4" />
-  }
+    const categoryConfig = categoryOptions.find(c => c.id === category);
+    const Icon = categoryConfig?.icon || MoreHorizontal;
+    return <Icon className="h-4 w-4" />;
+  };
 
   const getTimeSince = (date) => {
-    const now = new Date()
-    const then = new Date(date)
-    const diffInHours = Math.floor((now - then) / (1000 * 60 * 60))
+    const now = new Date();
+    const then = new Date(date);
+    const diffInHours = Math.floor((now - then) / (1000 * 60 * 60));
     
-    if (diffInHours < 1) return 'Just now'
-    if (diffInHours < 24) return `${diffInHours}h ago`
-    return `${Math.floor(diffInHours / 24)}d ago`
-  }
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    return `${Math.floor(diffInHours / 24)}d ago`;
+  };
+
+  const handleTicketClick = async (ticket) => {
+    await fetchTicketDetails(ticket.id);
+  };
+
+  const handleStatusUpdate = async (ticketId, newStatus) => {
+    try {
+      await updateTicket(ticketId, { status: newStatus });
+      // Refresh tickets list
+      const filters = {
+        page: pagination.current,
+        limit: pagination.limit,
+        status: selectedFilter,
+        priority: selectedPriority,
+        search: searchTerm,
+        sortBy,
+        sortOrder
+      };
+      await fetchTickets(filters);
+    } catch (error) {
+      console.error('Failed to update ticket status:', error);
+    }
+  };
 
   return (
     <div className={`min-h-screen p-6 transition-colors duration-300 ${
@@ -353,8 +220,36 @@ const SupportCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false 
             <p className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
               Customer support tickets, team management, and analytics
             </p>
+            {error && (
+              <div className="mt-2 text-sm text-red-600 bg-red-50 px-3 py-1 rounded">
+                API Error: {error} (Showing fallback data)
+              </div>
+            )}
           </div>
           <div className="flex items-center space-x-3">
+            <div className="text-xs text-gray-500">
+              Last updated: {lastRefresh.toLocaleTimeString()}
+            </div>
+            
+            <button
+              onClick={handleManualRefresh}
+              disabled={loading}
+              className="p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+              title="Manual refresh"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+            
+            <select
+              value={selectedTimeRange}
+              onChange={(e) => setSelectedTimeRange(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="24h">24 Hours</option>
+              <option value="7d">7 Days</option>
+              <option value="30d">30 Days</option>
+            </select>
+            
             <Button variant='outline' size='sm' className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700 bg-slate-700' : ''}>
               <Download className='h-4 w-4 mr-2' />
               Export
@@ -373,12 +268,17 @@ const SupportCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false 
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
           >
-            <Card className={`hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+            <Card className={`hover:shadow-lg transition-shadow relative ${isDarkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+              {loading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
+                  <RefreshCw className="h-5 w-5 animate-spin text-blue-500" />
+                </div>
+              )}
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Open Tickets</p>
-                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{supportMetrics.openTickets}</p>
+                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{supportMetrics.tickets.openTickets}</p>
                   </div>
                   <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-blue-900/30' : 'bg-blue-50'}`}>
                     <MessageSquare className={`h-5 w-5 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
@@ -386,7 +286,7 @@ const SupportCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false 
                 </div>
                 <div className="flex items-center mt-2">
                   <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {supportMetrics.totalTickets} total tickets
+                    {supportMetrics.tickets.totalTickets} total tickets
                   </span>
                 </div>
               </CardContent>
@@ -398,20 +298,26 @@ const SupportCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false 
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card className={`hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+            <Card className={`hover:shadow-lg transition-shadow relative ${isDarkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+              {loading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
+                  <RefreshCw className="h-5 w-5 animate-spin text-blue-500" />
+                </div>
+              )}
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Avg Response Time</p>
-                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{supportMetrics.avgResponseTime}</p>
+                    <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Resolved Today</p>
+                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{supportMetrics.tickets.resolvedToday}</p>
                   </div>
                   <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-green-900/30' : 'bg-green-50'}`}>
-                    <Clock className={`h-5 w-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                    <CheckCircle className={`h-5 w-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                   </div>
                 </div>
                 <div className="flex items-center mt-2">
-                  <span className={`text-sm font-medium ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
-                    {supportMetrics.firstResponseRate}% first response rate
+                  <TrendingUp className={`h-4 w-4 mr-1 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                  <span className={`text-sm ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                    +{supportMetrics.trends.resolutionImprovement}% from yesterday
                   </span>
                 </div>
               </CardContent>
@@ -423,20 +329,25 @@ const SupportCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false 
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <Card className={`hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+            <Card className={`hover:shadow-lg transition-shadow relative ${isDarkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+              {loading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
+                  <RefreshCw className="h-5 w-5 animate-spin text-blue-500" />
+                </div>
+              )}
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Resolution Rate</p>
-                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{supportMetrics.resolutionRate}%</p>
+                    <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Avg Response Time</p>
+                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{supportMetrics.performance.avgResponseTime}</p>
                   </div>
-                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-purple-900/30' : 'bg-purple-50'}`}>
-                    <CheckCircle className={`h-5 w-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
+                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-orange-900/30' : 'bg-orange-50'}`}>
+                    <Clock className={`h-5 w-5 ${isDarkMode ? 'text-orange-400' : 'text-orange-600'}`} />
                   </div>
                 </div>
                 <div className="flex items-center mt-2">
                   <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    {supportMetrics.resolvedToday} resolved today
+                    Target: &lt; 4 hours
                   </span>
                 </div>
               </CardContent>
@@ -448,185 +359,317 @@ const SupportCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false 
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <Card className={`hover:shadow-lg transition-shadow ${isDarkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+            <Card className={`hover:shadow-lg transition-shadow relative ${isDarkMode ? 'bg-slate-800 border-slate-700' : ''}`}>
+              {loading && (
+                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
+                  <RefreshCw className="h-5 w-5 animate-spin text-blue-500" />
+                </div>
+              )}
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Customer Satisfaction</p>
-                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{supportMetrics.customerSatisfaction}/5</p>
+                    <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Satisfaction</p>
+                    <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{supportMetrics.performance.customerSatisfaction}/5</p>
                   </div>
-                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-yellow-900/30' : 'bg-yellow-50'}`}>
-                    <Star className={`h-5 w-5 ${isDarkMode ? 'text-yellow-400' : 'text-yellow-600'}`} />
+                  <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-purple-900/30' : 'bg-purple-50'}`}>
+                    <Star className={`h-5 w-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                   </div>
                 </div>
                 <div className="flex items-center mt-2">
-                  <div className="flex">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <Star
-                        key={star}
-                        className={`h-3 w-3 ${
-                          star <= supportMetrics.customerSatisfaction
-                            ? 'text-yellow-400 fill-current'
-                            : 'text-gray-300'
-                        }`}
-                      />
-                    ))}
-                  </div>
+                  <TrendingUp className={`h-4 w-4 mr-1 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
+                  <span className={`text-sm ${isDarkMode ? 'text-green-400' : 'text-green-600'}`}>
+                    +{supportMetrics.trends.satisfactionTrend}% this month
+                  </span>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
         </div>
 
-        {/* Analytics Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Ticket Volume */}
-          <Card className={isDarkMode ? 'bg-slate-800 border-slate-700' : ''}>
-            <CardHeader>
-              <CardTitle className={isDarkMode ? 'text-white' : 'text-gray-900'}>Ticket Volume</CardTitle>
-              <CardDescription className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>Daily ticket creation and resolution</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <AreaChart data={ticketVolumeData}>
-                  <CartesianGrid 
-                    strokeDasharray="3 3" 
-                    stroke={isDarkMode ? "#374151" : "#e5e7eb"} 
-                  />
-                  <XAxis 
-                    dataKey="date" 
-                    tick={{ fill: isDarkMode ? "#ffffff" : "#374151" }}
-                    axisLine={{ stroke: isDarkMode ? "#374151" : "#e5e7eb" }}
-                  />
-                  <YAxis 
-                    tick={{ fill: isDarkMode ? "#ffffff" : "#374151" }}
-                    axisLine={{ stroke: isDarkMode ? "#374151" : "#e5e7eb" }}
-                  />
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: isDarkMode ? "#ffffff" : "#ffffff",
-                      border: isDarkMode ? "1px solid #e5e7eb" : "1px solid #e5e7eb",
-                      borderRadius: "8px",
-                      color: isDarkMode ? "#000000" : "#374151"
-                    }}
-                    labelStyle={{ color: isDarkMode ? "#000000" : "#374151" }}
-                  />
-                  <Legend />
-                  <Area 
-                    type="monotone" 
-                    dataKey="tickets" 
-                    stackId="1"
-                    stroke="#3B82F6" 
-                    fill="#3B82F6"
-                    fillOpacity={0.6}
-                    name="Created"
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="resolved" 
-                    stackId="2"
-                    stroke="#10B981" 
-                    fill="#10B981"
-                    fillOpacity={0.6}
-                    name="Resolved"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Category Distribution */}
-          <Card className={isDarkMode ? 'bg-slate-800 border-slate-700' : ''}>
-            <CardHeader>
-              <CardTitle className={isDarkMode ? 'text-white' : 'text-gray-900'}>Ticket Categories</CardTitle>
-              <CardDescription className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>Distribution by category type</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <PieChart>
-                  <Pie
-                    data={categoryDistribution}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {categoryDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{
-                      backgroundColor: isDarkMode ? "#ffffff" : "#ffffff",
-                      border: isDarkMode ? "1px solid #e5e7eb" : "1px solid #e5e7eb",
-                      borderRadius: "8px",
-                      color: isDarkMode ? "#000000" : "#374151"
-                    }}
-                    labelStyle={{ color: isDarkMode ? "#000000" : "#374151" }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="mt-4 space-y-2">
-                {categoryDistribution.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{item.name}</span>
-                    </div>
-                    <span className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{item.value}%</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+        {/* Filters and Search */}
+        <div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
+          <div className="flex flex-wrap gap-2">
+            {filterOptions.map((filter) => (
+              <button
+                key={filter.id}
+                onClick={() => setSelectedFilter(filter.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selectedFilter === filter.id
+                    ? isDarkMode 
+                      ? 'bg-blue-600 text-white' 
+                      : 'bg-blue-100 text-blue-700'
+                    : isDarkMode
+                      ? 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {filter.name} ({filter.count})
+              </button>
+            ))}
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <input
+                type="text"
+                placeholder="Search tickets..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`pl-10 pr-4 py-2 border rounded-lg text-sm ${
+                  isDarkMode 
+                    ? 'bg-slate-700 border-slate-600 text-white placeholder-slate-400' 
+                    : 'bg-white border-gray-300 text-gray-900 placeholder-gray-500'
+                }`}
+              />
+            </div>
+            
+            <select
+              value={selectedPriority}
+              onChange={(e) => setSelectedPriority(e.target.value)}
+              className={`px-3 py-2 border rounded-lg text-sm ${
+                isDarkMode 
+                  ? 'bg-slate-700 border-slate-600 text-white' 
+                  : 'bg-white border-gray-300 text-gray-900'
+              }`}
+            >
+              <option value="all">All Priorities</option>
+              {priorityOptions.map((priority) => (
+                <option key={priority.id} value={priority.id}>
+                  {priority.name}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
+
+        {/* Tickets Table */}
+        <Card className={isDarkMode ? 'bg-slate-800 border-slate-700' : ''}>
+          <CardHeader>
+            <CardTitle className={isDarkMode ? 'text-white' : ''}>Support Tickets</CardTitle>
+            <CardDescription className={isDarkMode ? 'text-slate-400' : ''}>
+              Manage and track customer support requests
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className={`border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-200'}`}>
+                    <th className={`text-left py-3 px-4 font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>Ticket</th>
+                    <th className={`text-left py-3 px-4 font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>Customer</th>
+                    <th className={`text-left py-3 px-4 font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>Status</th>
+                    <th className={`text-left py-3 px-4 font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>Priority</th>
+                    <th className={`text-left py-3 px-4 font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>Assignee</th>
+                    <th className={`text-left py-3 px-4 font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>Updated</th>
+                    <th className={`text-left py-3 px-4 font-medium ${isDarkMode ? 'text-slate-300' : 'text-gray-600'}`}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tickets.length > 0 ? (
+                    tickets.map((ticket) => (
+                      <tr 
+                        key={ticket.id} 
+                        className={`border-b hover:bg-opacity-50 cursor-pointer ${
+                          isDarkMode 
+                            ? 'border-slate-700 hover:bg-slate-700' 
+                            : 'border-gray-100 hover:bg-gray-50'
+                        }`}
+                        onClick={() => handleTicketClick(ticket)}
+                      >
+                        <td className="py-4 px-4">
+                          <div>
+                            <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {ticket.id}
+                            </div>
+                            <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                              {ticket.subject}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center space-x-3">
+                            <img
+                              src={ticket.customer.avatar}
+                              alt={ticket.customer.name}
+                              className="h-8 w-8 rounded-full"
+                            />
+                            <div>
+                              <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {ticket.customer.name}
+                              </div>
+                              <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                                {ticket.customer.plan}
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          {getStatusBadge(ticket.status)}
+                        </td>
+                        <td className="py-4 px-4">
+                          {getPriorityBadge(ticket.priority)}
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-900'}`}>
+                            {ticket.assignee}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                            {getTimeSince(ticket.updated_at)}
+                          </div>
+                        </td>
+                        <td className="py-4 px-4">
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleTicketClick(ticket);
+                              }}
+                              className={`p-1 rounded hover:bg-opacity-20 ${
+                                isDarkMode ? 'hover:bg-slate-600' : 'hover:bg-gray-200'
+                              }`}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Handle edit
+                              }}
+                              className={`p-1 rounded hover:bg-opacity-20 ${
+                                isDarkMode ? 'hover:bg-slate-600' : 'hover:bg-gray-200'
+                              }`}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" className="py-8 text-center">
+                        <div className={`text-gray-500 ${isDarkMode ? 'text-slate-400' : ''}`}>
+                          {loading ? 'Loading tickets...' : 'No tickets found'}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Pagination */}
+            {pagination.pages > 1 && (
+              <div className="flex items-center justify-between mt-6">
+                <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                  Showing {((pagination.current - 1) * pagination.limit) + 1} to {Math.min(pagination.current * pagination.limit, pagination.total)} of {pagination.total} tickets
+                </div>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setPagination(prev => ({ ...prev, current: Math.max(1, prev.current - 1) }))}
+                    disabled={pagination.current === 1}
+                    className={`px-3 py-1 rounded text-sm ${
+                      pagination.current === 1
+                        ? 'opacity-50 cursor-not-allowed'
+                        : isDarkMode
+                          ? 'bg-slate-700 text-white hover:bg-slate-600'
+                          : 'bg-white text-gray-700 hover:bg-gray-50 border'
+                    }`}
+                  >
+                    Previous
+                  </button>
+                  <span className={`text-sm ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                    Page {pagination.current} of {pagination.pages}
+                  </span>
+                  <button
+                    onClick={() => setPagination(prev => ({ ...prev, current: Math.min(prev.pages, prev.current + 1) }))}
+                    disabled={pagination.current === pagination.pages}
+                    className={`px-3 py-1 rounded text-sm ${
+                      pagination.current === pagination.pages
+                        ? 'opacity-50 cursor-not-allowed'
+                        : isDarkMode
+                          ? 'bg-slate-700 text-white hover:bg-slate-600'
+                          : 'bg-white text-gray-700 hover:bg-gray-50 border'
+                    }`}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Support Team */}
         <Card className={isDarkMode ? 'bg-slate-800 border-slate-700' : ''}>
           <CardHeader>
-            <CardTitle className={isDarkMode ? 'text-white' : 'text-gray-900'}>Support Team</CardTitle>
-            <CardDescription className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>Team performance and availability</CardDescription>
+            <CardTitle className={isDarkMode ? 'text-white' : ''}>Support Team</CardTitle>
+            <CardDescription className={isDarkMode ? 'text-slate-400' : ''}>
+              Team performance and availability
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {supportTeam.map((member, index) => (
-                <div key={index} className={`p-4 border rounded-lg ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-                  <div className="flex items-center space-x-3 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {supportTeam.map((member) => (
+                <div 
+                  key={member.id} 
+                  className={`p-4 rounded-lg border ${
+                    isDarkMode ? 'border-slate-600 bg-slate-700' : 'border-gray-200 bg-gray-50'
+                  }`}
+                >
+                  <div className="flex items-center space-x-3 mb-3">
                     <div className="relative">
                       <img
                         src={member.avatar}
                         alt={member.name}
-                        className="w-10 h-10 rounded-full"
+                        className="h-10 w-10 rounded-full"
                       />
-                      <div className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-white ${
-                        member.status === 'online' ? 'bg-green-500' :
-                        member.status === 'away' ? 'bg-yellow-500' : 'bg-gray-500'
+                      <div className={`absolute -bottom-1 -right-1 h-3 w-3 rounded-full border-2 ${
+                        member.status === 'online' 
+                          ? 'bg-green-500 border-white' 
+                          : 'bg-gray-400 border-white'
                       }`} />
                     </div>
                     <div>
-                      <h3 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{member.name}</h3>
-                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{member.role}</p>
+                      <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {member.name}
+                      </div>
+                      <div className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                        {member.role}
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Active Tickets</span>
-                      <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{member.activeTickets}</span>
+                  
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className={`${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Active</div>
+                      <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {member.activeTickets}
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Resolved Today</span>
-                      <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{member.resolvedToday}</span>
+                    <div>
+                      <div className={`${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Resolved</div>
+                      <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {member.resolvedToday}
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Avg Rating</span>
-                      <div className="flex items-center space-x-1">
-                        <Star className="h-3 w-3 text-yellow-400 fill-current" />
-                        <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{member.avgRating}</span>
+                    <div>
+                      <div className={`${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Rating</div>
+                      <div className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {member.avgRating}/5
+                      </div>
+                    </div>
+                    <div>
+                      <div className={`${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>Status</div>
+                      <div className={`font-medium capitalize ${
+                        member.status === 'online' 
+                          ? 'text-green-600' 
+                          : isDarkMode ? 'text-slate-400' : 'text-gray-600'
+                      }`}>
+                        {member.status}
                       </div>
                     </div>
                   </div>
@@ -636,179 +679,83 @@ const SupportCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false 
           </CardContent>
         </Card>
 
-        {/* Filters and Search */}
-        <Card className={isDarkMode ? 'bg-slate-800 border-slate-700' : ''}>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
-              <div className="flex items-center space-x-4">
-                <div className="relative">
-                  <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} />
-                  <input
-                    type="text"
-                    placeholder="Search tickets..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className={`pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      isDarkMode 
-                        ? 'bg-slate-700 border-slate-600 text-white placeholder-gray-400 focus:bg-slate-600' 
-                        : 'border-gray-300 bg-white'
-                    }`}
-                  />
-                </div>
-                <select
-                  value={selectedFilter}
-                  onChange={(e) => setSelectedFilter(e.target.value)}
-                  className={`px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                    isDarkMode 
-                      ? 'bg-slate-700 border-slate-600 text-white focus:bg-slate-600' 
-                      : 'border-gray-300 bg-white'
-                  }`}
-                >
-                  {filterOptions.map(option => (
-                    <option key={option.id} value={option.id} style={isDarkMode ? { backgroundColor: '#334155', color: 'white' } : {}}>
-                      {option.name} ({option.count})
-                    </option>
-                  ))}
-                </select>
-                <select
-                  value={selectedPriority}
-                  onChange={(e) => setSelectedPriority(e.target.value)}
-                  className={`px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                    isDarkMode 
-                      ? 'bg-slate-700 border-slate-600 text-white focus:bg-slate-600' 
-                      : 'border-gray-300 bg-white'
-                  }`}
-                >
-                  <option value="all" style={isDarkMode ? { backgroundColor: '#334155', color: 'white' } : {}}>All Priorities</option>
-                  {priorityOptions.map(priority => (
-                    <option key={priority.id} value={priority.id} style={isDarkMode ? { backgroundColor: '#334155', color: 'white' } : {}}>{priority.name}</option>
-                  ))}
-                </select>
+        {/* Analytics Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card className={isDarkMode ? 'bg-slate-800 border-slate-700' : ''}>
+            <CardHeader>
+              <CardTitle className={isDarkMode ? 'text-white' : ''}>Ticket Volume</CardTitle>
+              <CardDescription className={isDarkMode ? 'text-slate-400' : ''}>
+                Daily ticket creation and resolution
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64 flex items-center justify-center">
+                {analytics.ticketVolume.length > 0 ? (
+                  <div className="w-full">
+                    <BarChart3 className="h-16 w-16 mx-auto mb-4 text-blue-500" />
+                    <p className={`text-center ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Ticket volume chart with {analytics.ticketVolume.length} data points
+                    </p>
+                    <p className={`text-sm text-center mt-2 ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                      Time range: {selectedTimeRange} | Last update: {lastRefresh.toLocaleTimeString()}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <BarChart3 className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                    <p className={`${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                      {loading ? 'Loading analytics...' : 'No analytics data available'}
+                    </p>
+                  </div>
+                )}
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Tickets Table */}
-        <Card className={isDarkMode ? 'bg-slate-800 border-slate-700' : ''}>
-          <CardHeader>
-            <CardTitle className={isDarkMode ? 'text-white' : 'text-gray-900'}>Support Tickets ({filteredTickets.length})</CardTitle>
-            <CardDescription className={isDarkMode ? 'text-gray-300' : 'text-gray-600'}>
-              Manage customer support requests and communications
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className={`border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-200'}`}>
-                    <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Ticket</th>
-                    <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Customer</th>
-                    <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Status</th>
-                    <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Priority</th>
-                    <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Assignee</th>
-                    <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Updated</th>
-                    <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTickets.map((ticket) => (
-                    <motion.tr
-                      key={ticket.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className={`border-b transition-colors ${
-                        isDarkMode 
-                          ? 'border-slate-700 hover:bg-slate-700/50' 
-                          : 'border-gray-200 hover:bg-gray-50'
-                      }`}
-                    >
-                      <td className="p-4">
-                        <div className="flex items-center space-x-3">
-                          {getCategoryIcon(ticket.category)}
-                          <div>
-                            <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{ticket.id}</p>
-                            <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} max-w-xs truncate`}>
-                              {ticket.subject}
-                            </p>
-                            <div className="flex items-center space-x-2 mt-1">
-                              <MessageCircle className={`h-3 w-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} />
-                              <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{ticket.messages} messages</span>
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-3">
-                          <img
-                            src={ticket.customer.avatar}
-                            alt={ticket.customer.name}
-                            className="w-8 h-8 rounded-full"
+          <Card className={isDarkMode ? 'bg-slate-800 border-slate-700' : ''}>
+            <CardHeader>
+              <CardTitle className={isDarkMode ? 'text-white' : ''}>Category Distribution</CardTitle>
+              <CardDescription className={isDarkMode ? 'text-slate-400' : ''}>
+                Tickets by category type
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="h-64 flex items-center justify-center">
+                {analytics.categoryDistribution.length > 0 ? (
+                  <div className="w-full">
+                    <PieChart className="h-16 w-16 mx-auto mb-4 text-purple-500" />
+                    <p className={`text-center ${isDarkMode ? 'text-slate-300' : 'text-gray-700'}`}>
+                      Category distribution with {analytics.categoryDistribution.length} categories
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2 mt-3">
+                      {analytics.categoryDistribution.map((category, index) => (
+                        <div key={index} className="flex items-center space-x-1">
+                          <div 
+                            className="w-3 h-3 rounded-full" 
+                            style={{ backgroundColor: category.color }}
                           />
-                          <div>
-                            <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{ticket.customer.name}</p>
-                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{ticket.customer.email}</p>
-                            <Badge 
-                              size="sm" 
-                              className={`mt-1 ${
-                                isDarkMode 
-                                  ? 'bg-slate-700 text-white' 
-                                  : 'bg-gray-100 text-gray-800'
-                              }`}
-                            >
-                              {ticket.customer.plan}
-                            </Badge>
-                          </div>
+                          <span className={`text-xs ${isDarkMode ? 'text-slate-400' : 'text-gray-600'}`}>
+                            {category.name} ({category.value}%)
+                          </span>
                         </div>
-                      </td>
-                      <td className="p-4">
-                        {getStatusBadge(ticket.status)}
-                      </td>
-                      <td className="p-4">
-                        {getPriorityBadge(ticket.priority)}
-                      </td>
-                      <td className="p-4">
-                        <p className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{ticket.assignee}</p>
-                      </td>
-                      <td className="p-4">
-                        <p className={`text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {getTimeSince(ticket.updated_at)}
-                        </p>
-                        <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          {format(new Date(ticket.updated_at), 'MMM dd, HH:mm')}
-                        </p>
-                      </td>
-                      <td className="p-4">
-                        <div className="flex items-center space-x-2">
-                          <Button variant="ghost" size="sm">
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </motion.tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            
-            {filteredTickets.length === 0 && (
-              <div className="text-center py-12">
-                <MessageSquare className={`h-12 w-12 mx-auto mb-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-400'}`} />
-                <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>No tickets found matching your criteria</p>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <PieChart className="h-16 w-16 mx-auto mb-4 text-gray-300" />
+                    <p className={`${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
+                      {loading ? 'Loading category data...' : 'No category data available'}
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default SupportCenter
-
+export default SupportCenter;
