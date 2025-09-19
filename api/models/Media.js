@@ -16,13 +16,42 @@ const MediaSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  // S3 storage information
+  s3Data: {
+    bucket: {
+      type: String,
+      default: process.env.AWS_S3_BUCKET
+    },
+    uploads: [{
+      size: {
+        type: String,
+        enum: ['thumbnail', 'small', 'medium', 'large', 'original'],
+        required: true
+      },
+      url: {
+        type: String,
+        required: true
+      },
+      key: {
+        type: String,
+        required: true
+      },
+      fileSize: {
+        type: Number,
+        required: true
+      },
+      dimensions: {
+        type: String,
+        default: null
+      }
+    }]
+  },
+  // Legacy fields for backward compatibility
   filePath: {
-    type: String,
-    required: true
+    type: String
   },
   url: {
-    type: String,
-    required: true
+    type: String
   },
   thumbnailPath: {
     type: String
@@ -145,14 +174,34 @@ MediaSchema.index({ tags: 1 });
 MediaSchema.index({ isPublic: 1 });
 MediaSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
 
-// Virtual for file URL
+// Virtual for file URL (S3 or legacy)
 MediaSchema.virtual('fullUrl').get(function() {
-  return `${process.env.BASE_URL || 'http://localhost:5000'}${this.url}`;
+  if (this.s3Data && this.s3Data.uploads && this.s3Data.uploads.length > 0) {
+    const originalUpload = this.s3Data.uploads.find(upload => upload.size === 'original');
+    return originalUpload ? originalUpload.url : this.s3Data.uploads[0].url;
+  }
+  return this.url ? `${process.env.BASE_URL || 'http://localhost:5000'}${this.url}` : null;
 });
 
 MediaSchema.virtual('fullThumbnailUrl').get(function() {
+  if (this.s3Data && this.s3Data.uploads && this.s3Data.uploads.length > 0) {
+    const thumbnailUpload = this.s3Data.uploads.find(upload => upload.size === 'thumbnail');
+    if (thumbnailUpload) return thumbnailUpload.url;
+    // Fallback to smallest available size
+    const smallUpload = this.s3Data.uploads.find(upload => upload.size === 'small');
+    return smallUpload ? smallUpload.url : this.fullUrl;
+  }
   if (this.thumbnailUrl) {
     return `${process.env.BASE_URL || 'http://localhost:5000'}${this.thumbnailUrl}`;
+  }
+  return null;
+});
+
+// Virtual for S3 primary URL
+MediaSchema.virtual('s3PrimaryUrl').get(function() {
+  if (this.s3Data && this.s3Data.uploads && this.s3Data.uploads.length > 0) {
+    const originalUpload = this.s3Data.uploads.find(upload => upload.size === 'original');
+    return originalUpload ? originalUpload.url : this.s3Data.uploads[0].url;
   }
   return null;
 });
@@ -188,6 +237,39 @@ MediaSchema.methods.updateProcessingStatus = function(status, error = null) {
     this.isProcessed = true;
   }
   return this.save();
+};
+
+// S3-specific methods
+MediaSchema.methods.getUrlBySize = function(size = 'original') {
+  if (this.s3Data && this.s3Data.uploads && this.s3Data.uploads.length > 0) {
+    const upload = this.s3Data.uploads.find(upload => upload.size === size);
+    return upload ? upload.url : this.s3PrimaryUrl;
+  }
+  return this.fullUrl;
+};
+
+MediaSchema.methods.getAllSizes = function() {
+  if (this.s3Data && this.s3Data.uploads && this.s3Data.uploads.length > 0) {
+    return this.s3Data.uploads.map(upload => ({
+      size: upload.size,
+      url: upload.url,
+      fileSize: upload.fileSize,
+      dimensions: upload.dimensions
+    }));
+  }
+  return [{
+    size: 'original',
+    url: this.fullUrl,
+    fileSize: this.size,
+    dimensions: this.dimensions ? `${this.dimensions.width}x${this.dimensions.height}` : null
+  }];
+};
+
+MediaSchema.methods.getS3Keys = function() {
+  if (this.s3Data && this.s3Data.uploads && this.s3Data.uploads.length > 0) {
+    return this.s3Data.uploads.map(upload => upload.key);
+  }
+  return [];
 };
 
 // Static methods
