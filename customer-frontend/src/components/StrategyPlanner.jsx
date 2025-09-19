@@ -42,7 +42,7 @@ import {
   useUpdateStrategy,
   useStrategyPerformance
 } from '../hooks/useCustomerApi.js'
-import { useNotifications } from './NotificationSystem.jsx'
+import { useNotificationSystem } from './NotificationSystem.jsx'
 import { AnalyticsSkeleton } from './LoadingSkeletons.jsx'
 
 const StrategyPlanner = ({ data, user, onDataUpdate }) => {
@@ -51,7 +51,7 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
   const [activeTab, setActiveTab] = useState('overview')
 
   // UX hooks
-  const { success, error, info } = useNotifications()
+  const { success, error, info } = useNotificationSystem()
 
   // Real API calls for strategy data
   const { 

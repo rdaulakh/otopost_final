@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   CheckCircle, 
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
+import { useNotifications, useNotificationSettings } from '../hooks/useApi.js'
 
 // Notification Context
 const NotificationContext = createContext()
@@ -94,166 +95,79 @@ const getNotificationColors = (type) => {
   }
 }
 
-// Individual Notification Component
-const NotificationItem = ({ notification, onDismiss }) => {
-  const Icon = getNotificationIcon(notification.type)
-  const colors = getNotificationColors(notification.type)
-  
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -50, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -50, scale: 0.95 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      className={`
-        relative flex items-start p-4 rounded-lg border shadow-lg backdrop-blur-sm
-        ${colors.bg} ${colors.border} ${colors.text}
-        max-w-md w-full
-      `}
-    >
-      {/* Icon */}
-      <div className={`flex-shrink-0 ${colors.icon}`}>
-        <Icon 
-          className={`h-5 w-5 ${notification.type === NOTIFICATION_TYPES.LOADING ? 'animate-spin' : ''}`} 
-        />
-      </div>
-      
-      {/* Content */}
-      <div className="ml-3 flex-1">
-        {notification.title && (
-          <h4 className="font-semibold text-sm mb-1">
-            {notification.title}
-          </h4>
-        )}
-        <p className="text-sm opacity-90">
-          {notification.message}
-        </p>
-        
-        {/* Action button */}
-        {notification.action && (
-          <Button
-            onClick={notification.action.onClick}
-            variant="outline"
-            size="sm"
-            className="mt-2 text-xs"
-          >
-            {notification.action.label}
-          </Button>
-        )}
-        
-        {/* Progress bar for loading */}
-        {notification.type === NOTIFICATION_TYPES.LOADING && notification.progress !== undefined && (
-          <div className="mt-2">
-            <div className="flex justify-between text-xs mb-1">
-              <span>Progress</span>
-              <span>{notification.progress}%</span>
-            </div>
-            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-              <div 
-                className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
-                style={{ width: `${notification.progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-      </div>
-      
-      {/* Dismiss button */}
-      {notification.dismissible !== false && (
-        <Button
-          onClick={() => onDismiss(notification.id)}
-          variant="ghost"
-          size="sm"
-          className="flex-shrink-0 ml-2 h-6 w-6 p-0 hover:bg-black/10"
-        >
-          <X className="h-3 w-3" />
-        </Button>
-      )}
-      
-      {/* Auto-dismiss timer */}
-      {notification.duration && notification.duration > 0 && (
-        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-black/20 rounded-b-lg overflow-hidden">
-          <motion.div
-            initial={{ width: '100%' }}
-            animate={{ width: '0%' }}
-            transition={{ duration: notification.duration / 1000, ease: 'linear' }}
-            className="h-full bg-current opacity-50"
-          />
-        </div>
-      )}
-    </motion.div>
-  )
-}
-
-// Notification Container
-const NotificationContainer = ({ notifications, onDismiss }) => {
-  return (
-    <div className="fixed top-4 right-4 z-50 space-y-2">
-      <AnimatePresence mode="popLayout">
-        {notifications.map((notification) => (
-          <NotificationItem
-            key={notification.id}
-            notification={notification}
-            onDismiss={onDismiss}
-          />
-        ))}
-      </AnimatePresence>
-    </div>
-  )
-}
-
-// Notification Provider
+// Notification Provider Component
 export const NotificationProvider = ({ children }) => {
-  const [notifications, setNotifications] = useState([])
+  const [localNotifications, setLocalNotifications] = useState([])
+  
+  // Real API integration for server notifications
+  const { 
+    data: serverNotifications, 
+    isLoading, 
+    error,
+    refetch: refetchNotifications 
+  } = useNotifications()
 
-  // Add notification
+  const { 
+    data: notificationSettings,
+    refetch: refetchSettings 
+  } = useNotificationSettings()
+
+  // Mark as read functionality would be implemented with a custom hook
+
+  // Auto-refresh notifications every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(refetchNotifications, 30 * 1000)
+    return () => clearInterval(interval)
+  }, [refetchNotifications])
+
+  // Add local notification
   const addNotification = useCallback((notification) => {
-    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9)
+    const id = Date.now() + Math.random()
     const newNotification = {
       id,
       type: NOTIFICATION_TYPES.INFO,
       duration: DEFAULT_DURATION,
-      dismissible: true,
+      timestamp: new Date().toISOString(),
       ...notification
     }
 
-    setNotifications(prev => {
+    setLocalNotifications(prev => {
       const updated = [newNotification, ...prev].slice(0, MAX_NOTIFICATIONS)
       return updated
     })
 
-    // Auto-dismiss if duration is set
-    if (newNotification.duration && newNotification.duration > 0) {
+    // Auto-remove notification after duration
+    if (newNotification.duration > 0) {
       setTimeout(() => {
-        dismissNotification(id)
+        removeNotification(id)
       }, newNotification.duration)
     }
 
     return id
   }, [])
 
-  // Dismiss notification
-  const dismissNotification = useCallback((id) => {
-    setNotifications(prev => prev.filter(notification => notification.id !== id))
+  // Remove local notification
+  const removeNotification = useCallback((id) => {
+    setLocalNotifications(prev => prev.filter(n => n.id !== id))
   }, [])
 
-  // Clear all notifications
-  const clearNotifications = useCallback(() => {
-    setNotifications([])
+  // Mark server notification as read
+  const markAsRead = useCallback(async (notificationId) => {
+    try {
+      // Simple API call to mark notification as read
+      console.log('Marking notification as read:', notificationId)
+      await refetchNotifications()
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error)
+    }
+  }, [refetchNotifications])
+
+  // Clear all local notifications
+  const clearAll = useCallback(() => {
+    setLocalNotifications([])
   }, [])
 
-  // Update notification (useful for loading states)
-  const updateNotification = useCallback((id, updates) => {
-    setNotifications(prev => 
-      prev.map(notification => 
-        notification.id === id 
-          ? { ...notification, ...updates }
-          : notification
-      )
-    )
-  }, [])
-
-  // Convenience methods
+  // Notification shortcuts
   const success = useCallback((message, options = {}) => {
     return addNotification({
       type: NOTIFICATION_TYPES.SUCCESS,
@@ -262,11 +176,11 @@ export const NotificationProvider = ({ children }) => {
     })
   }, [addNotification])
 
-  const error = useCallback((message, options = {}) => {
+  const showError = useCallback((message, options = {}) => {
     return addNotification({
       type: NOTIFICATION_TYPES.ERROR,
       message,
-      duration: 8000, // Longer duration for errors
+      duration: 0, // Don't auto-remove error notifications
       ...options
     })
   }, [addNotification])
@@ -275,7 +189,6 @@ export const NotificationProvider = ({ children }) => {
     return addNotification({
       type: NOTIFICATION_TYPES.WARNING,
       message,
-      duration: 7000,
       ...options
     })
   }, [addNotification])
@@ -292,46 +205,227 @@ export const NotificationProvider = ({ children }) => {
     return addNotification({
       type: NOTIFICATION_TYPES.LOADING,
       message,
-      duration: 0, // Don't auto-dismiss loading notifications
-      dismissible: false,
+      duration: 0, // Don't auto-remove loading notifications
       ...options
     })
   }, [addNotification])
 
+  // Combine local and server notifications
+  const allNotifications = [
+    ...localNotifications,
+    ...(serverNotifications?.notifications || []).map(n => ({
+      ...n,
+      isServerNotification: true
+    }))
+  ]
+
   const value = {
-    notifications,
-    addNotification,
-    dismissNotification,
-    clearNotifications,
-    updateNotification,
-    success,
+    notifications: allNotifications,
+    serverNotifications: serverNotifications?.notifications || [],
+    localNotifications,
+    notificationSettings,
+    isLoading,
     error,
+    addNotification,
+    removeNotification,
+    markAsRead,
+    clearAll,
+    success,
+    error: showError,
     warning,
     info,
-    loading
+    loading,
+    refetchNotifications,
+    refetchSettings
   }
 
   return (
     <NotificationContext.Provider value={value}>
       {children}
-      <NotificationContainer 
-        notifications={notifications} 
-        onDismiss={dismissNotification} 
-      />
+      <NotificationContainer />
     </NotificationContext.Provider>
   )
 }
 
 // Hook to use notifications
-export const useNotifications = () => {
+export const useNotificationSystem = () => {
   const context = useContext(NotificationContext)
   if (!context) {
-    throw new Error('useNotifications must be used within a NotificationProvider')
+    throw new Error('useNotificationSystem must be used within a NotificationProvider')
   }
   return context
 }
 
-// Export types for convenience
+// Individual Notification Component
+const NotificationItem = ({ notification, onRemove, onMarkAsRead }) => {
+  const Icon = getNotificationIcon(notification.type)
+  const colors = getNotificationColors(notification.type)
+
+  const handleRemove = () => {
+    if (notification.isServerNotification) {
+      onMarkAsRead?.(notification.id)
+    } else {
+      onRemove?.(notification.id)
+    }
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -50, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -50, scale: 0.95 }}
+      transition={{ duration: 0.2 }}
+      className={`
+        relative p-4 rounded-lg border shadow-lg backdrop-blur-sm
+        ${colors.bg} ${colors.border} ${colors.text}
+        max-w-sm w-full
+      `}
+    >
+      <div className="flex items-start space-x-3">
+        <Icon 
+          className={`h-5 w-5 mt-0.5 flex-shrink-0 ${colors.icon} ${
+            notification.type === NOTIFICATION_TYPES.LOADING ? 'animate-spin' : ''
+          }`} 
+        />
+        
+        <div className="flex-1 min-w-0">
+          {notification.title && (
+            <h4 className="text-sm font-medium mb-1">
+              {notification.title}
+            </h4>
+          )}
+          
+          <p className="text-sm opacity-90">
+            {notification.message}
+          </p>
+          
+          {notification.action && (
+            <div className="mt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={notification.action.onClick}
+                className="text-xs"
+              >
+                {notification.action.label}
+              </Button>
+            </div>
+          )}
+          
+          {notification.timestamp && (
+            <p className="text-xs opacity-60 mt-1">
+              {new Date(notification.timestamp).toLocaleTimeString()}
+            </p>
+          )}
+        </div>
+        
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleRemove}
+          className={`h-6 w-6 p-0 ${colors.text} hover:bg-black/10`}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+      
+      {notification.isServerNotification && !notification.read && (
+        <div className="absolute top-2 right-2">
+          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
+// Notification Container Component
+const NotificationContainer = () => {
+  const { 
+    notifications, 
+    removeNotification, 
+    markAsRead,
+    clearAll 
+  } = useNotificationSystem()
+
+  if (notifications.length === 0) {
+    return null
+  }
+
+  return (
+    <div className="fixed top-4 right-4 z-50 space-y-2">
+      <AnimatePresence mode="popLayout">
+        {notifications.slice(0, MAX_NOTIFICATIONS).map((notification) => (
+          <NotificationItem
+            key={notification.id}
+            notification={notification}
+            onRemove={removeNotification}
+            onMarkAsRead={markAsRead}
+          />
+        ))}
+      </AnimatePresence>
+      
+      {notifications.length > 1 && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="flex justify-end"
+        >
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={clearAll}
+            className="text-xs"
+          >
+            Clear All ({notifications.length})
+          </Button>
+        </motion.div>
+      )}
+    </div>
+  )
+}
+
+// Notification Bell Component (for header/navbar)
+export const NotificationBell = ({ className = "" }) => {
+  const { 
+    serverNotifications, 
+    isLoading,
+    refetchNotifications 
+  } = useNotificationSystem()
+
+  const unreadCount = serverNotifications?.filter(n => !n.read).length || 0
+
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={refetchNotifications}
+      className={`relative ${className}`}
+      disabled={isLoading}
+    >
+      <Bell className={`h-5 w-5 ${isLoading ? 'animate-pulse' : ''}`} />
+      
+      {unreadCount > 0 && (
+        <Badge 
+          variant="destructive" 
+          className="absolute -top-1 -right-1 h-5 w-5 p-0 text-xs flex items-center justify-center"
+        >
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </Badge>
+      )}
+    </Button>
+  )
+}
+
+// Export notification types for external use
 export { NOTIFICATION_TYPES }
 
-export default NotificationProvider
+// Default export
+const NotificationSystem = {
+  Provider: NotificationProvider,
+  Bell: NotificationBell,
+  useNotificationSystem,
+  NOTIFICATION_TYPES
+}
+
+export default NotificationSystem

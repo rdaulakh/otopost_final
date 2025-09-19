@@ -17,14 +17,14 @@ import {
   useAIRecommendations,
   useCampaignOptimization
 } from '../hooks/useCustomerApi.js'
-import { useNotifications } from './NotificationSystem.jsx'
+import { useNotificationSystem } from './NotificationSystem.jsx'
 import { TableSkeleton } from './LoadingSkeletons.jsx'
 
 const CampaignManager = () => {
   const { isDarkMode } = useTheme()
   
   // UX hooks
-  const { success, error, info } = useNotifications()
+  const { success, error, info } = useNotificationSystem()
 
   // Component state
   const [activeTab, setActiveTab] = useState('overview')

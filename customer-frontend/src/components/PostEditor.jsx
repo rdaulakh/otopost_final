@@ -57,13 +57,13 @@ import {
   useUploadMedia,
   useAIContentGeneration
 } from '../hooks/useCustomerApi.js'
-import { useNotifications } from './NotificationSystem.jsx'
+import { useNotificationSystem } from './NotificationSystem.jsx'
 
 const PostEditor = ({ post, isOpen, onClose, onSave }) => {
   const { isDarkMode } = useTheme()
   
   // UX hooks
-  const { success, error, info } = useNotifications()
+  const { success, error, info } = useNotificationSystem()
   
   // Real API hooks
   const { 

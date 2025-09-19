@@ -791,3 +791,41 @@ export const useUploadMedia = () => {
     mutationFn: (file) => apiHelpers.uploadFile(API_ENDPOINTS.MEDIA.UPLOAD_SINGLE, file)
   });
 };
+
+// A/B Testing Hooks
+export const useABTests = () => {
+  return useQuery({
+    queryKey: ['ab-tests'],
+    queryFn: () => apiHelpers.get('/api/ab-tests'),
+    select: (data) => data.data,
+  });
+};
+
+export const useABTestResults = (testId) => {
+  return useQuery({
+    queryKey: ['ab-test-results', testId],
+    queryFn: () => apiHelpers.get(`/api/ab-tests/${testId}/results`),
+    select: (data) => data.data,
+    enabled: !!testId,
+  });
+};
+
+export const useABTestMetrics = (testId) => {
+  return useQuery({
+    queryKey: ['ab-test-metrics', testId],
+    queryFn: () => apiHelpers.get(`/api/ab-tests/${testId}/metrics`),
+    select: (data) => data.data,
+    enabled: !!testId,
+  });
+};
+
+export const useCreateABTest = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (testData) => apiHelpers.post('/api/ab-tests', testData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ab-tests'] });
+    },
+  });
+
+};

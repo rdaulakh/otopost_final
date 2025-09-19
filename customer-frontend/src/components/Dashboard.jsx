@@ -50,7 +50,7 @@ import { Button } from '@/components/ui/button.jsx'
 import { Progress } from '@/components/ui/progress.jsx'
 
 // Import UX infrastructure
-import { useNotifications } from './NotificationSystem.jsx'
+import { useNotificationSystem } from './NotificationSystem.jsx'
 import { useWebSocket } from '../services/websocketService.js'
 import { DashboardSkeleton } from './LoadingSkeletons.jsx'
 import { useTheme } from '../contexts/ThemeContext.jsx'
@@ -113,7 +113,7 @@ const Dashboard = ({ data: fallbackData = {}, user = {}, onDataUpdate = () => {}
   } = useUserSubscription()
 
   // UX infrastructure hooks
-  const { success, error, info, warning } = useNotifications()
+  const { success, error, info, warning } = useNotificationSystem()
   const { isConnected, subscribe } = useWebSocket()
 
   // Loading state
