@@ -1,5 +1,14 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+
+// Import content calendar hooks - using existing hooks
+import { 
+  useContentCalendar,
+  useScheduledPosts,
+  useCreatePost,
+  useUpdatePost,
+  useDeletePost
+} from '../hooks/useCustomerApi.js'
 import { 
   Calendar,
   Clock,
@@ -49,17 +58,6 @@ const EnhancedContentCalendar = () => {
   const [isEditorOpen, setIsEditorOpen] = useState(false)
 
   // Enhanced post data with complete post information
-  const enhancedPosts = [
-    {
-      id: 1,
-      title: "New Year Productivity Revolution",
-      platform: "Instagram",
-      postType: "carousel",
-      scheduledTime: "Mon, Jan 15, 2:00 PM",
-      status: "pending",
-      content: {
-        caption: "🚀 Start 2024 with these game-changing productivity hacks! Swipe to see how successful entrepreneurs maximize their time and achieve 10x results.\n\n✨ Slide 1: The 2-Minute Rule\n⚡ Slide 2: Time Blocking Method\n🎯 Slide 3: Energy Management\n📱 Slide 4: Digital Minimalism\n🔥 Slide 5: Weekly Reviews\n\nWhich hack will you try first? Drop a comment below! 👇\n\n#ProductivityHacks #Entrepreneur #NewYear #TimeManagement #Success",
-        hashtags: ["#ProductivityHacks", "#Entrepreneur", "#NewYear", "#TimeManagement", "#Success"],
         visualDescription: "Modern carousel with 5 slides, each featuring a productivity tip with clean icons, gradient backgrounds, and consistent brand colors (blue/purple theme)"
       },
       aiInsights: {
