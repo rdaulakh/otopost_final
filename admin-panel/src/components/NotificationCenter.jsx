@@ -1,5 +1,18 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
+
+// Import notification center hooks
+import { 
+  useNotifications,
+  useAlertRules,
+  useNotificationChannels,
+  useNotificationMetrics,
+  useCreateNotification,
+  useUpdateNotification,
+  useDeleteNotification,
+  useCreateAlertRule,
+  useUpdateAlertRule
+} from '../hooks/useNotificationCenter.js'
 import { 
   Bell, 
   AlertTriangle, 
@@ -59,34 +72,75 @@ import { format, formatDistanceToNow } from 'date-fns'
 const NotificationCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false }) => {
   const [activeTab, setActiveTab] = useState('alerts')
   const [selectedSeverity, setSelectedSeverity] = useState('all')
-  const [selectedChannel, setSelectedChannel] = useState('all')
   const [searchTerm, setSearchTerm] = useState('')
-  const [isCreatingAlert, setIsCreatingAlert] = useState(false)
-  const [selectedAlert, setSelectedAlert] = useState(null)
+  const [isCreatingRule, setIsCreatingRule] = useState(false)
 
-  // Notification statistics
-  const notificationStats = {
-    totalAlerts: 1247,
-    activeAlerts: 23,
-    resolvedToday: 45,
-    avgResponseTime: '2.3 min',
-    deliveryRate: 99.2,
-    escalations: 8,
-    channels: 6,
-    subscribers: 156
-  }
+  // Real API integration for notification center data
+  const { 
+    data: notificationsData, 
+    isLoading: notificationsLoading, 
+    error: notificationsError,
+    refetch: refetchNotifications 
+  } = useNotifications({ 
+    category: selectedCategory, 
+    severity: selectedSeverity, 
+    search: searchTerm 
+  })
 
-  // Alert rules and configurations
-  const alertRules = [
-    {
-      id: 1,
-      name: 'High CPU Usage',
-      description: 'Alert when CPU usage exceeds 80% for 5 minutes',
-      category: 'system',
-      severity: 'high',
-      condition: 'cpu_usage > 80',
-      duration: '5m',
-      channels: ['email', 'slack', 'webhook'],
+  const { 
+    data: alertRulesData, 
+    isLoading: rulesLoading, 
+    error: rulesError,
+    refetch: refetchRules 
+  } = useAlertRules()
+
+  const { 
+    data: channelsData, 
+    isLoading: channelsLoading, 
+    error: channelsError,
+    refetch: refetchChannels 
+  } = useNotificationChannels()
+
+  const { 
+    data: metricsData, 
+    isLoading: metricsLoading, 
+    error: metricsError,
+    refetch: refetchMetrics 
+  } = useNotificationMetrics()
+
+  // Combined loading and error states
+  const isLoading = notificationsLoading || rulesLoading || channelsLoading || metricsLoading
+  const hasError = notificationsError || rulesError || channelsError || metricsError
+
+  // Use ONLY real API data - NO static fallbacks
+  const notificationStats = metricsData?.stats || {}
+  const alertRules = alertRulesData?.rules || []
+  const recentNotifications = notificationsData?.notifications || []
+  const notificationChannels = channelsData?.channels || []
+
+  // Error handling - show error messages instead of static data
+  if (hasError) {
+    return (
+      <div className="p-6">
+        <Card>
+          <CardContent className="p-6 text-center">
+            <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Failed to Load Notification Data</h3>
+            <p className="text-gray-600 mb-4">Unable to fetch notification center data from the API.</p>
+            <Button onClick={() => {
+              refetchNotifications()
+              refetchRules()
+              refetchChannels()
+              refetchMetrics()
+            }}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }// Alert rules and configurations
       recipients: ['ops-team@aisocialmedia.com', '#alerts'],
       enabled: true,
       triggered: 12,
@@ -156,16 +210,6 @@ const NotificationCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = f
   ]
 
   // Recent notifications
-  const recentNotifications = [
-    {
-      id: 1,
-      title: 'High CPU Usage Detected',
-      message: 'Server cpu-01 CPU usage at 85% for 6 minutes',
-      severity: 'high',
-      category: 'system',
-      timestamp: '2024-09-15T19:30:00Z',
-      status: 'active',
-      channels: ['email', 'slack'],
       recipients: 3,
       acknowledged: false,
       escalated: false
@@ -225,102 +269,8 @@ const NotificationCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = f
   ]
 
   // Notification channels
-  const notificationChannels = [
-    {
-      id: 'email',
-      name: 'Email',
-      icon: Mail,
-      enabled: true,
-      config: {
-        smtp_server: 'smtp.sendgrid.net',
-        port: 587,
-        username: 'apikey',
-        from_address: 'alerts@aisocialmedia.com'
-      },
-      deliveryRate: 99.5,
-      avgDeliveryTime: '2.1s',
-      status: 'connected'
-    },
-    {
-      id: 'sms',
-      name: 'SMS',
-      icon: Smartphone,
-      enabled: true,
-      config: {
-        provider: 'Twilio',
-        account_sid: 'AC***************',
-        from_number: '+1234567890'
-      },
-      deliveryRate: 98.8,
-      avgDeliveryTime: '1.5s',
-      status: 'connected'
-    },
-    {
-      id: 'slack',
-      name: 'Slack',
-      icon: MessageSquare,
-      enabled: true,
-      config: {
-        webhook_url: 'https://hooks.slack.com/services/***',
-        default_channel: '#alerts',
-        username: 'AlertBot'
-      },
-      deliveryRate: 99.9,
-      avgDeliveryTime: '0.8s',
-      status: 'connected'
-    },
-    {
-      id: 'webhook',
-      name: 'Webhook',
-      icon: Webhook,
-      enabled: true,
-      config: {
-        url: 'https://api.external-service.com/webhooks/alerts',
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ***' }
-      },
-      deliveryRate: 97.2,
-      avgDeliveryTime: '1.2s',
-      status: 'connected'
-    },
-    {
-      id: 'teams',
-      name: 'Microsoft Teams',
-      icon: MessageSquare,
-      enabled: false,
-      config: {
-        webhook_url: '',
-        channel: ''
-      },
-      deliveryRate: 0,
-      avgDeliveryTime: 'N/A',
-      status: 'disconnected'
-    },
-    {
-      id: 'pagerduty',
-      name: 'PagerDuty',
-      icon: Phone,
-      enabled: false,
-      config: {
-        integration_key: '',
-        service_id: ''
-      },
-      deliveryRate: 0,
-      avgDeliveryTime: 'N/A',
-      status: 'disconnected'
-    }
-  ]
 
   // Escalation rules
-  const escalationRules = [
-    {
-      id: 1,
-      name: 'Critical Alert Escalation',
-      description: 'Escalate critical alerts if not acknowledged within 15 minutes',
-      severity: 'critical',
-      timeout: 15,
-      escalationLevels: [
-        { level: 1, recipients: ['oncall@aisocialmedia.com'], channels: ['email', 'sms'] },
         { level: 2, recipients: ['manager@aisocialmedia.com'], channels: ['email', 'sms', 'phone'] },
         { level: 3, recipients: ['cto@aisocialmedia.com'], channels: ['email', 'sms', 'phone'] }
       ],
@@ -341,29 +291,8 @@ const NotificationCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = f
   ]
 
   // Alert categories
-  const alertCategories = [
-    { id: 'system', name: 'System', icon: Server, color: 'bg-blue-100 text-blue-800' },
-    { id: 'customer', name: 'Customer', icon: Users, color: 'bg-green-100 text-green-800' },
-    { id: 'business', name: 'Business', icon: DollarSign, color: 'bg-purple-100 text-purple-800' },
-    { id: 'api', name: 'API', icon: Globe, color: 'bg-orange-100 text-orange-800' },
-    { id: 'billing', name: 'Billing', icon: FileText, color: 'bg-red-100 text-red-800' },
-    { id: 'security', name: 'Security', icon: Shield, color: 'bg-yellow-100 text-yellow-800' }
-  ]
 
-  const severityLevels = [
-    { id: 'low', name: 'Low', color: 'bg-gray-100 text-gray-800' },
-    { id: 'medium', name: 'Medium', color: 'bg-yellow-100 text-yellow-800' },
-    { id: 'high', name: 'High', color: 'bg-orange-100 text-orange-800' },
-    { id: 'critical', name: 'Critical', color: 'bg-red-100 text-red-800' }
-  ]
 
-  const tabs = [
-    { id: 'alerts', name: 'Active Alerts', icon: Bell },
-    { id: 'rules', name: 'Alert Rules', icon: Settings },
-    { id: 'channels', name: 'Channels', icon: MessageSquare },
-    { id: 'escalation', name: 'Escalation', icon: TrendingUp },
-    { id: 'history', name: 'History', icon: Clock }
-  ]
 
   const getSeverityBadge = (severity) => {
     const severityConfig = severityLevels.find(s => s.id === severity)
