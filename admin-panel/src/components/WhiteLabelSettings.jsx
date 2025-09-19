@@ -1,5 +1,19 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+
+// Import white label settings hooks
+import { 
+  useWhiteLabelInstances,
+  useEmailTemplates,
+  useBrandingSettings,
+  useCreateWhiteLabelInstance,
+  useUpdateWhiteLabelInstance,
+  useDeleteWhiteLabelInstance,
+  useCreateEmailTemplate,
+  useUpdateEmailTemplate,
+  useDeleteEmailTemplate,
+  useUpdateBrandingSettings
+} from '../hooks/useWhiteLabelSettings.js';
 import { handleFileUpload } from '../utils/fileUpload';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,47 +76,28 @@ const WhiteLabelSettings = ({ isDarkMode = false }) => {
     dns_status: 'configured'
   });
 
-  // White Label Instances
-  const [instances, setInstances] = useState([
-    { 
-      id: 1, 
-      name: 'Enterprise Client A', 
-      domain: 'client-a.yourapp.com', 
-      status: 'active', 
-      users: 150, 
-      created: '2024-01-15',
-      plan: 'Enterprise',
-      custom_branding: true
-    },
-    { 
-      id: 2, 
-      name: 'Startup Client B', 
-      domain: 'client-b.yourapp.com', 
-      status: 'active', 
-      users: 25, 
-      created: '2024-02-20',
-      plan: 'Pro',
-      custom_branding: true
-    },
-    { 
-      id: 3, 
-      name: 'Agency Client C', 
-      domain: 'client-c.yourapp.com', 
-      status: 'pending', 
-      users: 0, 
-      created: '2024-03-10',
-      plan: 'Premium',
-      custom_branding: false
-    }
-  ]);
+  // Real API integration for white label instances
+  const [instancesPage, setInstancesPage] = useState(1);
+  const [instancesFilters, setInstancesFilters] = useState({});
+  const { 
+    data: instancesData, 
+    isLoading: instancesLoading, 
+    error: instancesError,
+    refetch: refetchInstances 
+  } = useWhiteLabelInstances({ page: instancesPage, limit: 10, ...instancesFilters });
+  
+  const instances = instancesData?.data || [];
 
-  // Email Templates
-  const [emailTemplates, setEmailTemplates] = useState([
-    { id: 1, name: 'Welcome Email', subject: 'Welcome to {{company_name}}!', status: 'active', last_modified: '2024-09-15' },
-    { id: 2, name: 'Password Reset', subject: 'Reset your {{company_name}} password', status: 'active', last_modified: '2024-09-10' },
-    { id: 3, name: 'Invoice Notification', subject: 'Your {{company_name}} invoice is ready', status: 'active', last_modified: '2024-09-05' },
-    { id: 4, name: 'Feature Update', subject: 'New features in {{company_name}}', status: 'draft', last_modified: '2024-09-01' }
-  ]);
+  // Real API integration for email templates
+  const [templatesFilters, setTemplatesFilters] = useState({});
+  const { 
+    data: templatesData, 
+    isLoading: templatesLoading, 
+    error: templatesError,
+    refetch: refetchTemplates 
+  } = useEmailTemplates(templatesFilters);
+  
+  const emailTemplates = templatesData?.data || [];
 
   // Feature Customization
   const [featureCustomization, setFeatureCustomization] = useState({
