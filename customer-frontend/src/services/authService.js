@@ -3,7 +3,8 @@ import apiClient, { API_ENDPOINTS } from '../config/api.js';
 class AuthService {
   constructor() {
     this.token = localStorage.getItem('authToken');
-    this.user = JSON.parse(localStorage.getItem('user') || 'null');
+    const userData = localStorage.getItem('user');
+    this.user = userData && userData !== 'undefined' ? JSON.parse(userData) : null;
   }
 
   // Login user
@@ -14,12 +15,14 @@ class AuthService {
         password,
       });
 
-      const { token, user } = response.data;
-      
+      const { data } = response.data;
+      const { user, tokens } = data;
+      const token = tokens.accessToken;
+
       // Store token and user data
       localStorage.setItem('authToken', token);
       localStorage.setItem('user', JSON.stringify(user));
-      
+
       this.token = token;
       this.user = user;
 
@@ -38,7 +41,9 @@ class AuthService {
     try {
       const response = await apiClient.post(API_ENDPOINTS.AUTH.REGISTER, userData);
       
-      const { token, user } = response.data;
+      const { data } = response.data;
+      const { user, tokens } = data;
+      const token = tokens.accessToken;
       
       // Store token and user data
       localStorage.setItem('authToken', token);
@@ -66,10 +71,29 @@ class AuthService {
       console.error('Logout error:', error);
     } finally {
       // Clear local storage regardless of API call success
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      this.token = null;
-      this.user = null;
+      this.clearAuthData();
+    }
+  }
+
+  // Clear authentication data from localStorage
+  clearAuthData() {
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('user');
+    this.token = null;
+    this.user = null;
+  }
+
+  // Clear any corrupted data from localStorage
+  clearCorruptedData() {
+    try {
+      // Check if user data is corrupted
+      const userData = localStorage.getItem('user');
+      if (userData && userData !== 'undefined') {
+        JSON.parse(userData);
+      }
+    } catch (error) {
+      console.warn('Corrupted user data found, clearing localStorage');
+      this.clearAuthData();
     }
   }
 
@@ -263,16 +287,16 @@ class AuthService {
   // Initialize auth state from localStorage
   initializeAuth() {
     const token = localStorage.getItem('authToken');
-    const user = localStorage.getItem('user');
+    const userData = localStorage.getItem('user');
     
-    if (token && user) {
+    if (token && userData && userData !== 'undefined') {
       try {
         this.token = token;
-        this.user = JSON.parse(user);
+        this.user = JSON.parse(userData);
         return true;
       } catch (error) {
         console.error('Error parsing stored user data:', error);
-        this.logout();
+        this.clearAuthData();
         return false;
       }
     }

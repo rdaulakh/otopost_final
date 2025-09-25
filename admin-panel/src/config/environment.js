@@ -13,7 +13,7 @@ export const env = {
   ENVIRONMENT: getEnvVar('VITE_ENVIRONMENT', 'development'),
   
   // API Configuration
-  API_BASE_URL: getEnvVar('VITE_API_BASE_URL', 'http://localhost:3001/api/v1'),
+  API_BASE_URL: getEnvVar('VITE_API_BASE_URL', 'http://localhost:8000/api'),
   API_TIMEOUT: parseInt(getEnvVar('VITE_API_TIMEOUT', '10000')),
   
   // Authentication

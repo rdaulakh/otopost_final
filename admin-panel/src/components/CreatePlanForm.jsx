@@ -8,7 +8,12 @@ const CreatePlanForm = ({ onSave, onCancel, isDarkMode = false }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave({ name: planName, price: parseFloat(price), features: features.split(',').map(f => f.trim()) });
+    onSave({ 
+      name: planName, 
+      price: parseFloat(price), 
+      features: features.split(',').map(f => f.trim()),
+      description: `Custom plan: ${planName}` // Add description as string
+    });
   };
 
   return (

@@ -11,15 +11,7 @@ export const useTheme = () => {
 }
 
 export const ThemeProvider = ({ children }) => {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check localStorage first, then system preference
-    const savedTheme = localStorage.getItem('theme')
-    if (savedTheme) {
-      return savedTheme === 'dark'
-    }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches
-  })
-
+  const [isDarkMode, setIsDarkMode] = useState(false) // Simplified initialization
   const [isLoading, setIsLoading] = useState(true)
 
   // Apply theme to document and update localStorage
@@ -33,23 +25,27 @@ export const ThemeProvider = ({ children }) => {
     }
     
     localStorage.setItem('theme', isDarkMode ? 'dark' : 'light')
-    setIsLoading(false)
   }, [isDarkMode])
 
-  // Listen for system theme changes
+  // Set loading to false after initial render
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    
-    const handleChange = (e) => {
-      // Only update if no theme is saved in localStorage
-      if (!localStorage.getItem('theme')) {
-        setIsDarkMode(e.matches)
-      }
-    }
-
-    mediaQuery.addEventListener('change', handleChange)
-    return () => mediaQuery.removeEventListener('change', handleChange)
+    setIsLoading(false)
   }, [])
+
+  // Listen for system theme changes - temporarily disabled to prevent constant refreshing
+  // useEffect(() => {
+  //   const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+  //   
+  //   const handleChange = (e) => {
+  //     // Only update if no theme is saved in localStorage
+  //     if (!localStorage.getItem('theme')) {
+  //       setIsDarkMode(e.matches)
+  //     }
+  //   }
+
+  //   mediaQuery.addEventListener('change', handleChange)
+  //   return () => mediaQuery.removeEventListener('change', handleChange)
+  // }, [])
 
   const toggleTheme = () => {
     setIsDarkMode(prev => !prev)

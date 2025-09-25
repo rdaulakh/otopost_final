@@ -103,7 +103,7 @@ Create a `.env` file in the root directory:
 
 ```env
 # API Configuration
-VITE_API_BASE_URL=http://localhost:3001/api/v1
+VITE_API_BASE_URL=http://localhost:3001/api
 VITE_API_TIMEOUT=10000
 
 # Authentication
@@ -178,9 +178,9 @@ For development and testing:
 The admin panel connects to these API endpoints:
 
 ### Authentication
-- `POST /api/v1/auth/login` - Admin login
-- `POST /api/v1/auth/refresh` - Token refresh
-- `GET /api/v1/auth/me` - Get admin profile
+- `POST /api/auth/admin/login` - Admin login
+- `POST /api/auth/refresh` - Token refresh
+- `GET /api/auth/me` - Get admin profile
 
 ### User Management
 - `GET /api/v1/users` - Get all users with pagination

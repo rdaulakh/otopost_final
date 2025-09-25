@@ -80,12 +80,12 @@ app.get('/health', (req, res) => {
 });
 
 // Routes
-app.use('/api/v1/auth', require('./src/routes/authRoutes'));
-app.use('/api/v1/admin', require('./src/routes/adminRoutes'));
-app.use('/api/v1/customer', require('./src/routes/customerRoutes'));
-app.use('/api/v1/ai', require('./src/routes/aiRoutes'));
-app.use('/api/v1/posts', require('./src/routes/postRoutes'));
-app.use('/api/v1/analytics', require('./src/routes/analyticsRoutes'));
+app.use('/api/auth', require('./src/routes/authRoutes'));
+app.use('/api/admin', require('./src/routes/adminRoutes'));
+app.use('/api/customer', require('./src/routes/customerRoutes'));
+app.use('/api/ai', require('./src/routes/aiRoutes'));
+app.use('/api/posts', require('./src/routes/postRoutes'));
+app.use('/api/analytics', require('./src/routes/analyticsRoutes'));
 
 // WebSocket connection handling
 io.on('connection', (socket) => {

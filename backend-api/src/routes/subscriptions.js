@@ -10,6 +10,7 @@ router.get('/admin/subscriptions', authenticateAdmin, subscriptionController.get
 router.get('/admin/subscriptions/stats', authenticateAdmin, subscriptionController.getSubscriptionStats);
 router.get('/admin/subscriptions/analytics', authenticateAdmin, subscriptionController.getSubscriptionAnalytics);
 router.get('/admin/subscriptions/plans', authenticateAdmin, subscriptionController.getSubscriptionPlans);
+router.get('/admin/subscriptions/subscribed-plans', authenticateAdmin, subscriptionController.getSubscribedPlans);
 router.get('/admin/subscriptions/:id', authenticateAdmin, subscriptionController.getSubscription);
 router.post('/admin/subscriptions', authenticateAdmin, validateSubscriptionCreation, subscriptionController.createSubscription);
 router.put('/admin/subscriptions/:id', authenticateAdmin, validateSubscriptionUpdate, subscriptionController.updateSubscription);
@@ -18,12 +19,12 @@ router.post('/admin/subscriptions/:id/reactivate', authenticateAdmin, subscripti
 router.post('/admin/subscriptions/:id/renew', authenticateAdmin, subscriptionController.processSubscriptionRenewal);
 
 // Customer routes for subscription management
-router.get('/subscriptions', authenticateCustomer, subscriptionController.getSubscriptions);
-router.get('/subscriptions/plans', subscriptionController.getSubscriptionPlans);
-router.get('/subscriptions/:id', authenticateCustomer, subscriptionController.getSubscription);
-router.post('/subscriptions', authenticateCustomer, validateSubscriptionCreation, subscriptionController.createSubscription);
-router.put('/subscriptions/:id', authenticateCustomer, validateSubscriptionUpdate, subscriptionController.updateSubscription);
-router.post('/subscriptions/:id/cancel', authenticateCustomer, subscriptionController.cancelSubscription);
-router.post('/subscriptions/:id/reactivate', authenticateCustomer, subscriptionController.reactivateSubscription);
+router.get('/', authenticateCustomer, subscriptionController.getSubscriptions);
+router.get('/plans', subscriptionController.getSubscriptionPlans);
+router.get('/:id', authenticateCustomer, subscriptionController.getSubscription);
+router.post('/', authenticateCustomer, validateSubscriptionCreation, subscriptionController.createSubscription);
+router.put('/:id', authenticateCustomer, validateSubscriptionUpdate, subscriptionController.updateSubscription);
+router.post('/:id/cancel', authenticateCustomer, subscriptionController.cancelSubscription);
+router.post('/:id/reactivate', authenticateCustomer, subscriptionController.reactivateSubscription);
 
 module.exports = router;

@@ -24,13 +24,66 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initializeAuth = () => {
       try {
-        const isInitialized = authService.initializeAuth();
-        if (isInitialized) {
-          setUser(authService.getCurrentUser());
-          setToken(authService.getToken());
+        // Get token and user directly from localStorage
+        const token = localStorage.getItem('authToken');
+        const userData = localStorage.getItem('user');
+        
+        console.log('Auth initialization:', { 
+          hasToken: !!token, 
+          hasUserData: !!userData,
+          tokenPreview: token ? token.substring(0, 20) + '...' : null
+        });
+        
+        if (token && userData && userData !== 'undefined') {
+          try {
+            const user = JSON.parse(userData);
+            
+            // Check if token is expired
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const currentTime = Math.floor(Date.now() / 1000);
+            
+            console.log('Token validation:', {
+              exp: payload.exp,
+              currentTime,
+              isExpired: payload.exp < currentTime,
+              expiresAt: new Date(payload.exp * 1000).toLocaleString()
+            });
+            
+            if (payload.exp < currentTime) {
+              // Token expired, clear it
+              console.log('Token expired, clearing auth data');
+              localStorage.removeItem('authToken');
+              localStorage.removeItem('user');
+              setUser(null);
+              setToken(null);
+            } else {
+              // Token is valid, set user and token
+              console.log('Token valid, setting auth state');
+              setUser(user);
+              setToken(token);
+              // Also update the authService
+              authService.initializeAuth();
+            }
+          } catch (parseError) {
+            console.error('Error parsing stored user data:', parseError);
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('user');
+            setUser(null);
+            setToken(null);
+          }
+        } else {
+          // No valid token or user data
+          console.log('No valid token or user data found');
+          setUser(null);
+          setToken(null);
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
+        // Clear any corrupted data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        setUser(null);
+        setToken(null);
       } finally {
         setIsLoading(false);
       }
@@ -39,15 +92,42 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
+  // Listen for storage changes (when tokens are cleared by API interceptor)
+  // Temporarily disabled to debug the redirect issue
+  // useEffect(() => {
+  //   const handleStorageChange = (e) => {
+  //     if (e.key === 'authToken' && !e.newValue) {
+  //       // Token was cleared, update state
+  //       setUser(null);
+  //       setToken(null);
+  //     }
+  //   };
+
+  //   window.addEventListener('storage', handleStorageChange);
+  //   return () => window.removeEventListener('storage', handleStorageChange);
+  // }, []);
+
   // Login function
   const login = async (email, password) => {
     setIsLoading(true);
     try {
       const result = await authService.login(email, password);
-      
+
       if (result.success) {
+        // Update both context state and authService
         setUser(result.user);
         setToken(result.token);
+        
+        // Ensure authService is also updated
+        authService.user = result.user;
+        authService.token = result.token;
+        
+        console.log('Login successful, user and token set:', { 
+          hasUser: !!result.user, 
+          hasToken: !!result.token,
+          userEmail: result.user?.email 
+        });
+        
         return { success: true, user: result.user };
       } else {
         return { success: false, error: result.error };
@@ -67,8 +147,20 @@ export const AuthProvider = ({ children }) => {
       const result = await authService.register(userData);
       
       if (result.success) {
+        // Update both context state and authService
         setUser(result.user);
         setToken(result.token);
+        
+        // Ensure authService is also updated
+        authService.user = result.user;
+        authService.token = result.token;
+        
+        console.log('Registration successful, user and token set:', { 
+          hasUser: !!result.user, 
+          hasToken: !!result.token,
+          userEmail: result.user?.email 
+        });
+        
         return { success: true, user: result.user };
       } else {
         return { success: false, error: result.error };
@@ -206,6 +298,16 @@ export const AuthProvider = ({ children }) => {
     changePassword,
     deleteAccount,
   };
+
+  // Debug logging
+  console.log('AuthContext state:', { 
+    user: !!user, 
+    token: !!token, 
+    isAuthenticated: !!user && !!token, 
+    isLoading,
+    userEmail: user?.email,
+    tokenPreview: token ? token.substring(0, 20) + '...' : null
+  });
 
   return (
     <AuthContext.Provider value={value}>

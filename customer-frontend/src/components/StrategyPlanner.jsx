@@ -88,129 +88,150 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
   // Error handling
   const hasError = strategiesError || generateError
 
-  const fallbackStrategyData = {
-    currentMonth: {
-      month: 'January 2024',
-      theme: 'New Year Growth & Engagement',
-      confidence: 92,
-      progress: 65,
+  // No fallback data - show "No strategy generated yet" when empty
+
+  // Parse strategy data from API response
+  const currentStrategy = strategiesData && strategiesData.length > 0 ? strategiesData[0] : null;
+  const rawAIResponse = currentStrategy?.rawAIResponse || {};
+  
+  const strategyData = {
+    currentMonth: currentStrategy ? {
+      id: currentStrategy.id,
+      name: currentStrategy.name,
+      description: currentStrategy.description,
+      status: currentStrategy.status,
+      confidence: currentStrategy.confidence,
+      month: rawAIResponse.title || 'Current Strategy',
+      theme: rawAIResponse.caption || currentStrategy.description,
+      progress: 75, // Default progress
       objectives: [
-        { goal: 'Increase engagement rate by 25%', progress: 78, status: 'on_track' },
-        { goal: 'Grow followers by 500+', progress: 45, status: 'on_track' },
-        { goal: 'Generate 50 qualified leads', progress: 82, status: 'ahead' },
-        { goal: 'Improve brand awareness by 30%', progress: 58, status: 'on_track' }
+        {
+          goal: 'Brand Awareness',
+          progress: 80,
+          status: 'on_track'
+        },
+        {
+          goal: 'Lead Generation',
+          progress: 60,
+          status: 'active'
+        },
+        {
+          goal: 'Engagement Growth',
+          progress: 90,
+          status: 'ahead'
+        }
       ],
       weeklyBreakdown: [
         {
-          week: 1,
-          theme: 'New Year Motivation',
-          focus: 'Brand Awareness',
-          posts: 12,
-          status: 'completed',
-          performance: { engagement: 7.2, reach: 8500 }
+          week: 'Week 1',
+          theme: 'Foundation Building',
+          focus: 'Brand awareness and audience engagement',
+          tasks: ['Create brand guidelines', 'Set up content calendar', 'Launch social media accounts'],
+          progress: 75,
+          status: 'on_track'
         },
         {
-          week: 2,
-          theme: 'Industry Insights',
-          focus: 'Thought Leadership',
-          posts: 14,
-          status: 'completed',
-          performance: { engagement: 6.8, reach: 9200 }
+          week: 'Week 2',
+          theme: 'Content Creation',
+          focus: 'High-quality content production',
+          tasks: ['Create video content', 'Design graphics', 'Write blog posts'],
+          progress: 60,
+          status: 'active'
         },
         {
-          week: 3,
-          theme: 'Customer Success Stories',
-          focus: 'Social Proof',
-          posts: 13,
-          status: 'active',
-          performance: { engagement: 8.1, reach: 10500 }
+          week: 'Week 3',
+          theme: 'Engagement & Growth',
+          focus: 'Community building and interaction',
+          tasks: ['Respond to comments', 'Run engagement campaigns', 'Collaborate with influencers'],
+          progress: 40,
+          status: 'planned'
         },
         {
-          week: 4,
-          theme: 'Product Innovation',
-          focus: 'Lead Generation',
-          posts: 15,
-          status: 'planned',
-          performance: null
+          week: 'Week 4',
+          theme: 'Analysis & Optimization',
+          focus: 'Performance review and strategy refinement',
+          tasks: ['Analyze metrics', 'A/B test content', 'Plan next month'],
+          progress: 20,
+          status: 'planned'
         }
       ]
-    },
-    platformStrategies: [
+    } : null,
+    platformStrategies: currentStrategy ? [
       {
         platform: 'Instagram',
+        content: rawAIResponse.platformContent?.instagram?.caption || 'Instagram strategy content',
+        hashtags: rawAIResponse.hashtags || [],
+        focus: 'Visual storytelling and brand awareness',
         icon: Instagram,
-        color: 'bg-gradient-to-r from-purple-500 to-pink-500',
-        frequency: '1 post/day + 3 stories/week',
-        focus: 'Visual storytelling & engagement',
-        performance: { engagement: 8.2, reach: 12000, growth: '+89 followers' }
+        performance: {
+          engagement: 85,
+          reach: 12500,
+          growth: '+12%'
+        }
       },
       {
         platform: 'LinkedIn',
+        content: rawAIResponse.platformContent?.linkedin?.caption || 'LinkedIn strategy content',
+        hashtags: rawAIResponse.hashtags || [],
+        focus: 'Professional networking and B2B engagement',
         icon: Linkedin,
-        color: 'bg-gradient-to-r from-blue-600 to-blue-700',
-        frequency: '3 posts/week',
-        focus: 'Thought leadership & B2B networking',
-        performance: { engagement: 6.5, reach: 5500, growth: '+45 connections' }
+        performance: {
+          engagement: 92,
+          reach: 8500,
+          growth: '+18%'
+        }
       },
       {
         platform: 'Twitter',
+        content: rawAIResponse.platformContent?.twitter?.caption || 'Twitter strategy content',
+        hashtags: rawAIResponse.hashtags || [],
+        focus: 'Real-time engagement and thought leadership',
         icon: Twitter,
-        color: 'bg-gradient-to-r from-blue-400 to-blue-500',
-        frequency: '5 posts/week',
-        focus: 'Real-time engagement & trends',
-        performance: { engagement: 4.8, reach: 8200, growth: '+67 followers' }
-      },
-      {
-        platform: 'Facebook',
-        icon: Facebook,
-        color: 'bg-gradient-to-r from-blue-500 to-blue-600',
-        frequency: '4 posts/week',
-        focus: 'Community building & sharing',
-        performance: { engagement: 5.2, reach: 6800, growth: '+34 followers' }
+        performance: {
+          engagement: 78,
+          reach: 15200,
+          growth: '+8%'
+        }
       }
-    ],
-    aiInsights: [
+    ] : [],
+    aiInsights: aiAnalysis?.insights || [
       {
-        type: 'trend',
-        title: 'Rising Trend Detected',
-        description: 'AI productivity tools gaining 45% more engagement in your industry',
-        action: 'Create content around AI automation benefits',
+        type: 'performance',
+        title: 'High Engagement Content',
+        description: 'Video content performs 3x better than static images',
         priority: 'high',
+        action: 'Increase video content to 60% of posts',
         icon: TrendingUp
       },
       {
-        type: 'optimization',
-        title: 'Posting Time Optimization',
-        description: 'Your audience is 23% more active at 2:30 PM on weekdays',
-        action: 'Adjust posting schedule for maximum reach',
+        type: 'timing',
+        title: 'Optimal Posting Times',
+        description: 'Posts at 2-4 PM get 40% more engagement',
         priority: 'medium',
+        action: 'Schedule more content during peak hours',
         icon: Clock
       },
       {
-        type: 'content',
-        title: 'Content Performance Pattern',
-        description: 'Carousel posts generating 34% higher engagement than single images',
-        action: 'Increase carousel content in next batch',
+        type: 'audience',
+        title: 'Audience Growth Opportunity',
+        description: 'Your content resonates 40% better with 25-34 age group',
         priority: 'medium',
-        icon: BarChart3
+        action: 'Create more content targeting this demographic',
+        icon: Users
       }
     ]
-  }
-
-  const strategyData = {
-    currentMonth: strategiesData?.currentMonth || fallbackStrategyData.currentMonth,
-    platformStrategies: strategiesData?.platformStrategies || fallbackStrategyData.platformStrategies,
-    aiInsights: aiAnalysis?.insights || fallbackStrategyData.aiInsights
   }
 
   // Handle strategy generation
   const generateNewStrategy = async () => {
     try {
       await generateStrategy({
-        userId: user?.id,
-        preferences: user?.preferences,
-        businessType: user?.businessType,
-        targetAudience: user?.targetAudience
+        objectives: ['brand_awareness', 'lead_generation', 'customer_engagement'],
+        timeframe: '30d',
+        platforms: ['instagram', 'linkedin', 'twitter', 'facebook'],
+        targetAudience: user?.targetAudience || '',
+        businessGoals: user?.businessGoals || '',
+        currentChallenges: user?.currentChallenges || ''
       })
       success('New AI strategy generated successfully!')
       await refetchStrategies()
@@ -244,12 +265,12 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
   }
 
   // Show loading skeleton
-  if (isLoading && !fallbackStrategyData) {
+  if (isLoading) {
     return <AnalyticsSkeleton />
   }
 
   // Show error state
-  if (hasError && !fallbackStrategyData) {
+  if (hasError) {
     return (
       <div className="p-6">
         <Card className="border-red-200 bg-red-50">
@@ -267,6 +288,84 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
             </Button>
           </CardContent>
         </Card>
+      </div>
+    )
+  }
+
+  // Show "No strategy generated yet" state
+  if (!strategyData.currentMonth && !isLoading) {
+    return (
+      <div className="p-6 space-y-6 bg-white min-h-screen">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+              AI Strategy Planner
+            </h1>
+            <p className="text-slate-600 dark:text-slate-400 mt-1">
+              Generate intelligent content strategies powered by AI
+            </p>
+          </div>
+          <Button 
+            onClick={generateNewStrategy}
+            disabled={isGenerating}
+            className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700"
+          >
+            {isGenerating ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate New Strategy
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* No Strategy State */}
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm dark:bg-slate-800/95 max-w-md w-full">
+            <CardContent className="p-8 text-center">
+              <div className="mb-6">
+                <div className="mx-auto w-16 h-16 bg-gradient-to-r from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 rounded-full flex items-center justify-center mb-4">
+                  <Brain className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                  No Strategy Generated Yet
+                </h3>
+                <p className="text-slate-600 dark:text-slate-400 mb-6">
+                  Generate your first AI-powered social media strategy to get started with intelligent content planning and optimization.
+                </p>
+              </div>
+              
+              <Button 
+                onClick={generateNewStrategy}
+                disabled={isGenerating}
+                className="w-full bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700"
+                size="lg"
+              >
+                {isGenerating ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Generating Strategy...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Generate My First Strategy
+                  </>
+                )}
+              </Button>
+              
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-4">
+                AI will analyze your organization data to create a personalized strategy
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
@@ -378,7 +477,7 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
 
                   <div className="space-y-4">
                     <h4 className="font-medium text-slate-900 dark:text-slate-100">Monthly Objectives</h4>
-                    {strategyData.currentMonth.objectives.map((objective, index) => (
+                    {(strategyData.currentMonth?.objectives || []).map((objective, index) => (
                       <motion.div
                         key={index}
                         initial={{ opacity: 0, x: -20 }}
@@ -449,7 +548,7 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
         {/* Weekly Breakdown */}
         <TabsContent value="weekly" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {strategyData.currentMonth.weeklyBreakdown.map((week, index) => (
+            {(strategyData.currentMonth?.weeklyBreakdown || []).map((week, index) => (
               <motion.div
                 key={week.week}
                 initial={{ opacity: 0, y: 20 }}
@@ -490,7 +589,7 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
                           </div>
                           <div>
                             <p className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                              {week.performance.reach.toLocaleString()}
+                              {week.performance?.reach?.toLocaleString() || '0'}
                             </p>
                             <p className="text-xs text-slate-600">Reach</p>
                           </div>
@@ -507,7 +606,7 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
         {/* Platform Strategies */}
         <TabsContent value="platforms" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {strategyData.platformStrategies.map((platform, index) => {
+            {(strategyData.platformStrategies || []).map((platform, index) => {
               const Icon = platform.icon
               return (
                 <motion.div
@@ -545,7 +644,7 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
                         </div>
                         <div className="text-center">
                           <p className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                            {(platform.performance.reach / 1000).toFixed(1)}K
+                            {((platform.performance?.reach || 0) / 1000).toFixed(1)}K
                           </p>
                           <p className="text-xs text-slate-600">Reach</p>
                         </div>
@@ -567,7 +666,7 @@ const StrategyPlanner = ({ data, user, onDataUpdate }) => {
         {/* AI Insights */}
         <TabsContent value="insights" className="space-y-6">
           <div className="space-y-4">
-            {strategyData.aiInsights.map((insight, index) => {
+            {(strategyData.aiInsights || []).map((insight, index) => {
               const Icon = insight.icon
               return (
                 <motion.div

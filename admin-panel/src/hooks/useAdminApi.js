@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
 
 // API base configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'
 
 // Create axios instance with default config
 const api = axios.create({
@@ -87,7 +87,7 @@ export const useSystemHealth = () => {
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
     cacheTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes (reduced frequency)
     retry: 2
   })
 }
@@ -98,7 +98,7 @@ export const useUserAnalytics = (options = {}) => {
     queryKey: ['userAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/user-management/analytics', { params: options })
+        const response = await api.get('/admin-dashboard/user-management/analytics', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -160,7 +160,7 @@ export const useAdminAlerts = () => {
     },
     staleTime: 1 * 60 * 1000, // 1 minute
     cacheTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 60000, // Refresh every minute
+    refetchInterval: 5 * 60 * 1000, // Refresh every 5 minutes (reduced frequency)
     retry: 2
   })
 }
@@ -175,7 +175,7 @@ export const useUsersList = (options = {}) => {
     queryKey: ['usersList', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/user-management/users', { params: options })
+        const response = await api.get('/admin-dashboard/user-management/users', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -195,7 +195,7 @@ export const useCreateUser = () => {
   return useMutation({
     mutationFn: async (userData) => {
       try {
-        const response = await api.post('/user-management/users', userData)
+        const response = await api.post('/admin-dashboard/user-management/users', userData)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -216,7 +216,7 @@ export const useUpdateUser = () => {
   return useMutation({
     mutationFn: async ({ id, ...userData }) => {
       try {
-        const response = await api.put(`/user-management/users/${id}`, userData)
+        const response = await api.put(`/admin-dashboard/user-management/users/${id}`, userData)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -237,7 +237,7 @@ export const useDeleteUser = () => {
   return useMutation({
     mutationFn: async (userId) => {
       try {
-        const response = await api.delete(`/user-management/users/${userId}`)
+        const response = await api.delete(`/admin-dashboard/user-management/users/${userId}`)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -261,7 +261,7 @@ export const useAdminContentList = (options = {}) => {
     queryKey: ['adminContentList', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/content', { params: { ...options, admin: true } })
+        const response = await api.get('/admin-dashboard/content', { params: { ...options, admin: true } })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -280,7 +280,7 @@ export const useAdminContentAnalytics = (options = {}) => {
     queryKey: ['adminContentAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/analytics/content', { params: { ...options, admin: true } })
+        const response = await api.get('/admin-dashboard/analytics/content', { params: { ...options, admin: true } })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -423,7 +423,7 @@ export const useAdvancedAnalytics = (options = {}) => {
     queryKey: ['advancedAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/advanced-analytics/overview', { params: options })
+        const response = await api.get('/admin-dashboard/advanced-analytics/overview', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -441,7 +441,7 @@ export const usePlatformPerformance = (options = {}) => {
     queryKey: ['platformPerformance', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/advanced-analytics/platform-performance', { params: options })
+        const response = await api.get('/admin-dashboard/advanced-analytics/platform-performance', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -459,7 +459,7 @@ export const useAdvancedRevenueAnalytics = (options = {}) => {
     queryKey: ['advancedRevenueAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/advanced-analytics/revenue-analytics', { params: options })
+        const response = await api.get('/admin-dashboard/advanced-analytics/revenue-analytics', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -477,7 +477,7 @@ export const useCustomReports = () => {
     queryKey: ['customReports'],
     queryFn: async () => {
       try {
-        const response = await api.get('/advanced-analytics/custom-reports')
+        const response = await api.get('/admin-dashboard/advanced-analytics/custom-reports')
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -514,7 +514,7 @@ export const useAnalyticsInsights = (options = {}) => {
     queryKey: ['analyticsInsights', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/advanced-analytics/insights', { params: options })
+        const response = await api.get('/admin-dashboard/advanced-analytics/insights', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -536,7 +536,7 @@ export const useRevenueMetrics = (options = {}) => {
     queryKey: ['revenueMetrics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/revenue-dashboard/metrics', { params: options })
+        const response = await api.get('/admin-dashboard/revenue-dashboard/metrics', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -554,7 +554,7 @@ export const useDetailedRevenueAnalytics = (options = {}) => {
     queryKey: ['detailedRevenueAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/revenue-dashboard/analytics', { params: options })
+        const response = await api.get('/admin-dashboard/revenue-dashboard/analytics', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -572,7 +572,7 @@ export const useSubscriptionAnalytics = (options = {}) => {
     queryKey: ['subscriptionAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/revenue-dashboard/subscriptions', { params: options })
+        const response = await api.get('/admin-dashboard/revenue-dashboard/subscriptions', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -590,7 +590,7 @@ export const useCohortAnalysis = (options = {}) => {
     queryKey: ['cohortAnalysis', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/revenue-dashboard/cohorts', { params: options })
+        const response = await api.get('/admin-dashboard/revenue-dashboard/cohorts', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -608,7 +608,7 @@ export const useRevenueForecasting = (options = {}) => {
     queryKey: ['revenueForecasting', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/revenue-dashboard/forecasting', { params: options })
+        const response = await api.get('/admin-dashboard/revenue-dashboard/forecasting', { params: options })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -616,6 +616,82 @@ export const useRevenueForecasting = (options = {}) => {
     },
     staleTime: 15 * 60 * 1000, // 15 minutes
     cacheTime: 30 * 60 * 1000, // 30 minutes
+    retry: 2
+  })
+}
+
+// ============================================================================
+// MULTI-TENANT MANAGEMENT HOOKS
+// ============================================================================
+
+// Multi-Tenant Instances
+export const useMultiTenantInstances = (options = {}) => {
+  return useQuery({
+    queryKey: ['multiTenantInstances', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/admin-dashboard/multi-tenant/instances', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    cacheTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2
+  })
+}
+
+// Tenant Plans
+export const useTenantPlans = () => {
+  return useQuery({
+    queryKey: ['tenantPlans'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/admin-dashboard/multi-tenant/plans')
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes
+    cacheTime: 15 * 60 * 1000, // 15 minutes
+    retry: 2
+  })
+}
+
+// Multi-Tenant Statistics
+export const useMultiTenantStats = () => {
+  return useQuery({
+    queryKey: ['multiTenantStats'],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/admin-dashboard/multi-tenant/stats')
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    cacheTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2
+  })
+}
+
+// Multi-Tenant Resource Usage
+export const useMultiTenantResourceUsage = (options = {}) => {
+  return useQuery({
+    queryKey: ['multiTenantResourceUsage', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/admin-dashboard/multi-tenant/resource-usage', { params: options })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 1 * 60 * 1000, // 1 minute
+    cacheTime: 3 * 60 * 1000, // 3 minutes
     retry: 2
   })
 }

@@ -177,7 +177,7 @@ router.get('/endpoints', async (req, res) => {
   try {
     const endpoints = [
       { 
-        path: '/api/v1/users', 
+        path: '/api/users', 
         method: 'GET', 
         status: 'healthy', 
         response_time: Math.floor(Math.random() * 100) + 20, 
@@ -185,7 +185,7 @@ router.get('/endpoints', async (req, res) => {
         last_check: new Date().toISOString()
       },
       { 
-        path: '/api/v1/posts', 
+        path: '/api/content', 
         method: 'POST', 
         status: 'healthy', 
         response_time: Math.floor(Math.random() * 200) + 50, 
@@ -193,7 +193,7 @@ router.get('/endpoints', async (req, res) => {
         last_check: new Date().toISOString()
       },
       { 
-        path: '/api/v1/analytics', 
+        path: '/api/analytics', 
         method: 'GET', 
         status: Math.random() > 0.8 ? 'warning' : 'healthy', 
         response_time: Math.floor(Math.random() * 300) + 100, 
@@ -201,7 +201,7 @@ router.get('/endpoints', async (req, res) => {
         last_check: new Date().toISOString()
       },
       { 
-        path: '/api/v1/campaigns', 
+        path: '/api/campaigns', 
         method: 'PUT', 
         status: 'healthy', 
         response_time: Math.floor(Math.random() * 150) + 50, 
@@ -209,7 +209,7 @@ router.get('/endpoints', async (req, res) => {
         last_check: new Date().toISOString()
       },
       { 
-        path: '/api/v1/webhooks', 
+        path: '/api/webhooks', 
         method: 'POST', 
         status: Math.random() > 0.9 ? 'error' : 'healthy', 
         response_time: Math.floor(Math.random() * 400) + 100, 

@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { useState } from 'react'
+import { useTheme } from '../contexts/ThemeContext.jsx'
 
-// Import cost optimizer hooks - using existing hooks
-import { 
-  useCostOptimization,
-  useCostAnalytics,
-  useBudgetRecommendations,
-  useUpdateBudget
-} from '../hooks/useCustomerApi.js'
+// Note: Cost optimizer hooks would be imported here when implemented
+// import { 
+//   useCostOptimization,
+//   useCostAnalytics,
+//   useBudgetRecommendations,
+//   useUpdateBudget
+// } from '../hooks/useCustomerApi.js'
 import { 
   DollarSign,
   TrendingUp,
@@ -43,7 +43,6 @@ import { Badge } from '@/components/ui/badge.jsx'
 import { Button } from '@/components/ui/button.jsx'
 import { Progress } from '@/components/ui/progress.jsx'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs.jsx'
-import { useTheme } from '../contexts/ThemeContext.jsx'
 
 import {
   LineChart,
@@ -63,12 +62,9 @@ import {
   ResponsiveContainer
 } from 'recharts'
 
-const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
+const EnhancedCostOptimizer = () => {
   const { isDarkMode } = useTheme()
-
   console.log('EnhancedCostOptimizer component loaded - WORKING VERSION!')
-  const [currentPlan, setCurrentPlan] = useState('premium')
-  const [budgetAlert, setBudgetAlert] = useState(false)
 
   // Cost optimization data
   const [costData] = useState({
@@ -210,38 +206,66 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
   const MetricCard = ({ title, value, change, icon: Icon, color = "blue", subtitle }) => {
     const isPositive = change > 0
     const colorClasses = {
-      blue: 'text-blue-600',
-      green: 'text-green-600',
-      purple: 'text-purple-600',
-      orange: 'text-orange-600',
-      red: 'text-red-600'
+      blue: isDarkMode ? 'text-blue-400' : 'text-blue-600',
+      green: isDarkMode ? 'text-green-400' : 'text-green-600',
+      purple: isDarkMode ? 'text-purple-400' : 'text-purple-600',
+      orange: isDarkMode ? 'text-orange-400' : 'text-orange-600',
+      red: isDarkMode ? 'text-red-400' : 'text-red-600'
     }
 
     return (
-      <Card>
+      <Card className={`${
+        isDarkMode 
+          ? 'bg-slate-800 border-slate-700 hover:shadow-lg transition-shadow' 
+          : 'bg-white'
+      }`}>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">{title}</p>
-              <p className="text-2xl font-bold text-slate-900">{value}</p>
+              <p className={`text-sm font-medium ${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
+                {title}
+              </p>
+              <p className={`text-2xl font-bold ${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                {value}
+              </p>
               {subtitle && (
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{subtitle}</p>
+                <p className={`text-sm mt-1 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  {subtitle}
+                </p>
               )}
               {change !== undefined && (
                 <div className="flex items-center mt-1">
                   {isPositive ? (
-                    <ArrowUpRight className="h-4 w-4 text-green-500 mr-1" />
+                    <ArrowUpRight className={`h-4 w-4 mr-1 ${
+                      isDarkMode ? 'text-green-400' : 'text-green-500'
+                    }`} />
                   ) : (
-                    <ArrowDownRight className="h-4 w-4 text-red-500 mr-1" />
+                    <ArrowDownRight className={`h-4 w-4 mr-1 ${
+                      isDarkMode ? 'text-red-400' : 'text-red-500'
+                    }`} />
                   )}
-                  <span className={`text-sm font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`text-sm font-medium ${
+                    isPositive 
+                      ? (isDarkMode ? 'text-green-400' : 'text-green-600')
+                      : (isDarkMode ? 'text-red-400' : 'text-red-600')
+                  }`}>
                     {isPositive ? '+' : ''}{change}%
                   </span>
-                  <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">vs last month</span>
+                  <span className={`text-sm ml-1 ${
+                    isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                  }`}>
+                    vs last month
+                  </span>
                 </div>
               )}
             </div>
-            <Icon className={`h-8 w-8 ${colorClasses[color]}`} />
+            {Icon && <Icon className={`h-8 w-8 ${colorClasses[color]}`} />}
           </div>
         </CardContent>
       </Card>
@@ -249,12 +273,24 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
   }
 
   const OptimizationCard = ({ optimization }) => (
-    <Card className="hover:shadow-lg transition-shadow">
+    <Card className={`hover:shadow-lg transition-shadow ${
+      isDarkMode 
+        ? 'bg-slate-800 border-slate-700' 
+        : 'bg-white'
+    }`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <h3 className="font-medium text-slate-900">{optimization.title}</h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{optimization.description}</p>
+            <h3 className={`font-medium ${
+              isDarkMode ? 'text-white' : 'text-slate-900'
+            }`}>
+              {optimization.title}
+            </h3>
+            <p className={`text-sm mt-1 ${
+              isDarkMode ? 'text-slate-300' : 'text-slate-600'
+            }`}>
+              {optimization.description}
+            </p>
           </div>
           <Badge className={`text-xs ${getStatusColor(optimization.status)}`}>
             {optimization.status}
@@ -264,12 +300,28 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Monthly Savings</p>
-              <p className="font-bold text-green-600">{formatCurrency(optimization.savings)}</p>
+              <p className={`text-sm ${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
+                Monthly Savings
+              </p>
+              <p className={`font-bold ${
+                isDarkMode ? 'text-green-400' : 'text-green-600'
+              }`}>
+                {formatCurrency(optimization.savings)}
+              </p>
             </div>
             <div>
-              <p className="text-sm text-slate-600 dark:text-slate-400">Efficiency Gain</p>
-              <p className="font-bold text-blue-600">{optimization.efficiency}</p>
+              <p className={`text-sm ${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
+                Efficiency Gain
+              </p>
+              <p className={`font-bold ${
+                isDarkMode ? 'text-blue-400' : 'text-blue-600'
+              }`}>
+                {optimization.efficiency}
+              </p>
             </div>
           </div>
           <Badge className={`text-xs ${getImpactColor(optimization.impact)}`}>
@@ -281,7 +333,11 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
   )
 
   const PlanCard = ({ plan }) => (
-    <Card className={`relative ${plan.current ? 'ring-2 ring-blue-500' : ''}`}>
+    <Card className={`relative ${
+      isDarkMode 
+        ? 'bg-slate-800 border-slate-700' 
+        : 'bg-white'
+    } ${plan.current ? 'ring-2 ring-blue-500' : ''}`}>
       {plan.current && (
         <Badge className="absolute -top-2 left-4 bg-blue-500 text-white">
           Current Plan
@@ -289,32 +345,56 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
       )}
       <CardContent className="p-6">
         <div className="text-center">
-          <h3 className="text-lg font-bold text-slate-900">{plan.name}</h3>
+          <h3 className={`text-lg font-bold ${
+            isDarkMode ? 'text-white' : 'text-slate-900'
+          }`}>
+            {plan.name}
+          </h3>
           <div className="mt-2">
-            <span className="text-3xl font-bold text-slate-900">${plan.price}</span>
-            <span className="text-slate-600 dark:text-slate-400">/month</span>
+            <span className={`text-3xl font-bold ${
+              isDarkMode ? 'text-white' : 'text-slate-900'
+            }`}>
+              ${plan.price}
+            </span>
+            <span className={`${
+              isDarkMode ? 'text-slate-400' : 'text-slate-600'
+            }`}>
+              /month
+            </span>
           </div>
           
           <div className="mt-4 space-y-2">
-            <div className="text-sm">
+            <div className={`text-sm ${
+              isDarkMode ? 'text-slate-300' : 'text-slate-600'
+            }`}>
               <span className="font-medium">{formatNumber(plan.tokens)}</span> tokens/month
             </div>
-            <div className="text-sm">
+            <div className={`text-sm ${
+              isDarkMode ? 'text-slate-300' : 'text-slate-600'
+            }`}>
               <span className="font-medium">{formatNumber(plan.apiCalls)}</span> API calls/month
             </div>
           </div>
           
           <div className="mt-4 space-y-2">
             {plan.features.map((feature, index) => (
-              <div key={index} className="flex items-center text-sm text-slate-600 dark:text-slate-400">
-                <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
+              <div key={index} className={`flex items-center text-sm ${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
+                <CheckCircle className={`h-4 w-4 mr-2 ${
+                  isDarkMode ? 'text-green-400' : 'text-green-500'
+                }`} />
                 {feature}
               </div>
             ))}
           </div>
           
           <Button 
-            className={`mt-4 w-full ${plan.current ? 'bg-slate-100 text-slate-600 dark:text-slate-400' : ''}`}
+            className={`mt-4 w-full ${
+              plan.current 
+                ? (isDarkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-600') 
+                : ''
+            }`}
             disabled={plan.current}
           >
             {plan.current ? 'Current Plan' : 'Upgrade'}
@@ -325,23 +405,43 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
   )
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={`p-6 space-y-6 ${
+      isDarkMode 
+        ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen' 
+        : ''
+    }`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+          <h1 className={`text-3xl font-bold ${
+            isDarkMode ? 'text-white' : 'text-slate-900'
+          }`}>
             Cost Optimizer
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
+          <p className={`mt-1 ${
+            isDarkMode ? 'text-slate-300' : 'text-slate-600'
+          }`}>
             Intelligent budget management and token optimization
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className={`${
+              isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''
+            }`}
+          >
             <Download className="h-4 w-4 mr-2" />
             Export Report
           </Button>
-          <Button variant="outline" size="sm">
+          <Button 
+            variant="outline" 
+            size="sm"
+            className={`${
+              isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''
+            }`}
+          >
             <Settings className="h-4 w-4 mr-2" />
             Budget Settings
           </Button>
@@ -350,13 +450,25 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
 
       {/* Budget Alert */}
       {costData.currentUsage.currentSpend / costData.currentUsage.monthlyBudget > 0.8 && (
-        <Card className="border-orange-200 bg-orange-50">
+        <Card className={`${
+          isDarkMode 
+            ? 'bg-amber-900/20 border-amber-800' 
+            : 'bg-orange-50 border-orange-200'
+        } border`}>
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              <AlertTriangle className={`h-5 w-5 ${
+                isDarkMode ? 'text-amber-400' : 'text-orange-600'
+              }`} />
               <div>
-                <p className="font-medium text-orange-900">Budget Alert</p>
-                <p className="text-sm text-orange-700">
+                <p className={`font-medium ${
+                  isDarkMode ? 'text-amber-200' : 'text-orange-900'
+                }`}>
+                  Budget Alert
+                </p>
+                <p className={`text-sm ${
+                  isDarkMode ? 'text-amber-300' : 'text-orange-700'
+                }`}>
                   You've used {((costData.currentUsage.currentSpend / costData.currentUsage.monthlyBudget) * 100).toFixed(1)}% of your monthly budget
                 </p>
               </div>
@@ -403,15 +515,29 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
 
       {/* Budget Progress */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
+        <Card className={`${
+          isDarkMode 
+            ? 'bg-slate-800 border-slate-700' 
+            : 'bg-white'
+        }`}>
           <CardHeader>
-            <CardTitle>Budget Usage</CardTitle>
-            <CardDescription>Current month spending breakdown</CardDescription>
+            <CardTitle className={`${
+              isDarkMode ? 'text-white' : 'text-slate-900'
+            }`}>
+              Budget Usage
+            </CardTitle>
+            <CardDescription className={`${
+              isDarkMode ? 'text-slate-300' : 'text-slate-600'
+            }`}>
+              Current month spending breakdown
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div>
-                <div className="flex justify-between text-sm mb-2">
+                <div className={`flex justify-between text-sm mb-2 ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                }`}>
                   <span>Monthly Budget</span>
                   <span>{formatCurrency(costData.currentUsage.monthlyBudget)}</span>
                 </div>
@@ -419,14 +545,18 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
                   value={(costData.currentUsage.currentSpend / costData.currentUsage.monthlyBudget) * 100} 
                   className="h-3"
                 />
-                <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mt-1">
+                <div className={`flex justify-between text-xs mt-1 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                }`}>
                   <span>Used: {formatCurrency(costData.currentUsage.currentSpend)}</span>
                   <span>Remaining: {formatCurrency(costData.currentUsage.monthlyBudget - costData.currentUsage.currentSpend)}</span>
                 </div>
               </div>
               
               <div>
-                <div className="flex justify-between text-sm mb-2">
+                <div className={`flex justify-between text-sm mb-2 ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                }`}>
                   <span>Token Usage</span>
                   <span>{formatNumber(costData.currentUsage.tokensUsed)} / {formatNumber(costData.currentUsage.tokensLimit)}</span>
                 </div>
@@ -437,7 +567,9 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
               </div>
               
               <div>
-                <div className="flex justify-between text-sm mb-2">
+                <div className={`flex justify-between text-sm mb-2 ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                }`}>
                   <span>API Calls</span>
                   <span>{formatNumber(costData.currentUsage.apiCalls)} / {formatNumber(costData.currentUsage.apiLimit)}</span>
                 </div>
@@ -450,10 +582,22 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className={`${
+          isDarkMode 
+            ? 'bg-slate-800 border-slate-700' 
+            : 'bg-white'
+        }`}>
           <CardHeader>
-            <CardTitle>Cost Breakdown</CardTitle>
-            <CardDescription>Spending by AI service category</CardDescription>
+            <CardTitle className={`${
+              isDarkMode ? 'text-white' : 'text-slate-900'
+            }`}>
+              Cost Breakdown
+            </CardTitle>
+            <CardDescription className={`${
+              isDarkMode ? 'text-slate-300' : 'text-slate-600'
+            }`}>
+              Spending by AI service category
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="h-64">
@@ -471,7 +615,19 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => formatCurrency(value)} />
+                  <Tooltip 
+                    formatter={(value) => formatCurrency(value)}
+                    contentStyle={{
+                      backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                      border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      color: isDarkMode ? '#f1f5f9' : '#1e293b',
+                      fontSize: '14px'
+                    }}
+                    labelStyle={{
+                      color: isDarkMode ? '#f1f5f9' : '#1e293b'
+                    }}
+                  />
                 </RechartsPieChart>
               </ResponsiveContainer>
             </div>
@@ -481,31 +637,84 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
 
       {/* Main Tabs */}
       <Tabs defaultValue="usage" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="usage">Usage Trends</TabsTrigger>
-          <TabsTrigger value="optimizations">Optimizations</TabsTrigger>
-          <TabsTrigger value="predictions">Predictions</TabsTrigger>
-          <TabsTrigger value="plans">Plans</TabsTrigger>
+        <TabsList className={`grid w-full grid-cols-4 ${
+          isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100'
+        }`}>
+          <TabsTrigger 
+            value="usage"
+            className={`${
+              isDarkMode ? 'data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 hover:bg-slate-700' : ''
+            }`}
+          >
+            Usage Trends
+          </TabsTrigger>
+          <TabsTrigger 
+            value="optimizations"
+            className={`${
+              isDarkMode ? 'data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 hover:bg-slate-700' : ''
+            }`}
+          >
+            Optimizations
+          </TabsTrigger>
+          <TabsTrigger 
+            value="predictions"
+            className={`${
+              isDarkMode ? 'data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 hover:bg-slate-700' : ''
+            }`}
+          >
+            Predictions
+          </TabsTrigger>
+          <TabsTrigger 
+            value="plans"
+            className={`${
+              isDarkMode ? 'data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 hover:bg-slate-700' : ''
+            }`}
+          >
+            Plans
+          </TabsTrigger>
         </TabsList>
 
         {/* Usage Trends Tab */}
         <TabsContent value="usage" className="space-y-6">
-          <Card>
+          <Card className={`${
+            isDarkMode 
+              ? 'bg-slate-800 border-slate-700' 
+              : 'bg-white'
+          }`}>
             <CardHeader>
-              <CardTitle>Daily Usage & Efficiency</CardTitle>
-              <CardDescription>Track your daily spending and AI efficiency over time</CardDescription>
+              <CardTitle className={`${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                Daily Usage & Efficiency
+              </CardTitle>
+              <CardDescription className={`${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
+                Track your daily spending and AI efficiency over time
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={costData.dailyUsage}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke={isDarkMode ? '#334155' : '#e2e8f0'}
+                    />
                     <XAxis 
                       dataKey="date" 
                       tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
                     />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
+                    <YAxis 
+                      yAxisId="left" 
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
+                    />
+                    <YAxis 
+                      yAxisId="right" 
+                      orientation="right" 
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
+                    />
                     <Tooltip 
                       labelFormatter={(value) => new Date(value).toLocaleDateString()}
                       formatter={(value, name) => [
@@ -516,8 +725,22 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
                         name === 'tokens' ? 'Tokens Used' : 
                         'Efficiency'
                       ]}
+                      contentStyle={{
+                        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                        border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b',
+                        fontSize: '14px'
+                      }}
+                      labelStyle={{
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b'
+                      }}
                     />
-                    <Legend />
+                    <Legend 
+                      wrapperStyle={{
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b'
+                      }}
+                    />
                     <Line
                       yAxisId="left"
                       type="monotone"
@@ -542,16 +765,36 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {costData.breakdown.map((category, index) => (
-              <Card key={index}>
+              <Card key={index} className={`${
+                isDarkMode 
+                  ? 'bg-slate-800 border-slate-700' 
+                  : 'bg-white'
+              }`}>
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-medium text-slate-900">{category.category}</h3>
+                    <h3 className={`font-medium ${
+                      isDarkMode ? 'text-white' : 'text-slate-900'
+                    }`}>
+                      {category.category}
+                    </h3>
                     <div className="w-3 h-3 rounded-full" style={{ backgroundColor: category.color }}></div>
                   </div>
                   <div className="space-y-1">
-                    <p className="text-2xl font-bold text-slate-900">{formatCurrency(category.cost)}</p>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">{formatNumber(category.tokens)} tokens</p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">{category.percentage}% of total</p>
+                    <p className={`text-2xl font-bold ${
+                      isDarkMode ? 'text-white' : 'text-slate-900'
+                    }`}>
+                      {formatCurrency(category.cost)}
+                    </p>
+                    <p className={`text-sm ${
+                      isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                    }`}>
+                      {formatNumber(category.tokens)} tokens
+                    </p>
+                    <p className={`text-sm ${
+                      isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                    }`}>
+                      {category.percentage}% of total
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -567,36 +810,80 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
             ))}
           </div>
           
-          <Card>
+          <Card className={`${
+            isDarkMode 
+              ? 'bg-slate-800 border-slate-700' 
+              : 'bg-white'
+          }`}>
             <CardHeader>
-              <CardTitle>Optimization Impact</CardTitle>
-              <CardDescription>Potential monthly savings from implemented optimizations</CardDescription>
+              <CardTitle className={`${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                Optimization Impact
+              </CardTitle>
+              <CardDescription className={`${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
+                Potential monthly savings from implemented optimizations
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg">
+                <div className={`flex items-center justify-between p-4 rounded-lg ${
+                  isDarkMode ? 'bg-green-900/20' : 'bg-green-50'
+                }`}>
                   <div>
-                    <p className="font-medium text-green-900">Total Potential Savings</p>
-                    <p className="text-sm text-green-700">From all optimization strategies</p>
+                    <p className={`font-medium ${
+                      isDarkMode ? 'text-green-200' : 'text-green-900'
+                    }`}>
+                      Total Potential Savings
+                    </p>
+                    <p className={`text-sm ${
+                      isDarkMode ? 'text-green-300' : 'text-green-700'
+                    }`}>
+                      From all optimization strategies
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-green-600">
+                    <p className={`text-2xl font-bold ${
+                      isDarkMode ? 'text-green-400' : 'text-green-600'
+                    }`}>
                       {formatCurrency(costData.optimizations.reduce((sum, opt) => sum + opt.savings, 0))}
                     </p>
-                    <p className="text-sm text-green-600">per month</p>
+                    <p className={`text-sm ${
+                      isDarkMode ? 'text-green-400' : 'text-green-600'
+                    }`}>
+                      per month
+                    </p>
                   </div>
                 </div>
                 
-                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg">
+                <div className={`flex items-center justify-between p-4 rounded-lg ${
+                  isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50'
+                }`}>
                   <div>
-                    <p className="font-medium text-blue-900">Active Optimizations</p>
-                    <p className="text-sm text-blue-700">Currently saving you money</p>
+                    <p className={`font-medium ${
+                      isDarkMode ? 'text-blue-200' : 'text-blue-900'
+                    }`}>
+                      Active Optimizations
+                    </p>
+                    <p className={`text-sm ${
+                      isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                    }`}>
+                      Currently saving you money
+                    </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-2xl font-bold text-blue-600">
+                    <p className={`text-2xl font-bold ${
+                      isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                    }`}>
                       {formatCurrency(costData.optimizations.filter(opt => opt.status === 'active').reduce((sum, opt) => sum + opt.savings, 0))}
                     </p>
-                    <p className="text-sm text-blue-600">per month</p>
+                    <p className={`text-sm ${
+                      isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                    }`}>
+                      per month
+                    </p>
                   </div>
                 </div>
               </div>
@@ -606,20 +893,56 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
 
         {/* Predictions Tab */}
         <TabsContent value="predictions" className="space-y-6">
-          <Card>
+          <Card className={`${
+            isDarkMode 
+              ? 'bg-slate-800 border-slate-700' 
+              : 'bg-white'
+          }`}>
             <CardHeader>
-              <CardTitle>Cost Predictions & Savings</CardTitle>
-              <CardDescription>Projected costs with and without optimizations</CardDescription>
+              <CardTitle className={`${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                Cost Predictions & Savings
+              </CardTitle>
+              <CardDescription className={`${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
+                Projected costs with and without optimizations
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={costData.predictions}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
-                    <YAxis />
-                    <Tooltip formatter={(value) => formatCurrency(value)} />
-                    <Legend />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke={isDarkMode ? '#334155' : '#e2e8f0'}
+                    />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
+                    />
+                    <YAxis 
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
+                    />
+                    <Tooltip 
+                      formatter={(value) => formatCurrency(value)}
+                      contentStyle={{
+                        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                        border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b',
+                        fontSize: '14px'
+                      }}
+                      labelStyle={{
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b'
+                      }}
+                    />
+                    <Legend 
+                      wrapperStyle={{
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b'
+                      }}
+                    />
                     <Bar dataKey="projected" fill="#EF4444" name="Without Optimization" />
                     <Bar dataKey="optimized" fill="#10B981" name="With Optimization" />
                   </BarChart>
@@ -629,32 +952,84 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
+            <Card className={`${
+              isDarkMode 
+                ? 'bg-slate-800 border-slate-700' 
+                : 'bg-white'
+            }`}>
               <CardContent className="p-4 text-center">
-                <TrendingDown className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                <h3 className="font-medium text-slate-900">6-Month Savings</h3>
-                <p className="text-2xl font-bold text-green-600">
+                <TrendingDown className={`h-8 w-8 mx-auto mb-2 ${
+                  isDarkMode ? 'text-green-400' : 'text-green-500'
+                }`} />
+                <h3 className={`font-medium ${
+                  isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}>
+                  6-Month Savings
+                </h3>
+                <p className={`text-2xl font-bold ${
+                  isDarkMode ? 'text-green-400' : 'text-green-600'
+                }`}>
                   {formatCurrency(costData.predictions.reduce((sum, pred) => sum + pred.saved, 0))}
                 </p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Total projected savings</p>
+                <p className={`text-sm ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                }`}>
+                  Total projected savings
+                </p>
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className={`${
+              isDarkMode 
+                ? 'bg-slate-800 border-slate-700' 
+                : 'bg-white'
+            }`}>
               <CardContent className="p-4 text-center">
-                <Gauge className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                <h3 className="font-medium text-slate-900">Efficiency Gain</h3>
-                <p className="text-2xl font-bold text-blue-600">+23%</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Average improvement</p>
+                <Gauge className={`h-8 w-8 mx-auto mb-2 ${
+                  isDarkMode ? 'text-blue-400' : 'text-blue-500'
+                }`} />
+                <h3 className={`font-medium ${
+                  isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}>
+                  Efficiency Gain
+                </h3>
+                <p className={`text-2xl font-bold ${
+                  isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                }`}>
+                  +23%
+                </p>
+                <p className={`text-sm ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                }`}>
+                  Average improvement
+                </p>
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className={`${
+              isDarkMode 
+                ? 'bg-slate-800 border-slate-700' 
+                : 'bg-white'
+            }`}>
               <CardContent className="p-4 text-center">
-                <Target className="h-8 w-8 text-purple-500 mx-auto mb-2" />
-                <h3 className="font-medium text-slate-900">ROI</h3>
-                <p className="text-2xl font-bold text-purple-600">340%</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Return on optimization</p>
+                <Target className={`h-8 w-8 mx-auto mb-2 ${
+                  isDarkMode ? 'text-purple-400' : 'text-purple-500'
+                }`} />
+                <h3 className={`font-medium ${
+                  isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}>
+                  ROI
+                </h3>
+                <p className={`text-2xl font-bold ${
+                  isDarkMode ? 'text-purple-400' : 'text-purple-600'
+                }`}>
+                  340%
+                </p>
+                <p className={`text-sm ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                }`}>
+                  Return on optimization
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -668,25 +1043,53 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
             ))}
           </div>
           
-          <Card>
+          <Card className={`${
+            isDarkMode 
+              ? 'bg-slate-800 border-slate-700' 
+              : 'bg-white'
+          }`}>
             <CardHeader>
-              <CardTitle>Plan Comparison</CardTitle>
-              <CardDescription>Find the right plan for your usage patterns</CardDescription>
+              <CardTitle className={`${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                Plan Comparison
+              </CardTitle>
+              <CardDescription className={`${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
+                Find the right plan for your usage patterns
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="p-4 bg-blue-50 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2">Recommendation</h4>
-                  <p className="text-sm text-blue-700">
+                <div className={`p-4 rounded-lg ${
+                  isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50'
+                }`}>
+                  <h4 className={`font-medium mb-2 ${
+                    isDarkMode ? 'text-blue-200' : 'text-blue-900'
+                  }`}>
+                    Recommendation
+                  </h4>
+                  <p className={`text-sm ${
+                    isDarkMode ? 'text-blue-300' : 'text-blue-700'
+                  }`}>
                     Based on your current usage of {formatNumber(costData.currentUsage.tokensUsed)} tokens/month, 
                     the <strong>Professional plan</strong> would be optimal and save you ${(149 - 79).toFixed(2)}/month.
                   </p>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 border rounded-lg">
-                    <h4 className="font-medium text-slate-900 mb-2">Current Plan Benefits</h4>
-                    <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+                  <div className={`p-4 border rounded-lg ${
+                    isDarkMode ? 'border-slate-700' : 'border-gray-200'
+                  }`}>
+                    <h4 className={`font-medium mb-2 ${
+                      isDarkMode ? 'text-white' : 'text-slate-900'
+                    }`}>
+                      Current Plan Benefits
+                    </h4>
+                    <ul className={`text-sm space-y-1 ${
+                      isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                    }`}>
                       <li>• High token limit for peak usage</li>
                       <li>• 24/7 priority support</li>
                       <li>• Unlimited social accounts</li>
@@ -694,20 +1097,38 @@ const EnhancedCostOptimizer = ({ data, user, onDataUpdate }) => {
                     </ul>
                   </div>
                   
-                  <div className="p-4 border rounded-lg">
-                    <h4 className="font-medium text-slate-900 mb-2">Usage Analytics</h4>
+                  <div className={`p-4 border rounded-lg ${
+                    isDarkMode ? 'border-slate-700' : 'border-gray-200'
+                  }`}>
+                    <h4 className={`font-medium mb-2 ${
+                      isDarkMode ? 'text-white' : 'text-slate-900'
+                    }`}>
+                      Usage Analytics
+                    </h4>
                     <div className="space-y-2 text-sm">
                       <div className="flex justify-between">
-                        <span>Peak usage day:</span>
-                        <span className="font-medium">2,050 tokens</span>
+                        <span className={isDarkMode ? 'text-slate-300' : 'text-slate-600'}>Peak usage day:</span>
+                        <span className={`font-medium ${
+                          isDarkMode ? 'text-white' : 'text-slate-900'
+                        }`}>
+                          2,050 tokens
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Average daily:</span>
-                        <span className="font-medium">1,607 tokens</span>
+                        <span className={isDarkMode ? 'text-slate-300' : 'text-slate-600'}>Average daily:</span>
+                        <span className={`font-medium ${
+                          isDarkMode ? 'text-white' : 'text-slate-900'
+                        }`}>
+                          1,607 tokens
+                        </span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Efficiency score:</span>
-                        <span className="font-medium text-green-600">94.2%</span>
+                        <span className={isDarkMode ? 'text-slate-300' : 'text-slate-600'}>Efficiency score:</span>
+                        <span className={`font-medium ${
+                          isDarkMode ? 'text-green-400' : 'text-green-600'
+                        }`}>
+                          94.2%
+                        </span>
                       </div>
                     </div>
                   </div>

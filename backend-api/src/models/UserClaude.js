@@ -81,7 +81,7 @@ const userClaudeSchema = new mongoose.Schema({
   subscription: {
     plan: { 
       type: String, 
-      enum: ['free', 'basic', 'pro', 'enterprise'], 
+      enum: ['free', 'basic', 'pro', 'enterprise', 'new-ai-plan'], 
       default: 'free' 
     },
     status: {

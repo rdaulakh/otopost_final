@@ -163,11 +163,26 @@ Remember: Your strategies should be data-driven, audience-focused, and business-
         def analyze_business_objectives(objectives_data: str) -> str:
             """Analyze business objectives and align social media strategy."""
             try:
+                # Log input data
+                self.logger.info("🔍 AI TOOL: analyze_business_objectives - INPUT", {
+                    "tool_name": "analyze_business_objectives",
+                    "input_data": objectives_data,
+                    "input_type": type(objectives_data).__name__,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+                
                 data = json.loads(objectives_data) if isinstance(objectives_data, str) else objectives_data
                 
                 objectives = data.get('objectives', [])
                 industry = data.get('industry', 'general')
                 target_metrics = data.get('target_metrics', {})
+                
+                self.logger.info("📊 AI TOOL: analyze_business_objectives - PARSED DATA", {
+                    "objectives": objectives,
+                    "industry": industry,
+                    "target_metrics": target_metrics,
+                    "data_keys": list(data.keys())
+                })
                 
                 analysis = []
                 strategy_recommendations = []
@@ -175,6 +190,10 @@ Remember: Your strategies should be data-driven, audience-focused, and business-
                 # Analyze each objective
                 for obj in objectives:
                     obj_lower = obj.lower()
+                    self.logger.info(f"🎯 AI TOOL: analyze_business_objectives - ANALYZING OBJECTIVE", {
+                        "objective": obj,
+                        "objective_lower": obj_lower
+                    })
                     
                     if 'brand awareness' in obj_lower:
                         analysis.append("Brand awareness objective identified")
@@ -184,6 +203,7 @@ Remember: Your strategies should be data-driven, audience-focused, and business-
                             "Leverage trending topics and hashtags",
                             "Partner with influencers and thought leaders"
                         ])
+                        self.logger.info("✅ AI TOOL: analyze_business_objectives - BRAND AWARENESS DETECTED")
                     
                     elif 'lead generation' in obj_lower:
                         analysis.append("Lead generation objective identified")
@@ -193,6 +213,7 @@ Remember: Your strategies should be data-driven, audience-focused, and business-
                             "Implement conversion tracking",
                             "Focus on LinkedIn and Facebook for B2B"
                         ])
+                        self.logger.info("✅ AI TOOL: analyze_business_objectives - LEAD GENERATION DETECTED")
                     
                     elif 'sales' in obj_lower:
                         analysis.append("Sales objective identified")
@@ -202,6 +223,7 @@ Remember: Your strategies should be data-driven, audience-focused, and business-
                             "Use social proof and user-generated content",
                             "Implement social commerce features"
                         ])
+                        self.logger.info("✅ AI TOOL: analyze_business_objectives - SALES DETECTED")
                     
                     elif 'engagement' in obj_lower:
                         analysis.append("Engagement objective identified")
@@ -211,8 +233,10 @@ Remember: Your strategies should be data-driven, audience-focused, and business-
                             "Build community through consistent interaction",
                             "Share behind-the-scenes content"
                         ])
+                        self.logger.info("✅ AI TOOL: analyze_business_objectives - ENGAGEMENT DETECTED")
                 
-                return json.dumps({
+                # Create output
+                output = {
                     "analysis": analysis,
                     "strategy_recommendations": list(set(strategy_recommendations)),
                     "recommended_content_mix": {
@@ -222,21 +246,57 @@ Remember: Your strategies should be data-driven, audience-focused, and business-
                         "behind_scenes": 15
                     },
                     "confidence": 0.85
+                }
+                
+                # Log output data
+                self.logger.info("📤 AI TOOL: analyze_business_objectives - OUTPUT", {
+                    "tool_name": "analyze_business_objectives",
+                    "output_data": output,
+                    "analysis_count": len(analysis),
+                    "recommendations_count": len(strategy_recommendations),
+                    "confidence": output["confidence"],
+                    "timestamp": datetime.utcnow().isoformat()
                 })
                 
+                return json.dumps(output)
+                
             except Exception as e:
-                return json.dumps({"error": str(e), "confidence": 0.0})
+                error_output = {"error": str(e), "confidence": 0.0}
+                self.logger.error("❌ AI TOOL: analyze_business_objectives - ERROR", {
+                    "tool_name": "analyze_business_objectives",
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "output": error_output,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+                return json.dumps(error_output)
         
         @tool
         def develop_audience_strategy(audience_data: str) -> str:
             """Develop audience targeting and messaging strategy."""
             try:
+                # Log input data
+                self.logger.info("🔍 AI TOOL: develop_audience_strategy - INPUT", {
+                    "tool_name": "develop_audience_strategy",
+                    "input_data": audience_data,
+                    "input_type": type(audience_data).__name__,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+                
                 data = json.loads(audience_data) if isinstance(audience_data, str) else audience_data
                 
                 demographics = data.get('demographics', {})
                 interests = data.get('interests', [])
                 behaviors = data.get('behaviors', [])
                 pain_points = data.get('pain_points', [])
+                
+                self.logger.info("📊 AI TOOL: develop_audience_strategy - PARSED DATA", {
+                    "demographics": demographics,
+                    "interests": interests,
+                    "behaviors": behaviors,
+                    "pain_points": pain_points,
+                    "data_keys": list(data.keys())
+                })
                 
                 strategy = {
                     "primary_segments": [],
@@ -247,41 +307,101 @@ Remember: Your strategies should be data-driven, audience-focused, and business-
                 
                 # Analyze age groups
                 age_groups = demographics.get('age_groups', {})
+                self.logger.info("👥 AI TOOL: develop_audience_strategy - ANALYZING AGE GROUPS", {
+                    "age_groups": age_groups,
+                    "total_groups": len(age_groups)
+                })
+                
                 for age_group, percentage in age_groups.items():
                     if percentage > 0.2:  # 20% or more
                         strategy["primary_segments"].append(age_group)
+                        self.logger.info(f"✅ AI TOOL: develop_audience_strategy - PRIMARY SEGMENT IDENTIFIED", {
+                            "age_group": age_group,
+                            "percentage": percentage,
+                            "threshold": 0.2
+                        })
                         
                         # Age-specific messaging
                         if '18-24' in age_group:
                             strategy["messaging_strategy"][age_group] = "Trendy, authentic, visual-first messaging"
                             strategy["platform_recommendations"][age_group] = ["TikTok", "Instagram", "Twitter"]
+                            self.logger.info("🎯 AI TOOL: develop_audience_strategy - YOUNG ADULT STRATEGY", {
+                                "age_group": age_group,
+                                "messaging": "Trendy, authentic, visual-first messaging",
+                                "platforms": ["TikTok", "Instagram", "Twitter"]
+                            })
                         elif '25-34' in age_group:
                             strategy["messaging_strategy"][age_group] = "Professional, aspirational, value-driven messaging"
                             strategy["platform_recommendations"][age_group] = ["LinkedIn", "Instagram", "Facebook"]
+                            self.logger.info("🎯 AI TOOL: develop_audience_strategy - PROFESSIONAL STRATEGY", {
+                                "age_group": age_group,
+                                "messaging": "Professional, aspirational, value-driven messaging",
+                                "platforms": ["LinkedIn", "Instagram", "Facebook"]
+                            })
                         elif '35-44' in age_group:
                             strategy["messaging_strategy"][age_group] = "Family-focused, practical, trustworthy messaging"
                             strategy["platform_recommendations"][age_group] = ["Facebook", "LinkedIn", "YouTube"]
+                            self.logger.info("🎯 AI TOOL: develop_audience_strategy - FAMILY STRATEGY", {
+                                "age_group": age_group,
+                                "messaging": "Family-focused, practical, trustworthy messaging",
+                                "platforms": ["Facebook", "LinkedIn", "YouTube"]
+                            })
                         elif '45+' in age_group:
                             strategy["messaging_strategy"][age_group] = "Informative, traditional, relationship-focused messaging"
                             strategy["platform_recommendations"][age_group] = ["Facebook", "LinkedIn", "YouTube"]
+                            self.logger.info("🎯 AI TOOL: develop_audience_strategy - MATURE STRATEGY", {
+                                "age_group": age_group,
+                                "messaging": "Informative, traditional, relationship-focused messaging",
+                                "platforms": ["Facebook", "LinkedIn", "YouTube"]
+                            })
                 
                 # Content preferences based on interests
+                self.logger.info("🎨 AI TOOL: develop_audience_strategy - ANALYZING INTERESTS", {
+                    "interests": interests,
+                    "total_interests": len(interests)
+                })
+                
                 if 'technology' in interests:
                     strategy["content_preferences"]["technology"] = ["tutorials", "product updates", "industry news"]
+                    self.logger.info("✅ AI TOOL: develop_audience_strategy - TECHNOLOGY INTEREST DETECTED")
                 if 'lifestyle' in interests:
                     strategy["content_preferences"]["lifestyle"] = ["behind-the-scenes", "personal stories", "tips"]
+                    self.logger.info("✅ AI TOOL: develop_audience_strategy - LIFESTYLE INTEREST DETECTED")
                 if 'business' in interests:
                     strategy["content_preferences"]["business"] = ["thought leadership", "case studies", "industry insights"]
+                    self.logger.info("✅ AI TOOL: develop_audience_strategy - BUSINESS INTEREST DETECTED")
                 
-                return json.dumps({
+                # Create output
+                output = {
                     "audience_strategy": strategy,
                     "recommended_tone": "professional yet approachable",
                     "key_messaging_themes": pain_points[:3] if pain_points else ["value", "trust", "innovation"],
                     "confidence": 0.8
+                }
+                
+                # Log output data
+                self.logger.info("📤 AI TOOL: develop_audience_strategy - OUTPUT", {
+                    "tool_name": "develop_audience_strategy",
+                    "output_data": output,
+                    "primary_segments_count": len(strategy["primary_segments"]),
+                    "messaging_strategies_count": len(strategy["messaging_strategy"]),
+                    "content_preferences_count": len(strategy["content_preferences"]),
+                    "confidence": output["confidence"],
+                    "timestamp": datetime.utcnow().isoformat()
                 })
                 
+                return json.dumps(output)
+                
             except Exception as e:
-                return json.dumps({"error": str(e), "confidence": 0.0})
+                error_output = {"error": str(e), "confidence": 0.0}
+                self.logger.error("❌ AI TOOL: develop_audience_strategy - ERROR", {
+                    "tool_name": "develop_audience_strategy",
+                    "error": str(e),
+                    "error_type": type(e).__name__,
+                    "output": error_output,
+                    "timestamp": datetime.utcnow().isoformat()
+                })
+                return json.dumps(error_output)
         
         @tool
         def create_content_calendar_strategy(calendar_data: str) -> str:
@@ -646,12 +766,29 @@ Remember: Your strategies should be data-driven, audience-focused, and business-
     
     async def _develop_content_strategy(self, input_data: Dict[str, Any]) -> ContentStrategy:
         """Develop comprehensive content strategy."""
+        # Log input data
+        self.logger.info("🚀 STRATEGY AGENT: _develop_content_strategy - START", {
+            "function": "_develop_content_strategy",
+            "input_data": input_data,
+            "input_keys": list(input_data.keys()),
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
         business_goals = input_data.get('business_goals', [])
         target_audience = input_data.get('target_audience', {})
         brand_info = input_data.get('brand_info', {})
         platforms = input_data.get('platforms', [])
         budget = input_data.get('budget', 0)
         timeline = input_data.get('timeline', '6m')
+        
+        self.logger.info("📊 STRATEGY AGENT: _develop_content_strategy - EXTRACTED PARAMETERS", {
+            "business_goals": business_goals,
+            "target_audience": target_audience,
+            "brand_info": brand_info,
+            "platforms": platforms,
+            "budget": budget,
+            "timeline": timeline
+        })
         
         strategy_prompt = f"""
         Develop a comprehensive social media content strategy with the following parameters:
@@ -676,7 +813,19 @@ Remember: Your strategies should be data-driven, audience-focused, and business-
         10. Implementation timeline
         """
         
+        self.logger.info("💬 STRATEGY AGENT: _develop_content_strategy - SENDING TO AI EXECUTOR", {
+            "prompt_length": len(strategy_prompt),
+            "prompt_preview": strategy_prompt[:200] + "..." if len(strategy_prompt) > 200 else strategy_prompt
+        })
+        
         result = await self.agent_executor.ainvoke({"input": strategy_prompt})
+        
+        self.logger.info("🤖 STRATEGY AGENT: _develop_content_strategy - AI EXECUTOR RESPONSE", {
+            "response_type": type(result).__name__,
+            "response_keys": list(result.keys()) if isinstance(result, dict) else "Not a dict",
+            "output_length": len(result.get("output", "")) if isinstance(result, dict) else 0,
+            "output_preview": result.get("output", "")[:200] + "..." if isinstance(result, dict) and len(result.get("output", "")) > 200 else result.get("output", "") if isinstance(result, dict) else str(result)[:200]
+        })
         
         # Create structured strategy object
         strategy = ContentStrategy(
@@ -699,8 +848,24 @@ Remember: Your strategies should be data-driven, audience-focused, and business-
             confidence=0.85
         )
         
+        self.logger.info("📋 STRATEGY AGENT: _develop_content_strategy - STRATEGY OBJECT CREATED", {
+            "strategy_id": strategy.id,
+            "strategy_name": strategy.name,
+            "objective": strategy.objective.value,
+            "platforms_count": len(strategy.platforms),
+            "content_pillars_count": len(strategy.content_pillars),
+            "confidence": strategy.confidence
+        })
+        
         # Store strategy in memory
         await self._store_strategy(strategy)
+        
+        self.logger.info("✅ STRATEGY AGENT: _develop_content_strategy - COMPLETED", {
+            "strategy_id": strategy.id,
+            "strategy_name": strategy.name,
+            "total_processing_time": "calculated_elsewhere",
+            "timestamp": datetime.utcnow().isoformat()
+        })
         
         return strategy
     

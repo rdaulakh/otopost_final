@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Authentication Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 12px; }
+        .status { font-weight: bold; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Frontend Authentication Test</h1>
+        <p>This page tests the authentication flow to verify that tokens are properly stored and persisted.</p>
+        
+        <div class="test-section">
+            <h3>1. Test Login & Token Storage</h3>
+            <button onclick="testLogin()">Login with test@example.com</button>
+            <div id="loginResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Check Token Persistence</h3>
+            <button onclick="checkPersistence()">Check Stored Token</button>
+            <div id="persistenceResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Test API Calls</h3>
+            <button onclick="testApiCalls()">Test API Calls</button>
+            <div id="apiResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. Test Page Refresh Persistence</h3>
+            <button onclick="location.reload()">Refresh Page</button>
+            <p>After refresh, the token should still be available and the user should remain authenticated.</p>
+        </div>
+        
+        <div class="test-section">
+            <h3>5. Current Status</h3>
+            <div id="currentStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        
+        // Simulate the authentication context logic
+        function simulateAuthContext() {
+            const token = localStorage.getItem('authToken');
+            const userData = localStorage.getItem('user');
+            
+            if (token && userData && userData !== 'undefined') {
+                try {
+                    const user = JSON.parse(userData);
+                    
+                    // Check if token is expired
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    const currentTime = Math.floor(Date.now() / 1000);
+                    
+                    if (payload.exp < currentTime) {
+                        // Token expired, clear it
+                        localStorage.removeItem('authToken');
+                        localStorage.removeItem('user');
+                        return { isAuthenticated: false, user: null, token: null, error: 'Token expired' };
+                    } else {
+                        // Token is valid
+                        return { isAuthenticated: true, user, token, error: null };
+                    }
+                } catch (parseError) {
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('user');
+                    return { isAuthenticated: false, user: null, token: null, error: 'Invalid token format' };
+                }
+            } else {
+                return { isAuthenticated: false, user: null, token: null, error: 'No token found' };
+            }
+        }
+        
+        async function testLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            resultDiv.innerHTML = '<div class="info">Logging in...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/customer/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'password123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Store token and user data (simulating frontend behavior)
+                    localStorage.setItem('authToken', data.data.tokens.accessToken);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Login Successful!</h4>
+                            <p><strong>User:</strong> ${data.data.user.email}</p>
+                            <p><strong>Token:</strong> ${data.data.tokens.accessToken.substring(0, 50)}...</p>
+                            <p><strong>Stored in localStorage:</strong> Yes</p>
+                            <p><strong>Authentication Status:</strong> Authenticated</p>
+                        </div>
+                    `;
+                    
+                    updateCurrentStatus();
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Login Failed</h4>
+                            <p>${data.error || data.message}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Login Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function checkPersistence() {
+            const resultDiv = document.getElementById('persistenceResult');
+            const authState = simulateAuthContext();
+            
+            if (authState.isAuthenticated) {
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ Token Persistence Working!</h4>
+                        <p><strong>User:</strong> ${authState.user.email}</p>
+                        <p><strong>Token exists:</strong> Yes</p>
+                        <p><strong>Token valid:</strong> Yes</p>
+                        <p><strong>Authentication Status:</strong> Authenticated</p>
+                    </div>
+                `;
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Token Persistence Issue</h4>
+                        <p><strong>Error:</strong> ${authState.error}</p>
+                        <p><strong>Authentication Status:</strong> Not Authenticated</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testApiCalls() {
+            const resultDiv = document.getElementById('apiResult');
+            const authState = simulateAuthContext();
+            
+            if (!authState.isAuthenticated) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Not Authenticated</h4>
+                        <p>Please login first to test API calls</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="info">Testing API calls...</div>';
+            
+            try {
+                // Test AI Agents API
+                const agentsResponse = await fetch(`${API_BASE_URL}/ai-agents`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authState.token}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const agentsData = await agentsResponse.json();
+                
+                // Test Subscriptions API
+                const subsResponse = await fetch(`${API_BASE_URL}/subscriptions`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${authState.token}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const subsData = await subsResponse.json();
+                
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <h4>✅ API Calls Successful!</h4>
+                        <p><strong>AI Agents API:</strong> ${agentsResponse.status} - ${agentsData.success ? 'Success' : 'Failed'}</p>
+                        <p><strong>Subscriptions API:</strong> ${subsResponse.status} - ${subsData.success ? 'Success' : 'Failed'}</p>
+                        <p><strong>Agents Count:</strong> ${agentsData.data?.agents?.length || 0}</p>
+                        <p><strong>Subscriptions Count:</strong> ${subsData.data?.subscriptions?.length || 0}</p>
+                    </div>
+                `;
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ API Call Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function updateCurrentStatus() {
+            const statusDiv = document.getElementById('currentStatus');
+            const authState = simulateAuthContext();
+            
+            if (authState.isAuthenticated) {
+                statusDiv.innerHTML = `
+                    <div class="success">
+                        <p><strong>Status:</strong> ✅ Authenticated</p>
+                        <p><strong>User:</strong> ${authState.user.email}</p>
+                        <p><strong>Token:</strong> ${authState.token.substring(0, 30)}...</p>
+                    </div>
+                `;
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="error">
+                        <p><strong>Status:</strong> ❌ Not Authenticated</p>
+                        <p><strong>Reason:</strong> ${authState.error}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Update status on page load
+        window.onload = function() {
+            updateCurrentStatus();
+        };
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+

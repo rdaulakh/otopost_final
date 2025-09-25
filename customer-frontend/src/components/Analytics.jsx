@@ -103,11 +103,11 @@ const Analytics = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
     }
   }
 
-  // Auto-refresh every 5 minutes
-  useEffect(() => {
-    const interval = setInterval(handleRefresh, 5 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
+  // Auto-refresh disabled to prevent constant refreshing
+  // useEffect(() => {
+  //   const interval = setInterval(handleRefresh, 5 * 60 * 1000)
+  //   return () => clearInterval(interval)
+  // }, [])
 
   // Handle time range change
   const handleTimeRangeChange = (newTimeRange) => {
@@ -167,7 +167,7 @@ const Analytics = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
 
   // Format numbers
   const formatNumber = (num) => {
-    if (!num) return '0'
+    if (!num || num === 0) return '0'
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
     return num.toString()

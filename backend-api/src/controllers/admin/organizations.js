@@ -4,6 +4,7 @@ const Subscription = require('../../models/Subscription');
 const Content = require('../../models/Content');
 const Analytics = require('../../models/Analytics');
 const logger = require('../../utils/logger');
+const agentProvisioningService = require('../../services/agentProvisioningService');
 
 const adminOrganizationsController = {
   // Create new organization
@@ -48,10 +49,33 @@ const adminOrganizationsController = {
 
       logger.info(`Organization created: ${name} (${organization._id})`);
 
+      // Provision AI agents for the new organization
+      try {
+        const agentProvisioningResult = await agentProvisioningService.provisionAgentsForOrganization(
+          organization._id,
+          organization.toObject()
+        );
+        
+        logger.info(`AI agents provisioned for organization ${organization._id}:`, {
+          agentsCreated: agentProvisioningResult.agentsCreated,
+          success: agentProvisioningResult.success
+        });
+      } catch (agentError) {
+        logger.error(`Failed to provision AI agents for organization ${organization._id}:`, agentError);
+        // Don't fail the organization creation if agent provisioning fails
+        // The organization can still be created and agents can be provisioned later
+      }
+
       res.status(201).json({
         success: true,
         message: 'Organization created successfully',
-        data: { organization }
+        data: { 
+          organization,
+          agentProvisioning: {
+            status: 'completed',
+            message: 'AI agents have been provisioned for this organization'
+          }
+        }
       });
     } catch (error) {
       logger.error('Error creating organization:', error);

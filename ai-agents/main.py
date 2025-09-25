@@ -102,89 +102,89 @@ class AIAgentsSystem:
         """Initialize all AI agents"""
         logger.info("Initializing AI agents...")
         
+        # Use the default organization ID that matches the registered agents
+        default_org_id = "68ce935fcbbcac3f7e70e556"
+        test_org_id = "68cef6800504f7cafa106412"  # Test organization ID
+        
         # Intelligence Agent
         intelligence_agent = IntelligenceAgent(
-            agent_id="intelligence_001",
-            config={
-                "update_frequency": "daily",
-                "data_sources": ["social_media", "news", "trends"],
-                "analysis_depth": "comprehensive"
-            }
+            organization_id=default_org_id
         )
         self.agents["intelligence"] = intelligence_agent
         
         # Strategy Agent
         strategy_agent = StrategyAgent(
-            agent_id="strategy_001",
-            config={
-                "planning_horizon": "monthly",
-                "strategy_type": "data_driven",
-                "optimization_enabled": True
-            }
+            organization_id=default_org_id
         )
         self.agents["strategy"] = strategy_agent
         
         # Content Agent
         content_agent = ContentAgent(
-            agent_id="content_001",
-            config={
-                "ai_provider": "openai",
-                "tone": "professional",
-                "style": "engaging",
-                "platforms": ["facebook", "instagram", "twitter", "linkedin"]
-            }
+            organization_id=default_org_id
         )
         self.agents["content"] = content_agent
         
         # Execution Agent
         execution_agent = ExecutionAgent(
-            agent_id="execution_001",
-            config={
-                "scheduling_enabled": True,
-                "auto_publish": False,
-                "approval_required": True
-            }
+            organization_id=default_org_id
         )
         self.agents["execution"] = execution_agent
         
         # Learning Agent
         learning_agent = LearningAgent(
-            agent_id="learning_001",
-            config={
-                "learning_enabled": True,
-                "optimization_frequency": "weekly",
-                "data_retention": "90_days"
-            }
+            organization_id=default_org_id
         )
         self.agents["learning"] = learning_agent
         
         # Engagement Agent
         engagement_agent = EngagementAgent(
-            agent_id="engagement_001",
-            config={
-                "auto_response": False,
-                "response_tone": "friendly",
-                "escalation_enabled": True
-            }
+            organization_id=default_org_id
         )
         self.agents["engagement"] = engagement_agent
         
         # Analytics Agent
         analytics_agent = AnalyticsAgent(
-            agent_id="analytics_001",
-            config={
-                "reporting_frequency": "weekly",
-                "insights_depth": "detailed",
-                "alert_thresholds": {
-                    "engagement": 0.05,
-                    "reach": 1000,
-                    "clicks": 50
-                }
-            }
+            organization_id=default_org_id
         )
         self.agents["analytics"] = analytics_agent
         
-        logger.info(f"Initialized {len(self.agents)} AI agents")
+        # Create agents for test organization
+        test_intelligence_agent = IntelligenceAgent(
+            organization_id=test_org_id
+        )
+        self.agents[f"intelligence_{test_org_id}"] = test_intelligence_agent
+        
+        test_strategy_agent = StrategyAgent(
+            organization_id=test_org_id
+        )
+        self.agents[f"strategy_{test_org_id}"] = test_strategy_agent
+        
+        test_content_agent = ContentAgent(
+            organization_id=test_org_id
+        )
+        self.agents[f"content_{test_org_id}"] = test_content_agent
+        
+        test_execution_agent = ExecutionAgent(
+            organization_id=test_org_id
+        )
+        self.agents[f"execution_{test_org_id}"] = test_execution_agent
+        
+        test_learning_agent = LearningAgent(
+            organization_id=test_org_id
+        )
+        self.agents[f"learning_{test_org_id}"] = test_learning_agent
+        
+        test_engagement_agent = EngagementAgent(
+            organization_id=test_org_id
+        )
+        self.agents[f"engagement_{test_org_id}"] = test_engagement_agent
+        
+        test_analytics_agent = AnalyticsAgent(
+            organization_id=test_org_id
+        )
+        self.agents[f"analytics_{test_org_id}"] = test_analytics_agent
+        
+        logger.info(f"Initialized {len(self.agents)} AI agents for organizations {default_org_id} and {test_org_id}")
     
     async def _start_agents(self):
         """Start all AI agents"""
@@ -218,8 +218,13 @@ class AIAgentsSystem:
             "performance_metrics": coordinator.get_performance_metrics()
         }
 
+# Global system instance for coordinator access
+system = None
+
 async def main():
     """Main function"""
+    global system
+    
     # Create logs directory if it doesn't exist
     Path("logs").mkdir(exist_ok=True)
     

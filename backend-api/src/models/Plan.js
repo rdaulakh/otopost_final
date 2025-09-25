@@ -76,6 +76,12 @@ const planSchema = new mongoose.Schema({
     sso: { type: Boolean, default: false }
   },
   
+  // Feature List for Display
+  featureList: {
+    type: [String],
+    default: []
+  },
+  
   // Plan Status
   isActive: {
     type: Boolean,

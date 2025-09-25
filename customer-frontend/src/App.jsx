@@ -52,7 +52,8 @@ import SignIn from './components/auth/SignIn.jsx'
 import SignUp from './components/auth/SignUp.jsx'
 
 // Import enhanced profile component
-import UserProfile from './components/UserProfile.jsx'
+import UserProfile from './components/UserProfileSimple.jsx'
+import AuthTest from './components/AuthTest.jsx'
 
 // Import API hooks
 import { useSystemHealth } from './hooks/useApi.js'
@@ -60,7 +61,7 @@ import { useSystemHealth } from './hooks/useApi.js'
 import './App.css'
 
 // Loading Component
-const LoadingSpinner = ({ message = "Loading..." }) => {
+const LoadingSpinner = ({ message = "" }) => {
   const { isDarkMode } = useTheme()
   
   return (
@@ -79,66 +80,50 @@ const LoadingSpinner = ({ message = "Loading..." }) => {
   )
 }
 
-// Connection Status Component
-const ConnectionStatus = () => {
-  const { isDarkMode } = useTheme()
-  const { data: healthData, isError, isLoading } = useSystemHealth()
-  const [isOnline, setIsOnline] = useState(navigator.onLine)
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true)
-    const handleOffline = () => setIsOnline(false)
-
-    window.addEventListener('online', handleOnline)
-    window.addEventListener('offline', handleOffline)
-
-    return () => {
-      window.removeEventListener('online', handleOnline)
-      window.removeEventListener('offline', handleOffline)
-    }
-  }, [])
-
-  const isConnected = isOnline && !isError && healthData?.status === 'OK'
-
-  return (
-    <motion.div
-      initial={{ scale: 0, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      className="fixed top-4 right-4 z-50"
-    >
-      <Card className={`border-0 shadow-lg ${
-        isConnected 
-          ? 'bg-green-500 text-white' 
-          : 'bg-red-500 text-white'
-      }`}>
-        <CardContent className="p-2">
-          <div className="flex items-center space-x-2">
-            {isConnected ? (
-              <Wifi className="h-4 w-4" />
-            ) : (
-              <WifiOff className="h-4 w-4" />
-            )}
-            <span className="text-xs font-medium">
-              {isLoading ? 'Connecting...' : isConnected ? 'Connected' : 'Offline'}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  )
-}
 
 // Error Boundary Component
 
 
 // Authentication Wrapper Component
 const AuthWrapper = ({ children }) => {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, user, token } = useAuth()
   const [authView, setAuthView] = useState('signin')
+
+  // Debug logging to see what's happening
+  console.log('AuthWrapper state:', { 
+    isAuthenticated, 
+    isLoading, 
+    hasUser: !!user, 
+    hasToken: !!token,
+    user: user ? { id: user.id, email: user.email } : null,
+    localStorageToken: !!localStorage.getItem('authToken'),
+    localStorageUser: !!localStorage.getItem('user')
+  })
 
   if (isLoading) {
     return <LoadingSpinner message="Initializing AI Social Media Manager..." />
   }
+
+  // Temporarily disable redirect to debug the issue
+  // if (!isAuthenticated) {
+  //   if (authView === 'signin') {
+  //     return (
+  //       <ErrorBoundary>
+  //         <SignIn 
+  //           onSwitchToSignUp={() => setAuthView('signup')}
+  //         />
+  //       </ErrorBoundary>
+  //     )
+  //   } else {
+  //     return (
+  //       <ErrorBoundary>
+  //         <SignUp 
+  //           onSwitchToSignIn={() => setAuthView('signin')}
+  //         />
+  //       </ErrorBoundary>
+  //     )
+  //   }
+  // }
 
   if (!isAuthenticated) {
     if (authView === 'signin') {
@@ -168,6 +153,53 @@ function AppContent() {
   const { isDarkMode } = useTheme()
   const { user, logout } = useAuth()
   const [currentView, setCurrentView] = useState('dashboard')
+  
+  // Connection status logic
+  const { data: healthData, isError, isLoading } = useSystemHealth({ enabled: !!user })
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const isConnected = isOnline && !isError && healthData?.success === true
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  // Handle URL parameters to set the current view
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const view = urlParams.get('view') || urlParams.get('tab')
+    
+    console.log('App.jsx URL Debug:', {
+      pathname: window.location.pathname,
+      search: window.location.search,
+      tab: urlParams.get('tab'),
+      oauthSuccess: urlParams.get('oauth_success'),
+      platform: urlParams.get('platform'),
+      currentView: currentView
+    });
+    
+    // If the URL contains settings-related parameters, set view to settings
+    if (window.location.pathname.includes('/settings') || 
+        urlParams.get('tab') === 'platforms' || 
+        urlParams.get('tab') === 'business' ||
+        urlParams.get('tab') === 'branding' ||
+        urlParams.get('tab') === 'billing' ||
+        urlParams.get('oauth_success') === 'true') {
+      console.log('Setting currentView to settings');
+      setCurrentView('settings')
+    } else if (view && ['dashboard', 'strategy', 'calendar', 'campaigns', 'boost', 'history', 'analytics', 'testing', 'optimizer', 'profile', 'competitor-analysis', 'settings'].includes(view)) {
+      console.log('Setting currentView to:', view);
+      setCurrentView(view)
+    }
+  }, [])
 
   // Simulated real-time data (will be replaced with real API data)
   const [dashboardData, setDashboardData] = useState({
@@ -227,9 +259,10 @@ function AppContent() {
         ...prev,
         performance: {
           ...prev.performance,
-          engagement_rate: Math.max(0, prev.performance.engagement_rate + (Math.random() - 0.5) * 0.2),
-          reach: Math.max(0, prev.performance.reach + Math.floor((Math.random() - 0.5) * 100)),
-          followers_growth: Math.max(0, prev.performance.followers_growth + Math.floor(Math.random() * 3))
+          engagement_rate: Math.max(0, (prev.performance?.engagement_rate || 4.2) + (Math.random() - 0.5) * 0.2),
+          reach: Math.max(0, (prev.performance?.reach || 12500) + Math.floor((Math.random() - 0.5) * 100)),
+          followers_growth: Math.max(0, (prev.performance?.followers_growth || 156) + Math.floor(Math.random() * 3)),
+          posts_published: prev.performance?.posts_published || 24
         }
       }))
     }, 30000) // Update every 30 seconds
@@ -351,8 +384,6 @@ function AppContent() {
         ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
         : 'bg-white'
     }`}>
-      {/* Connection Status Indicator */}
-      <ConnectionStatus />
 
       <div className="flex h-screen">
         {/* Sidebar */}
@@ -392,25 +423,33 @@ function AppContent() {
         </main>
       </div>
 
-      {/* Enhanced AI Status Indicator - Moved to bottom right for better UX */}
+      {/* AI Status Indicator with Connection Status */}
       <motion.div
         initial={{ scale: 0, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.5, duration: 0.4 }}
         className="fixed bottom-6 right-6 z-50 pointer-events-none"
       >
-        <Card className="bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 text-white border-0 shadow-xl backdrop-blur-sm">
+        <Card className={`bg-gradient-to-r from-blue-500 via-purple-500 to-indigo-600 text-white border-0 shadow-xl backdrop-blur-sm `}>
           <CardContent className="p-4">
             <div className="flex items-center space-x-3">
               <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                animate={{ rotate: isConnected ? 360 : 0 }}
+                transition={{ duration: 3, repeat: isConnected ? Infinity : 0, ease: "linear" }}
               >
-                <Sparkles className="h-5 w-5" />
+                {isConnected ? (
+                  <Sparkles className="h-5 w-5" />
+                ) : (
+                  <WifiOff className="h-5 w-5" />
+                )}
               </motion.div>
               <div>
-                <p className="text-sm font-semibold">AI Active</p>
-                <p className="text-xs opacity-90">Optimizing performance</p>
+                <p className="text-sm font-semibold">
+                  {isLoading ? 'Connecting...' : isConnected ? 'AI Active' : 'AI Disconnected'}
+                </p>
+                <p className="text-xs opacity-90">
+                  {isLoading ? 'Establishing connection...' : isConnected ? 'Optimizing performance' : 'Connection lost'}
+                </p>
               </div>
             </div>
           </CardContent>

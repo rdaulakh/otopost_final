@@ -7,6 +7,8 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const http = require('http');
+const session = require('express-session');
+const path = require('path');
 require('dotenv').config();
 
 // Import modules
@@ -54,47 +56,37 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false
 }));
 
-// CORS configuration
+// CORS configuration - Allow all origins for maximum compatibility
 const corsOptions = {
   origin: function (origin, callback) {
-    const allowedOrigins = [
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-      process.env.ADMIN_PANEL_URL || 'http://localhost:3001',
-      'http://localhost:5173', // Customer frontend (Vite dev server)
-      'http://localhost:5174', // Admin panel (Vite dev server)
-      'http://localhost:3000'  // React dev server
-    ];
-    
-    // Allow requests with no origin (mobile apps, etc.)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
+    // Allow all origins for testing and maximum compatibility
+    console.log(`CORS request from origin: ${origin || 'no-origin'}`);
+    callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Origin', 'Accept'],
+  exposedHeaders: ['Content-Length', 'X-Foo', 'X-Bar'],
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 };
 
 app.use(cors(corsOptions));
 
-// Rate limiting
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // limit each IP to 100 requests per windowMs in production
-  message: {
-    success: false,
-    message: 'Too many requests from this IP, please try again later.',
-    code: 'RATE_LIMIT_EXCEEDED'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Session configuration for OAuth flow
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'your-super-secret-session-key-change-this-in-production',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
 
-app.use('/api/', limiter);
+// Rate limiting with development bypass
+const { bypassRateLimit } = require('./src/middleware/rate-limit.middleware');
+app.use('/api/', bypassRateLimit);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -113,6 +105,9 @@ app.use(hpp({
 
 // Compression middleware
 app.use(compression());
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -171,7 +166,7 @@ const startServer = async () => {
     await connectRedis();
     
     // Start HTTP server
-    const PORT = process.env.PORT || 5000;
+    const PORT = process.env.PORT || 5001;
     server.listen(PORT, '0.0.0.0', () => {
       logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
       console.log(`🚀 Server running on port ${PORT}`);

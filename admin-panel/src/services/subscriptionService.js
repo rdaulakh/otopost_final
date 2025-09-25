@@ -203,6 +203,23 @@ class SubscriptionService {
     }
   }
 
+  // Get subscribed plans (only plans that customers have actually subscribed to)
+  async getSubscribedPlans() {
+    try {
+      const response = await apiService.get('/admin/subscriptions/subscribed-plans');
+      
+      if (response.success) {
+        debugLog('Subscribed plans fetched successfully:', response.data);
+        return response.data;
+      } else {
+        throw new Error(response.message || 'Failed to fetch subscribed plans');
+      }
+    } catch (error) {
+      debugLog('Get subscribed plans error:', error);
+      throw error;
+    }
+  }
+
   // Create subscription plan
   async createSubscriptionPlan(planData) {
     try {

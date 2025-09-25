@@ -1,44 +1,16 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import axios from 'axios'
+import { API_ENDPOINTS } from '../config/api.js'
 
-// API base configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api'
+// Import the configured API client
+import apiClient from '../config/api.js'
 
-// Create axios instance with default config
-const api = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-})
+// Get API_BASE_URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://digiads.digiaeon.com/api'
 
-// Request interceptor to add auth token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    return Promise.reject(error)
-  }
-)
+// Use the configured API client
+const api = apiClient
 
-// Response interceptor for error handling
-api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
-    }
-    return Promise.reject(error)
-  }
-)
+// Note: API client already has request/response interceptors configured
 
 // Generic error handler
 const handleApiError = (error) => {
@@ -50,17 +22,22 @@ const handleApiError = (error) => {
   )
 }
 
+// Helper function to safely handle options parameter
+const safeOptions = (options) => {
+  return options && typeof options === 'object' ? options : {}
+}
+
 // ============================================================================
 // ANALYTICS HOOKS
 // ============================================================================
 
 // Analytics Overview
-export const useAnalyticsOverview = (options = {}) => {
+export const useAnalyticsOverview = (options = {}, queryOptions = {}) => {
   return useQuery({
     queryKey: ['analyticsOverview', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/customer-analytics/overview', { params: options })
+        const response = await api.get('/analytics/dashboard', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -69,7 +46,8 @@ export const useAnalyticsOverview = (options = {}) => {
     staleTime: 5 * 60 * 1000, // 5 minutes
     cacheTime: 10 * 60 * 1000, // 10 minutes
     refetchOnWindowFocus: false,
-    retry: 2
+    retry: 2,
+    ...queryOptions
   })
 }
 
@@ -79,7 +57,7 @@ export const useAnalyticsPerformance = (options = {}) => {
     queryKey: ['analyticsPerformance', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/customer-analytics/performance', { params: options })
+        const response = await api.get('/analytics/content-performance', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -97,7 +75,7 @@ export const useAnalyticsEngagement = (options = {}) => {
     queryKey: ['analyticsEngagement', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/customer-analytics/engagement', { params: options })
+        const response = await api.get('/analytics/platform', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -115,7 +93,7 @@ export const useAnalyticsAudience = (options = {}) => {
     queryKey: ['analyticsAudience', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/customer-analytics/audience', { params: options })
+        const response = await api.get('/analytics/audience', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -133,7 +111,7 @@ export const useContentAnalytics = (options = {}) => {
     queryKey: ['contentAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/customer-analytics/content', { params: options })
+        const response = await api.get('/analytics/content-performance', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -155,12 +133,12 @@ export const usePerformanceAnalytics = (options = {}) => {
 // ============================================================================
 
 // Get Content List
-export const useContentList = (options = {}) => {
+export const useContentList = (options = {}, queryOptions = {}) => {
   return useQuery({
     queryKey: ['contentList', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/content', { params: options })
+        const response = await api.get('/content', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -169,7 +147,8 @@ export const useContentList = (options = {}) => {
     staleTime: 2 * 60 * 1000, // 2 minutes
     cacheTime: 5 * 60 * 1000, // 5 minutes
     keepPreviousData: true,
-    retry: 2
+    retry: 2,
+    ...queryOptions
   })
 }
 
@@ -201,7 +180,7 @@ export const useUpdateContent = () => {
   return useMutation({
     mutationFn: async ({ id, ...contentData }) => {
       try {
-        const response = await api.put(`/content/${id}`, contentData)
+        const response = await api.put(API_ENDPOINTS.CONTENT.UPDATE(id), contentData)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -222,7 +201,7 @@ export const useDeleteContent = () => {
   return useMutation({
     mutationFn: async (contentId) => {
       try {
-        const response = await api.delete(`/content/${contentId}`)
+        const response = await api.delete(API_ENDPOINTS.CONTENT.DELETE(contentId))
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -242,7 +221,7 @@ export const useContentBatch = (options = {}) => {
     queryKey: ['contentBatch', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/content/batch', { params: options })
+        const response = await api.get('/content/batch', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -261,7 +240,7 @@ export const useContentApprove = () => {
   return useMutation({
     mutationFn: async ({ contentId, feedback }) => {
       try {
-        const response = await api.post(`/content/${contentId}/approve`, { feedback })
+        const response = await api.post(`${API_ENDPOINTS.CONTENT.UPDATE(contentId)}/approve`, { feedback })
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -282,7 +261,7 @@ export const useContentReject = () => {
   return useMutation({
     mutationFn: async ({ contentId, feedback }) => {
       try {
-        const response = await api.post(`/content/${contentId}/reject`, { feedback })
+        const response = await api.post(`${API_ENDPOINTS.CONTENT.UPDATE(contentId)}/reject`, { feedback })
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -302,7 +281,7 @@ export const useContentSchedule = () => {
   return useMutation({
     mutationFn: async ({ contentId, scheduledTime, platforms }) => {
       try {
-        const response = await api.post(`/content/${contentId}/schedule`, { 
+        const response = await api.post(API_ENDPOINTS.CONTENT.SCHEDULE(contentId), { 
           scheduledTime, 
           platforms 
         })
@@ -315,6 +294,91 @@ export const useContentSchedule = () => {
       queryClient.invalidateQueries(['contentList'])
       queryClient.invalidateQueries(['contentBatch'])
       queryClient.invalidateQueries(['scheduledPosts'])
+    }
+  })
+}
+
+// ============================================================================
+// CONTENT CALENDAR HOOKS
+// ============================================================================
+
+// Content Calendar Hook
+export const useContentCalendar = (options = {}) => {
+  return useQuery({
+    queryKey: ['contentCalendar', options],
+    queryFn: async () => {
+      try {
+        const response = await api.get('/content/calendar', { params: safeOptions(options) })
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    staleTime: 2 * 60 * 1000, // 2 minutes
+    cacheTime: 5 * 60 * 1000, // 5 minutes
+    retry: 2
+  })
+}
+
+// Create Post Hook
+export const useCreatePost = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (postData) => {
+      try {
+        const response = await api.post('/content/posts', postData)
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contentCalendar'] })
+      queryClient.invalidateQueries({ queryKey: ['scheduledPosts'] })
+      queryClient.invalidateQueries({ queryKey: ['contentList'] })
+    }
+  })
+}
+
+// Update Post Hook
+export const useUpdatePost = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async ({ postId, updates }) => {
+      try {
+        const response = await api.put(API_ENDPOINTS.CONTENT.UPDATE(postId), updates)
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contentCalendar'] })
+      queryClient.invalidateQueries({ queryKey: ['scheduledPosts'] })
+      queryClient.invalidateQueries({ queryKey: ['contentList'] })
+    }
+  })
+}
+
+// Delete Post Hook
+export const useDeletePost = () => {
+  const queryClient = useQueryClient()
+  
+  return useMutation({
+    mutationFn: async (postId) => {
+      try {
+        const response = await api.delete(API_ENDPOINTS.CONTENT.DELETE(postId))
+        return response.data.data
+      } catch (error) {
+        handleApiError(error)
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contentCalendar'] })
+      queryClient.invalidateQueries({ queryKey: ['scheduledPosts'] })
+      queryClient.invalidateQueries({ queryKey: ['contentList'] })
     }
   })
 }
@@ -404,7 +468,7 @@ export const useStrategies = (options = {}) => {
     queryKey: ['strategies', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/ai-strategy/strategies', { params: options })
+        const response = await api.get('/ai-strategy/strategies', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -455,7 +519,7 @@ export const useStrategyPerformance = (options = {}) => {
     queryKey: ['strategyPerformance', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/ai-strategy/performance', { params: options })
+        const response = await api.get('/ai-strategy/performance', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -500,7 +564,7 @@ export const useMediaList = (options = {}) => {
     queryKey: ['mediaList', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/media', { params: options })
+        const response = await api.get('/media', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -517,12 +581,12 @@ export const useMediaList = (options = {}) => {
 // ============================================================================
 
 // Get Social Profiles
-export const useSocialProfiles = () => {
+export const useSocialProfiles = (queryOptions = {}) => {
   return useQuery({
     queryKey: ['socialProfiles'],
     queryFn: async () => {
       try {
-        const response = await api.get('/social-profiles')
+        const response = await api.get('/social-accounts')
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -530,7 +594,8 @@ export const useSocialProfiles = () => {
     },
     staleTime: 10 * 60 * 1000, // 10 minutes
     cacheTime: 15 * 60 * 1000, // 15 minutes
-    retry: 2
+    retry: 2,
+    ...queryOptions
   })
 }
 
@@ -541,7 +606,7 @@ export const useConnectSocialProfile = () => {
   return useMutation({
     mutationFn: async (profileData) => {
       try {
-        const response = await api.post('/social-profiles', profileData)
+        const response = await api.post(API_ENDPOINTS.SOCIAL_PROFILES.CONNECT, profileData)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -560,7 +625,7 @@ export const useDisconnectSocialProfile = () => {
   return useMutation({
     mutationFn: async (profileId) => {
       try {
-        const response = await api.delete(`/social-profiles/${profileId}`)
+        const response = await api.delete(API_ENDPOINTS.SOCIAL_PROFILES.DISCONNECT(profileId))
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -630,7 +695,7 @@ export const useLogout = () => {
       }
     },
     onSuccess: () => {
-      localStorage.removeItem('token')
+      localStorage.removeItem('authToken')
       localStorage.removeItem('user')
       queryClient.clear()
     }
@@ -643,8 +708,8 @@ export const useCurrentUser = () => {
     queryKey: ['currentUser'],
     queryFn: async () => {
       try {
-        const response = await api.get('/auth/me')
-        return response.data.data
+        const response = await api.get('/users/profile')
+        return response.data.data.user
       } catch (error) {
         handleApiError(error)
       }
@@ -652,7 +717,7 @@ export const useCurrentUser = () => {
     staleTime: 5 * 60 * 1000, // 5 minutes
     cacheTime: 10 * 60 * 1000, // 10 minutes
     retry: 1,
-    enabled: !!localStorage.getItem('token')
+    enabled: !!localStorage.getItem('authToken')
   })
 }
 
@@ -666,7 +731,7 @@ export const useCampaignList = (options = {}) => {
     queryKey: ['campaignList', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/campaigns', { params: options })
+        const response = await api.get(API_ENDPOINTS.CAMPAIGNS.LIST, { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -685,7 +750,7 @@ export const useCampaignStats = (options = {}) => {
     queryKey: ['campaignStats', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/campaigns/stats', { params: options })
+        const response = await api.get(`${API_ENDPOINTS.CAMPAIGNS.LIST}/stats`, { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -704,7 +769,7 @@ export const useCreateCampaign = () => {
   return useMutation({
     mutationFn: async (campaignData) => {
       try {
-        const response = await api.post('/campaigns', campaignData)
+        const response = await api.post(API_ENDPOINTS.CAMPAIGNS.CREATE, campaignData)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -724,7 +789,7 @@ export const useUpdateCampaign = () => {
   return useMutation({
     mutationFn: async ({ id, ...campaignData }) => {
       try {
-        const response = await api.put(`/campaigns/${id}`, campaignData)
+        const response = await api.put(API_ENDPOINTS.CAMPAIGNS.UPDATE(id), campaignData)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -744,7 +809,7 @@ export const useDeleteCampaign = () => {
   return useMutation({
     mutationFn: async (campaignId) => {
       try {
-        const response = await api.delete(`/campaigns/${campaignId}`)
+        const response = await api.delete(API_ENDPOINTS.CAMPAIGNS.DELETE(campaignId))
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -763,7 +828,7 @@ export const useCampaignAnalytics = (campaignId, options = {}) => {
     queryKey: ['campaignAnalytics', campaignId, options],
     queryFn: async () => {
       try {
-        const response = await api.get(`/campaigns/${campaignId}/analytics`, { params: options })
+        const response = await api.get(API_ENDPOINTS.CAMPAIGNS.ANALYTICS(campaignId), { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -781,7 +846,7 @@ export const useCampaignOptimization = () => {
   return useMutation({
     mutationFn: async (campaignId) => {
       try {
-        const response = await api.post(`/campaigns/${campaignId}/optimize`)
+        const response = await api.post(API_ENDPOINTS.CAMPAIGNS.OPTIMIZE(campaignId))
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -836,10 +901,11 @@ export const useBoostRecommendations = (options = {}) => {
     queryKey: ['boostRecommendations', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/boosts/recommendations', { params: options })
+        const response = await api.get('/boosts/recommendations', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
-        handleApiError(error)
+        console.error('Boost recommendations error:', error)
+        return [] // Return empty array instead of throwing
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -854,10 +920,11 @@ export const useRecentPosts = (options = {}) => {
     queryKey: ['recentPosts', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/boosts/recent-posts', { params: options })
+        const response = await api.get('/boosts/recent-posts', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
-        handleApiError(error)
+        console.error('Recent posts error:', error)
+        return { posts: [] } // Return empty object with posts array
       }
     },
     staleTime: 2 * 60 * 1000, // 2 minutes
@@ -876,7 +943,8 @@ export const useActiveBoosts = () => {
         const response = await api.get('/boosts/active')
         return response.data.data
       } catch (error) {
-        handleApiError(error)
+        console.error('Active boosts error:', error)
+        return [] // Return empty array instead of throwing
       }
     },
     staleTime: 1 * 60 * 1000, // 1 minute
@@ -914,7 +982,7 @@ export const useUpdateBoost = () => {
   return useMutation({
     mutationFn: async ({ id, ...boostData }) => {
       try {
-        const response = await api.put(`/boosts/${id}`, boostData)
+        const response = await api.put(API_ENDPOINTS.BOOSTS.UPDATE(id), boostData)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -934,7 +1002,7 @@ export const useDeleteBoost = () => {
   return useMutation({
     mutationFn: async (boostId) => {
       try {
-        const response = await api.delete(`/boosts/${boostId}`)
+        const response = await api.delete(API_ENDPOINTS.BOOSTS.DELETE(boostId))
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -953,10 +1021,11 @@ export const useBoostAnalytics = (options = {}) => {
     queryKey: ['boostAnalytics', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/boosts/analytics', { params: options })
+        const response = await api.get('/boosts/analytics', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
-        handleApiError(error)
+        console.error('Boost analytics error:', error)
+        return {} // Return empty object instead of throwing
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -1010,7 +1079,7 @@ export const usePostAnalytics = (platform, postId) => {
     queryKey: ['postAnalytics', platform, postId],
     queryFn: async () => {
       try {
-        const response = await api.get(`/social-publishing/analytics/${platform}/${postId}`)
+        const response = await api.get(API_ENDPOINTS.SOCIAL_PUBLISHING.ANALYTICS(platform, postId))
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -1029,7 +1098,7 @@ export const useScheduledPosts = (options = {}) => {
     queryKey: ['scheduledPosts', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/social-publishing/scheduled', { params: options })
+        const response = await api.get('/social-publishing/scheduled', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -1049,7 +1118,7 @@ export const useUpdateScheduledPost = () => {
   return useMutation({
     mutationFn: async ({ id, ...updateData }) => {
       try {
-        const response = await api.put(`/social-publishing/scheduled/${id}`, updateData)
+        const response = await api.put(API_ENDPOINTS.SOCIAL_PUBLISHING.SCHEDULED_UPDATE(id), updateData)
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -1068,7 +1137,7 @@ export const useCancelScheduledPost = () => {
   return useMutation({
     mutationFn: async (postId) => {
       try {
-        const response = await api.delete(`/social-publishing/scheduled/${postId}`)
+        const response = await api.delete(API_ENDPOINTS.SOCIAL_PUBLISHING.SCHEDULED_DELETE(postId))
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -1085,7 +1154,7 @@ export const useTestConnection = () => {
   return useMutation({
     mutationFn: async (platform) => {
       try {
-        const response = await api.post(`/social-publishing/test-connection/${platform}`)
+        const response = await api.post(API_ENDPOINTS.SOCIAL_PUBLISHING.TEST_CONNECTION(platform))
         return response.data
       } catch (error) {
         handleApiError(error)
@@ -1099,22 +1168,38 @@ export const useTestConnection = () => {
 // ============================================================================
 
 // Get AI Agents Status
-export const useAIAgents = () => {
+export const useAIAgents = (queryOptions = {}) => {
   return useQuery({
     queryKey: ['aiAgents'],
     queryFn: async () => {
       try {
+        console.log('Fetching AI agents from:', api.defaults.baseURL + '/ai-agents')
         const response = await api.get('/ai-agents')
+        console.log('AI agents response:', response.data)
         return response.data.data
       } catch (error) {
-        handleApiError(error)
+        console.error('Error fetching AI agents:', error)
+        console.error('Error details:', error.response?.data)
+        // Return empty data structure if server is not available
+        return {
+          agents: [],
+          summary: {
+            totalAgents: 0,
+            activeAgents: 0,
+            avgEfficiency: 0,
+            totalTasksCompleted: 0,
+            totalTasksInProgress: 0,
+            systemStatus: 'needs_attention'
+          }
+        }
       }
     },
     staleTime: 30 * 1000, // 30 seconds - AI agents data should be fresh
     cacheTime: 2 * 60 * 1000, // 2 minutes
     refetchInterval: 30 * 1000, // Auto-refresh every 30 seconds
     refetchOnWindowFocus: true,
-    retry: 2
+    retry: 2,
+    ...queryOptions
   })
 }
 
@@ -1202,7 +1287,7 @@ export const useDashboardOverview = (timeRange = '7d') => {
     queryKey: ['dashboardOverview', timeRange],
     queryFn: async () => {
       try {
-        const response = await api.get('/customer-dashboard/overview', { params: { timeRange } })
+        const response = await api.get('/analytics/overview', { params: { timeRange } })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -1221,7 +1306,7 @@ export const useCustomerAnalyticsOverview = (timeRange = '7d') => {
     queryKey: ['customerAnalyticsOverview', timeRange],
     queryFn: async () => {
       try {
-        const response = await api.get('/customer-dashboard/analytics', { params: { timeRange } })
+        const response = await api.get('/analytics/performance', { params: { timeRange } })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -1239,7 +1324,7 @@ export const useCustomerContentList = (options = {}) => {
     queryKey: ['customerContentList', options],
     queryFn: async () => {
       try {
-        const response = await api.get('/customer-dashboard/content', { params: options })
+        const response = await api.get('/content', { params: safeOptions(options) })
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -1258,7 +1343,7 @@ export const useCustomerAIAgents = () => {
     queryKey: ['customerAIAgents'],
     queryFn: async () => {
       try {
-        const response = await api.get('/customer-dashboard/ai-agents')
+        const response = await api.get('/ai-agents')
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -1272,12 +1357,12 @@ export const useCustomerAIAgents = () => {
 }
 
 // Usage Statistics
-export const useCustomerUsageStats = () => {
+export const useCustomerUsageStats = (queryOptions = {}) => {
   return useQuery({
     queryKey: ['customerUsageStats'],
     queryFn: async () => {
       try {
-        const response = await api.get('/customer-dashboard/usage-stats')
+        const response = await api.get('/users/profile')
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -1285,7 +1370,8 @@ export const useCustomerUsageStats = () => {
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
     cacheTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2
+    retry: 2,
+    ...queryOptions
   })
 }
 
@@ -1295,7 +1381,7 @@ export const useCustomerSocialProfiles = () => {
     queryKey: ['customerSocialProfiles'],
     queryFn: async () => {
       try {
-        const response = await api.get('/customer-dashboard/social-profiles')
+        const response = await api.get('/social-profiles')
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -1308,12 +1394,12 @@ export const useCustomerSocialProfiles = () => {
 }
 
 // User Subscription
-export const useCustomerSubscription = () => {
+export const useCustomerSubscription = (queryOptions = {}) => {
   return useQuery({
     queryKey: ['customerSubscription'],
     queryFn: async () => {
       try {
-        const response = await api.get('/customer-dashboard/subscription')
+        const response = await api.get('/users/subscription')
         return response.data.data
       } catch (error) {
         handleApiError(error)
@@ -1321,220 +1407,20 @@ export const useCustomerSubscription = () => {
     },
     staleTime: 15 * 60 * 1000, // 15 minutes
     cacheTime: 30 * 60 * 1000, // 30 minutes
-    retry: 2
+    retry: 2,
+    ...queryOptions
   })
 }
 
 // ============================================================================
-// PERFORMANCE ANALYTICS HOOKS
+// PERFORMANCE ANALYTICS HOOKS - REMOVED DUPLICATES
 // ============================================================================
-
-// Analytics Performance (Detailed)
-export const useAnalyticsPerformance = (options = {}) => {
-  return useQuery({
-    queryKey: ['analyticsPerformance', options],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/customer-analytics/performance', { params: options })
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    staleTime: 3 * 60 * 1000, // 3 minutes
-    cacheTime: 8 * 60 * 1000, // 8 minutes
-    retry: 2
-  })
-}
-
-// Content Analytics (Performance)
-export const useContentAnalytics = (options = {}) => {
-  return useQuery({
-    queryKey: ['contentAnalytics', options],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/customer-analytics/content-performance', { params: options })
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2
-  })
-}
-
-// Performance Analytics (Main)
-export const usePerformanceAnalytics = (options = {}) => {
-  return useQuery({
-    queryKey: ['performanceAnalytics', options],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/customer-analytics/performance-overview', { params: options })
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    staleTime: 2 * 60 * 1000, // 2 minutes
-    cacheTime: 5 * 60 * 1000, // 5 minutes
-    retry: 2
-  })
-}
-
-// Engagement Analytics (Performance)
-export const useAnalyticsEngagement = (options = {}) => {
-  return useQuery({
-    queryKey: ['analyticsEngagement', options],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/customer-analytics/engagement', { params: options })
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    staleTime: 3 * 60 * 1000, // 3 minutes
-    cacheTime: 8 * 60 * 1000, // 8 minutes
-    retry: 2
-  })
-}
-
-// Audience Analytics (Performance)
-export const useAnalyticsAudience = (options = {}) => {
-  return useQuery({
-    queryKey: ['analyticsAudience', options],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/customer-analytics/audience', { params: options })
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    cacheTime: 20 * 60 * 1000, // 20 minutes
-    retry: 2
-  })
-}
+// Note: These functions are already defined earlier in the file
 
 // ============================================================================
-// STRATEGY PLANNER HOOKS
+// STRATEGY PLANNER HOOKS - REMOVED DUPLICATES
 // ============================================================================
-
-// Get All Strategies
-export const useStrategies = () => {
-  return useQuery({
-    queryKey: ['strategies'],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/ai-strategy/strategies')
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
-    retry: 2
-  })
-}
-
-// Generate New Strategy
-export const useGenerateStrategy = () => {
-  const queryClient = useQueryClient()
-  
-  return useMutation({
-    mutationFn: async (strategyData) => {
-      try {
-        const response = await api.post('/ai-strategy/generate', strategyData)
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['strategies'] })
-      queryClient.invalidateQueries({ queryKey: ['strategyPerformance'] })
-    }
-  })
-}
-
-// Update Strategy
-export const useUpdateStrategy = () => {
-  const queryClient = useQueryClient()
-  
-  return useMutation({
-    mutationFn: async ({ strategyId, updates }) => {
-      try {
-        const response = await api.put(`/ai-strategy/strategies/${strategyId}`, updates)
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['strategies'] })
-      queryClient.invalidateQueries({ queryKey: ['strategyPerformance'] })
-    }
-  })
-}
-
-// AI Analysis
-export const useAIAnalysis = (options = {}) => {
-  return useQuery({
-    queryKey: ['aiAnalysis', options],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/ai-strategy/analysis', { params: options })
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    cacheTime: 20 * 60 * 1000, // 20 minutes
-    retry: 2
-  })
-}
-
-// Strategy Performance
-export const useStrategyPerformance = (strategyId = null) => {
-  return useQuery({
-    queryKey: ['strategyPerformance', strategyId],
-    queryFn: async () => {
-      try {
-        const url = strategyId ? `/ai-strategy/performance/${strategyId}` : '/ai-strategy/performance'
-        const response = await api.get(url)
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    staleTime: 3 * 60 * 1000, // 3 minutes
-    cacheTime: 8 * 60 * 1000, // 8 minutes
-    retry: 2
-  })
-}
-
-// Strategy Recommendations
-export const useStrategyRecommendations = () => {
-  return useQuery({
-    queryKey: ['strategyRecommendations'],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/ai-strategy/recommendations')
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    staleTime: 15 * 60 * 1000, // 15 minutes
-    cacheTime: 30 * 60 * 1000, // 30 minutes
-    retry: 2
-  })
-}
+// Note: These functions are already defined earlier in the file
 
 // ============================================================================
 // AI PERFORMANCE LEARNING HOOKS
@@ -1595,59 +1481,3 @@ export const useAILearningProgress = () => {
   })
 }
 
-// AI Optimization Recommendations
-export const useAIOptimizationRecommendations = () => {
-  return useQuery({
-    queryKey: ['aiOptimizationRecommendations'],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/ai-strategy/optimization-recommendations')
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    cacheTime: 20 * 60 * 1000, // 20 minutes
-    retry: 2
-  })
-}
-
-// Implement AI Recommendation
-export const useImplementAIRecommendation = () => {
-  const queryClient = useQueryClient()
-  
-  return useMutation({
-    mutationFn: async ({ recommendationId, action }) => {
-      try {
-        const response = await api.post(`/ai-strategy/implement-recommendation/${recommendationId}`, { action })
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['aiLearningInsights'] })
-      queryClient.invalidateQueries({ queryKey: ['aiAgentPerformance'] })
-      queryClient.invalidateQueries({ queryKey: ['aiOptimizationRecommendations'] })
-    }
-  })
-}
-
-// AI Performance Metrics
-export const useAIPerformanceMetrics = (timeRange = '30d') => {
-  return useQuery({
-    queryKey: ['aiPerformanceMetrics', timeRange],
-    queryFn: async () => {
-      try {
-        const response = await api.get('/ai-strategy/performance-metrics', { params: { timeRange } })
-        return response.data.data
-      } catch (error) {
-        handleApiError(error)
-      }
-    },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 12 * 60 * 1000, // 12 minutes
-    retry: 2
-  })
-}

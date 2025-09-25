@@ -7,15 +7,22 @@ export const useUserProfile = () => {
   return useQuery({
     queryKey: QUERY_KEYS.USER_PROFILE,
     queryFn: () => apiHelpers.get(API_ENDPOINTS.USERS.PROFILE),
-    select: (data) => data.data,
+    select: (data) => data.data.user, // Extract user data from response
   });
 };
 
 export const useUserSubscription = () => {
   return useQuery({
     queryKey: QUERY_KEYS.USER_SUBSCRIPTION,
-    queryFn: () => apiHelpers.get(API_ENDPOINTS.USERS.SUBSCRIPTION),
-    select: (data) => data.data,
+    queryFn: async () => {
+      const response = await apiHelpers.get(API_ENDPOINTS.USERS.SUBSCRIPTION);
+      return response.data; // Extract the data from axios response
+    },
+    select: (data) => data.data, // Extract the inner data from API response
+    staleTime: 0, // Always consider data stale
+    gcTime: 0, // Don't cache data
+    refetchOnMount: true, // Always refetch on mount
+    refetchOnWindowFocus: true, // Refetch on window focus
   });
 };
 
@@ -31,7 +38,7 @@ export const useUserSettings = () => {
   return useQuery({
     queryKey: QUERY_KEYS.USER_PROFILE,
     queryFn: () => apiHelpers.get(API_ENDPOINTS.USERS.PROFILE),
-    select: (data) => data.data?.preferences || {},
+    select: (data) => data.data.user?.preferences || {},
   });
 };
 
@@ -39,7 +46,25 @@ export const useUpdateProfile = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (profileData) => apiHelpers.put(API_ENDPOINTS.USERS.UPDATE_PROFILE, profileData),
+    mutationFn: async (profileData) => {
+      // Separate user data from organization data and fix field names
+      const { company, phone, ...userData } = profileData;
+      userData.phoneNumber = phone; // API expects phoneNumber, not phone
+      
+      // Update user profile
+      const userResponse = await apiHelpers.put(API_ENDPOINTS.USERS.UPDATE_PROFILE, userData);
+      
+      // Update organization profile if company name is provided
+      if (company) {
+        try {
+          await apiHelpers.put('/users/organization/profile', { name: company });
+        } catch (error) {
+          console.warn('Failed to update organization profile:', error);
+        }
+      }
+      
+      return userResponse.data.data.user; // Extract user data from response
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
     },
@@ -50,7 +75,22 @@ export const useUpdateSettings = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (settings) => apiHelpers.put(API_ENDPOINTS.USERS.UPDATE_PROFILE, { preferences: settings }),
+    mutationFn: async (settings) => {
+      // Update organization profile with AI preferences
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('https://digiads.digiaeon.com/api/users/organization/profile', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          aiPreferences: settings.aiPreferences,
+          brandAssets: settings.brandColors ? { colors: settings.brandColors } : undefined
+        })
+      });
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
     },
@@ -61,7 +101,7 @@ export const useNotificationSettings = () => {
   return useQuery({
     queryKey: QUERY_KEYS.USER_PROFILE,
     queryFn: () => apiHelpers.get(API_ENDPOINTS.USERS.PROFILE),
-    select: (data) => data.data?.preferences?.notifications || {},
+    select: (data) => data.data.user?.preferences?.notifications || {},
   });
 };
 
@@ -69,9 +109,23 @@ export const useUpdateNotificationSettings = () => {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: (notifications) => apiHelpers.put(API_ENDPOINTS.USERS.UPDATE_PROFILE, { 
-      preferences: { notifications } 
-    }),
+    mutationFn: async (notifications) => {
+      // Update organization profile with notification settings
+      const token = localStorage.getItem('authToken');
+      const response = await fetch('https://digiads.digiaeon.com/api/users/organization/profile', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          aiPreferences: {
+            notifications: notifications
+          }
+        })
+      });
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEYS.USER_PROFILE });
     },
@@ -225,7 +279,7 @@ export const useAnalyzeCompetitors = (competitorName) => {
     queryKey: [QUERY_KEYS.AI_ANALYZE_COMPETITORS, competitorName],
     queryFn: () => apiHelpers.post(API_ENDPOINTS.AI.ANALYZE_COMPETITORS, { competitorName }),
     enabled: !!competitorName,
-    refetchInterval: 60000, // Auto-refresh every 60 seconds
+    // refetchInterval: 300000, // Auto-refresh disabled to prevent constant refreshing
     select: (data) => data.data,
   });
 };
@@ -406,7 +460,7 @@ export const useRealtimeStatus = () => {
     queryKey: QUERY_KEYS.REALTIME_STATUS,
     queryFn: () => apiHelpers.get(API_ENDPOINTS.REALTIME.STATUS),
     select: (data) => data.data,
-    refetchInterval: 30000, // Refetch every 30 seconds
+    // refetchInterval: 300000, // Refetch disabled to prevent constant refreshing
   });
 };
 
@@ -419,12 +473,14 @@ export const useNotifications = () => {
 };
 
 // System Health Hook
-export const useSystemHealth = () => {
+export const useSystemHealth = (queryOptions = {}) => {
   return useQuery({
     queryKey: ['system', 'health'],
     queryFn: () => apiHelpers.get(API_ENDPOINTS.SYSTEM.HEALTH),
     select: (data) => data.data,
-    refetchInterval: 60000, // Refetch every minute
+    // refetchInterval: 300000, // Refetch disabled to prevent constant refreshing
+    staleTime: 120000, // Consider data stale after 2 minutes
+    ...queryOptions
   });
 };
 
@@ -501,8 +557,14 @@ export const useApi = () => {
 export const useCustomerApi = () => {
   // Customer-specific API hooks
   return {
-    getProfile: () => apiHelpers.get(API_ENDPOINTS.USERS.PROFILE),
-    updateProfile: (data) => apiHelpers.put(API_ENDPOINTS.USERS.UPDATE_PROFILE, data)
+    getProfile: async () => {
+      const response = await apiHelpers.get(API_ENDPOINTS.USERS.PROFILE);
+      return response.data.data.user; // Extract user data from response
+    },
+    updateProfile: async (data) => {
+      const response = await apiHelpers.put(API_ENDPOINTS.USERS.UPDATE_PROFILE, data);
+      return response.data.data.user; // Extract user data from response
+    }
   };
 };
 
@@ -796,7 +858,7 @@ export const useUploadMedia = () => {
 export const useABTests = () => {
   return useQuery({
     queryKey: ['ab-tests'],
-    queryFn: () => apiHelpers.get('/api/ab-tests'),
+    queryFn: () => apiHelpers.get('/ab-tests'),
     select: (data) => data.data,
   });
 };
@@ -804,7 +866,7 @@ export const useABTests = () => {
 export const useABTestResults = (testId) => {
   return useQuery({
     queryKey: ['ab-test-results', testId],
-    queryFn: () => apiHelpers.get(`/api/ab-tests/${testId}/results`),
+    queryFn: () => apiHelpers.get(`/ab-tests/${testId}/results`),
     select: (data) => data.data,
     enabled: !!testId,
   });
@@ -813,7 +875,7 @@ export const useABTestResults = (testId) => {
 export const useABTestMetrics = (testId) => {
   return useQuery({
     queryKey: ['ab-test-metrics', testId],
-    queryFn: () => apiHelpers.get(`/api/ab-tests/${testId}/metrics`),
+    queryFn: () => apiHelpers.get(`/ab-tests/${testId}/metrics`),
     select: (data) => data.data,
     enabled: !!testId,
   });
@@ -822,7 +884,7 @@ export const useABTestMetrics = (testId) => {
 export const useCreateABTest = () => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (testData) => apiHelpers.post('/api/ab-tests', testData),
+    mutationFn: (testData) => apiHelpers.post('/ab-tests', testData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ab-tests'] });
     },
@@ -831,86 +893,9 @@ export const useCreateABTest = () => {
 };
 
 // ============================================================================
-// DASHBOARD COMPATIBILITY HOOKS
+// DASHBOARD COMPATIBILITY HOOKS - REMOVED DUPLICATES
 // ============================================================================
-
-// Social Profiles
-export const useSocialProfiles = () => {
-  return useQuery({
-    queryKey: ['socialProfiles'],
-    queryFn: async () => {
-      try {
-        const response = await apiHelpers.get('/customer-dashboard/social-profiles')
-        return response.data
-      } catch (error) {
-        console.error('Social profiles error:', error)
-        throw error
-      }
-    },
-    staleTime: 10 * 60 * 1000, // 10 minutes
-    cacheTime: 20 * 60 * 1000, // 20 minutes
-    retry: 2
-  })
-}
-
-// Analytics Overview (alias for dashboard compatibility)
-export const useAnalyticsOverview = (timeRange = '7d') => {
-  return useQuery({
-    queryKey: ['analyticsOverview', timeRange],
-    queryFn: async () => {
-      try {
-        const response = await apiHelpers.get('/customer-dashboard/analytics', { params: { timeRange } })
-        return response.data
-      } catch (error) {
-        console.error('Analytics overview error:', error)
-        throw error
-      }
-    },
-    staleTime: 3 * 60 * 1000, // 3 minutes
-    cacheTime: 8 * 60 * 1000, // 8 minutes
-    retry: 2
-  })
-}
-
-// Content List (alias for dashboard compatibility)
-export const useContentList = (options = {}) => {
-  return useQuery({
-    queryKey: ['contentList', options],
-    queryFn: async () => {
-      try {
-        const response = await apiHelpers.get('/customer-dashboard/content', { params: options })
-        return response.data
-      } catch (error) {
-        console.error('Content list error:', error)
-        throw error
-      }
-    },
-    staleTime: 1 * 60 * 1000, // 1 minute
-    cacheTime: 3 * 60 * 1000, // 3 minutes
-    keepPreviousData: true,
-    retry: 2
-  })
-}
-
-// AI Agents (alias for dashboard compatibility)
-export const useAIAgents = () => {
-  return useQuery({
-    queryKey: ['aiAgents'],
-    queryFn: async () => {
-      try {
-        const response = await apiHelpers.get('/customer-dashboard/ai-agents')
-        return response.data
-      } catch (error) {
-        console.error('AI agents error:', error)
-        throw error
-      }
-    },
-    staleTime: 30 * 1000, // 30 seconds
-    cacheTime: 2 * 60 * 1000, // 2 minutes
-    refetchInterval: 60 * 1000, // Refetch every minute for real-time updates
-    retry: 2
-  })
-}
+// All duplicate functions removed - using main implementations above
 
 // ============================================================================
 // CUSTOMER ANALYTICS HOOKS

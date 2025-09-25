@@ -1,17 +1,13 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 
 // Import multi-tenant management hooks
 import { 
-  useMultiTenantInstances,
-  useTenantPlans,
-  useTenantMetrics,
-  useResourceUsage,
-  useCreateTenant,
-  useUpdateTenant,
-  useDeleteTenant,
-  useTenantBilling
-} from '../hooks/useMultiTenantManagement.js'
+  useMultiTenantInstances, 
+  useTenantPlans, 
+  useMultiTenantStats, 
+  useMultiTenantResourceUsage 
+} from '../hooks/useAdminApi.js'
 import { 
   Building2, 
   Globe, 
@@ -75,9 +71,8 @@ import { Button } from '@/components/ui/button'
 import { LineChart as RechartsLineChart, Line, AreaChart, Area, BarChart, Bar, PieChart as RechartsPieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts'
 import { format, formatDistanceToNow } from 'date-fns'
 
-const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false }) => {
+const MultiTenantManagement = ({ isDarkMode = false }) => {
   const [activeTab, setActiveTab] = useState('tenants')
-  const [selectedTenant, setSelectedTenant] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatus, setSelectedStatus] = useState('all')
   const [selectedPlan, setSelectedPlan] = useState('all')
@@ -103,28 +98,58 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
   } = useTenantPlans()
 
   const { 
-    data: tenantMetrics, 
-    isLoading: metricsLoading, 
-    error: metricsError,
-    refetch: refetchMetrics 
-  } = useTenantMetrics()
+    data: tenantStatsData, 
+    isLoading: statsLoading, 
+    error: statsError,
+    refetch: refetchStats
+  } = useMultiTenantStats()
 
   const { 
     data: resourceUsageData, 
     isLoading: resourceLoading, 
     error: resourceError,
-    refetch: refetchResource 
-  } = useResourceUsage()
+    refetch: refetchResource
+  } = useMultiTenantResourceUsage({ timeRange: '7d' })
 
   // Combined loading and error states
-  const isLoading = tenantsLoading || plansLoading || metricsLoading || resourceLoading
-  const hasError = tenantsError || plansError || metricsError || resourceError
+  const hasError = tenantsError || plansError || statsError || resourceError
 
   // Use ONLY real API data - NO static fallbacks
-  const tenantStats = tenantMetrics?.stats || {}
+  const tenantStats = tenantStatsData || {}
   const tenants = tenantsData?.tenants || []
   const tenantPlans = tenantPlansData?.plans || []
-  const resourceUsage = resourceUsageData?.usage || []
+
+  // Status options for filtering
+  const statusOptions = [
+    { id: 'all', name: 'All Tenants', count: tenants.length },
+    { id: 'active', name: 'Active', count: tenants.filter(t => t.status === 'active').length },
+    { id: 'trial', name: 'Trial', count: tenants.filter(t => t.status === 'trial').length },
+    { id: 'suspended', name: 'Suspended', count: tenants.filter(t => t.status === 'suspended').length },
+    { id: 'inactive', name: 'Inactive', count: tenants.filter(t => t.status === 'inactive').length }
+  ]
+
+  // Tab options
+  const tabs = [
+    { id: 'overview', name: 'Overview', icon: BarChart3 },
+    { id: 'tenants', name: 'Tenants', icon: Building2 },
+    { id: 'plans', name: 'Plans', icon: CreditCard },
+    { id: 'resources', name: 'Resources', icon: Server },
+    { id: 'analytics', name: 'Analytics', icon: TrendingUp }
+  ]
+
+  // Chart data
+  const tenantRevenueData = tenants.map(tenant => ({
+    name: tenant.name,
+    revenue: tenant.revenue || 0,
+    users: tenant.users || 0,
+    status: tenant.status
+  }))
+
+  const featureUsageData = tenantStats.feature_adoption ? Object.entries(tenantStats.feature_adoption).map(([feature, count]) => ({
+    feature: feature.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    count,
+    percentage: (count / (tenantStats.overview?.total_tenants || 1)) * 100
+  })) : []
 
   // Error handling - show error messages instead of static data
   if (hasError) {
@@ -135,12 +160,12 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
             <AlertTriangle className="h-12 w-12 text-red-500 mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Failed to Load Multi-Tenant Data</h3>
             <p className="text-gray-600 mb-4">Unable to fetch multi-tenant management data from the API.</p>
-            <Button onClick={() => {
-              refetchTenants()
-              refetchPlans()
-              refetchMetrics()
-              refetchResource()
-            }}>
+        <Button onClick={() => {
+          refetchTenants()
+          refetchPlans()
+          refetchStats()
+          refetchResource()
+        }}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Retry
             </Button>
@@ -275,49 +300,49 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Users</p>
-                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{tenant.users.toLocaleString()}</p>
+                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{(tenant.users || 0).toLocaleString()}</p>
                 </div>
                 <div>
                   <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Revenue</p>
-                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${tenant.revenue.toLocaleString()}</p>
+                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${(tenant.revenue || 0).toLocaleString()}</p>
                 </div>
                 <div>
                   <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Storage</p>
-                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{tenant.storageUsed} GB</p>
+                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{tenant.storageUsed || 0} GB</p>
                 </div>
                 <div>
                   <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>API Calls</p>
-                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{tenant.apiCalls.toLocaleString()}</p>
+                  <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{(tenant.apiCalls || 0).toLocaleString()}</p>
                 </div>
               </div>
 
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>CPU Usage</span>
-                  <span className="font-medium">{tenant.cpuUsage}%</span>
+                  <span className="font-medium">{tenant.cpuUsage || 0}%</span>
                 </div>
                 <div className={`w-full rounded-full h-2 ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
                   <div 
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${tenant.cpuUsage}%` }}
+                    style={{ width: `${tenant.cpuUsage || 0}%` }}
                   />
                 </div>
                 
                 <div className="flex justify-between text-sm">
                   <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Memory Usage</span>
-                  <span className="font-medium">{tenant.memoryUsage}%</span>
+                  <span className="font-medium">{tenant.memoryUsage || 0}%</span>
                 </div>
                 <div className={`w-full rounded-full h-2 ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
                   <div 
                     className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${tenant.memoryUsage}%` }}
+                    style={{ width: `${tenant.memoryUsage || 0}%` }}
                   />
                 </div>
               </div>
 
               <div className={`flex items-center justify-between text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mb-4`}>
-                <span>Created: {format(new Date(tenant.createdAt), 'MMM dd, yyyy')}</span>
-                <span>Last active: {formatDistanceToNow(new Date(tenant.lastActivity), { addSuffix: true })}</span>
+                <span>Created: {tenant.createdAt ? format(new Date(tenant.createdAt), 'MMM dd, yyyy') : 'N/A'}</span>
+                <span>Last active: {tenant.lastActivity ? formatDistanceToNow(new Date(tenant.lastActivity), { addSuffix: true }) : 'N/A'}</span>
               </div>
 
               <div className="flex items-center justify-between">
@@ -368,47 +393,49 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
               <div className="text-center mb-6">
                 <h3 className={`text-lg font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
                 <div className="mt-2">
-                  <span className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${plan.price}</span>
-                  <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>/{plan.billingCycle}</span>
+                  <span className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${plan.price || '0'}</span>
+                  <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>/{plan.billingCycle || 'month'}</span>
                 </div>
               </div>
 
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-sm">
                   <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Max Users</span>
-                  <span className="font-medium">{plan.maxUsers.toLocaleString()}</span>
+                  <span className="font-medium">{(plan.maxUsers || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Storage</span>
-                  <span className="font-medium">{plan.maxStorage} GB</span>
+                  <span className="font-medium">{plan.maxStorage || '0'} GB</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>API Calls</span>
-                  <span className="font-medium">{plan.apiCallsLimit.toLocaleString()}</span>
+                  <span className="font-medium">{(plan.apiCallsLimit || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>CPU Cores</span>
-                  <span className="font-medium">{plan.resourceLimits.cpu}</span>
+                  <span className="font-medium">{plan.resourceLimits?.cpu || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Memory</span>
-                  <span className="font-medium">{plan.resourceLimits.memory} GB</span>
+                  <span className="font-medium">{plan.resourceLimits?.memory || 'N/A'} GB</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Bandwidth</span>
-                  <span className="font-medium">{plan.resourceLimits.bandwidth} GB</span>
+                  <span className="font-medium">{plan.resourceLimits?.bandwidth || 'N/A'} GB</span>
                 </div>
               </div>
 
               <div className="space-y-2 mb-6">
                 <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Features:</p>
                 <div className="space-y-1">
-                  {Object.entries(plan.features).map(([feature, enabled]) => (
+                  {plan.features ? Object.entries(plan.features).map(([feature, enabled]) => (
                     <div key={feature} className="flex items-center justify-between text-sm">
                       <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'} capitalize`}>{feature.replace(/([A-Z])/g, ' $1')}</span>
                       {getFeatureBadge(enabled)}
                     </div>
-                  ))}
+                  )) : (
+                    <div className="text-sm text-gray-500">No features specified</div>
+                  )}
                 </div>
               </div>
 
@@ -475,7 +502,7 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Storage Used</p>
-                <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{tenantStats.storageUsed} TB</p>
+                <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{tenantStats.usage?.total_storage_used || 0} GB</p>
               </div>
               <div className={`p-2 rounded-lg ${isDarkMode ? 'bg-purple-900/30' : 'bg-purple-50'}`}>
                 <HardDrive className={`h-5 w-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
@@ -560,19 +587,19 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
                     <h4 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{tenant.name}</h4>
                     <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{tenant.plan} Plan</p>
                   </div>
-                  <Badge variant='outline' className={isDarkMode ? 'border-slate-600 text-slate-300' : ''}>{tenant.users} users</Badge>
+                  <Badge variant='outline' className={isDarkMode ? 'border-slate-600 text-slate-300' : ''}>{tenant.users || 0} users</Badge>
                 </div>
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>CPU</span>
-                      <span className="font-medium">{tenant.cpuUsage}%</span>
+                      <span className="font-medium">{tenant.cpuUsage || 0}%</span>
                     </div>
                     <div className={`w-full rounded-full h-2 ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
                       <div 
                         className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${tenant.cpuUsage}%` }}
+                        style={{ width: `${tenant.cpuUsage || 0}%` }}
                       />
                     </div>
                   </div>
@@ -580,12 +607,12 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Memory</span>
-                      <span className="font-medium">{tenant.memoryUsage}%</span>
+                      <span className="font-medium">{tenant.memoryUsage || 0}%</span>
                     </div>
                     <div className={`w-full rounded-full h-2 ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
                       <div 
                         className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${tenant.memoryUsage}%` }}
+                        style={{ width: `${tenant.memoryUsage || 0}%` }}
                       />
                     </div>
                   </div>
@@ -593,12 +620,12 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Storage</span>
-                      <span className="font-medium">{tenant.storageUsed} GB</span>
+                      <span className="font-medium">{tenant.storageUsed || 0} GB</span>
                     </div>
                     <div className={`w-full rounded-full h-2 ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
                       <div 
                         className="bg-purple-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${(tenant.storageUsed / 1000) * 100}%` }}
+                        style={{ width: `${(tenant.storageUsed || 0 / 1000) * 100}%` }}
                       />
                     </div>
                   </div>
@@ -606,12 +633,12 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>API Calls</span>
-                      <span className="font-medium">{(tenant.apiCalls / 1000).toFixed(0)}K</span>
+                      <span className="font-medium">{(tenant.apiCalls || 0 / 1000).toFixed(0)}K</span>
                     </div>
                     <div className={`w-full rounded-full h-2 ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
                       <div 
                         className="bg-orange-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min((tenant.apiCalls / 1000000) * 100, 100)}%` }}
+                        style={{ width: `${Math.min((tenant.apiCalls || 0 / 1000000) * 100, 100)}%` }}
                       />
                     </div>
                   </div>
@@ -874,7 +901,7 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
             {tenantPlans.map((plan) => {
-              const tenantCount = tenants.filter(t => t.plan.toLowerCase().includes(plan.name.toLowerCase())).length
+              const tenantCount = tenants.filter(t => t.plan.toLowerCase().includes((plan.name || '').toLowerCase())).length
               const percentage = ((tenantCount / tenants.length) * 100).toFixed(1)
               
               return (
@@ -882,10 +909,10 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
                   <div className="p-4 bg-blue-50 rounded-lg mb-3">
                     <Package className="h-8 w-8 text-blue-600 mx-auto" />
                   </div>
-                  <h4 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h4>
+                  <h4 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{plan.name || 'Unknown Plan'}</h4>
                   <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{tenantCount}</p>
                   <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{percentage}% of tenants</p>
-                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>${plan.price}/month</p>
+                  <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>${plan.price || '0'}/month</p>
                 </div>
               )
             })}
@@ -916,7 +943,7 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
         ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
         : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'
     }`}>
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -928,7 +955,7 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
           <div className="flex items-center space-x-4">
             <Badge className={isDarkMode ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800'}>
               <Building2 className="h-3 w-3 mr-1" />
-              {tenantStats.totalTenants} Tenants
+              {tenantStats.overview?.total_tenants || 0} Tenants
             </Badge>
             <Button variant="outline" size="sm" className={isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''}>
               <Download className="h-4 w-4 mr-2" />
@@ -944,7 +971,7 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Active Tenants</p>
-                  <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{tenantStats.activeTenants}</p>
+                  <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{tenantStats.overview?.active_tenants || 0}</p>
                 </div>
                 <div className="p-2 bg-green-50 rounded-lg">
                   <Building2 className="h-5 w-5 text-green-600" />
@@ -952,7 +979,7 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
               </div>
               <div className="flex items-center mt-2">
                 <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {tenantStats.trialTenants} on trial
+                  {tenantStats.overview?.trial_tenants || 0} on trial
                 </span>
               </div>
             </CardContent>
@@ -963,7 +990,7 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Revenue</p>
-                  <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${tenantStats.totalRevenue.toLocaleString()}</p>
+                  <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>${(tenantStats.financial?.total_revenue || 0).toLocaleString()}</p>
                 </div>
                 <div className="p-2 bg-blue-50 rounded-lg">
                   <DollarSign className="h-5 w-5 text-blue-600" />
@@ -982,7 +1009,7 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Total Users</p>
-                  <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{tenantStats.totalUsers.toLocaleString()}</p>
+                  <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{(tenantStats.usage?.total_users || 0).toLocaleString()}</p>
                 </div>
                 <div className="p-2 bg-purple-50 rounded-lg">
                   <Users className="h-5 w-5 text-purple-600" />
@@ -990,7 +1017,7 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
               </div>
               <div className="flex items-center mt-2">
                 <span className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                  Avg {tenantStats.avgUsersPerTenant} per tenant
+                  Avg {tenantStats.usage?.avg_users_per_tenant || 0} per tenant
                 </span>
               </div>
             </CardContent>
@@ -1001,7 +1028,7 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
               <div className="flex items-center justify-between">
                 <div>
                   <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>Resource Usage</p>
-                  <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{tenantStats.resourceUtilization}%</p>
+                  <p className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{Math.round(tenantStats.usage?.avg_cpu_usage || 0)}%</p>
                 </div>
                 <div className="p-2 bg-orange-50 rounded-lg">
                   <Server className="h-5 w-5 text-orange-600" />
@@ -1011,7 +1038,7 @@ const MultiTenantManagement = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
                 <div className={`w-full rounded-full h-2 ${isDarkMode ? 'bg-slate-700' : 'bg-gray-200'}`}>
                   <div 
                     className="bg-orange-600 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${tenantStats.resourceUtilization}%` }}
+                    style={{ width: `${Math.round(tenantStats.usage?.avg_cpu_usage || 0)}%` }}
                   />
                 </div>
               </div>

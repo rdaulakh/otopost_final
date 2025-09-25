@@ -39,8 +39,8 @@ This is a comprehensive AI-powered social media management platform with four ma
 | Cost Optimizer | customer-frontend | Mock data | ❌ No | ❌ No | ⚠️ Partial | Uses mock data only |
 | User Profile | customer-frontend | Mock data | ❌ No | ❌ No | ⚠️ Partial | Uses mock data only |
 | Settings | customer-frontend | Mock data | ❌ No | ❌ No | ⚠️ Partial | Uses mock data only |
-| Sign In | customer-frontend | `/api/v1/auth/login` | ✅ Yes | ❌ No | ⚠️ Partial | API exists but not integrated |
-| Sign Up | customer-frontend | `/api/v1/auth/register` | ✅ Yes | ❌ No | ⚠️ Partial | API exists but not integrated |
+| Sign In | customer-frontend | `/api/auth/customer/login` | ✅ Yes | ❌ No | ⚠️ Partial | API exists but not integrated |
+| Sign Up | customer-frontend | `/api/auth/customer/register` | ✅ Yes | ❌ No | ⚠️ Partial | API exists but not integrated |
 
 ---
 
@@ -49,7 +49,7 @@ This is a comprehensive AI-powered social media management platform with four ma
 ### ✅ WORKING & INTEGRATED APIs
 
 #### Admin APIs
-- **Authentication**: `/api/v1/auth/admin/login` - ✅ Working & Integrated
+- **Authentication**: `/api/auth/admin/login` - ✅ Working & Integrated
 - **User Management**: 
   - `GET /api/v1/admin/users` - ✅ Working & Integrated
   - `GET /api/v1/admin/users/stats` - ✅ Working & Integrated
@@ -78,8 +78,8 @@ This is a comprehensive AI-powered social media management platform with four ma
 
 #### Customer APIs (Available but not integrated)
 - **Authentication**: 
-  - `POST /api/v1/auth/login` - ✅ Working, ❌ Not Integrated
-  - `POST /api/v1/auth/register` - ✅ Working, ❌ Not Integrated
+  - `POST /api/auth/customer/login` - ✅ Working, ❌ Not Integrated
+  - `POST /api/auth/customer/register` - ✅ Working, ❌ Not Integrated
 - **Content**:
   - `GET /api/v1/content` - ✅ Working, ❌ Not Integrated
   - `POST /api/v1/content` - ✅ Working, ❌ Not Integrated

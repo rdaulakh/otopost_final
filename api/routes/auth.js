@@ -162,6 +162,83 @@ router.post('/logout', auth, async (req, res) => {
   }
 });
 
+// @route   POST /api/auth/admin/login
+// @desc    Login admin user
+// @access  Public
+router.post('/admin/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Validation
+    if (!email || !password) {
+      return res.status(400).json({
+        message: 'Please provide email and password'
+      });
+    }
+
+    // Check if user exists
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({
+        message: 'Invalid credentials'
+      });
+    }
+
+    // Check if user is admin
+    if (!user.isAdmin) {
+      return res.status(403).json({
+        message: 'Access denied. Admin privileges required.'
+      });
+    }
+
+    // Check password
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({
+        message: 'Invalid credentials'
+      });
+    }
+
+    // Generate JWT token
+    const payload = {
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        isAdmin: user.isAdmin
+      }
+    };
+
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: process.env.JWT_EXPIRE || '7d'
+    });
+
+    // Update last login
+    user.lastLogin = new Date();
+    await user.save();
+
+    res.json({
+      message: 'Admin login successful',
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        company: user.company,
+        subscription: user.subscription,
+        isAdmin: user.isAdmin,
+        lastLogin: user.lastLogin
+      }
+    });
+
+  } catch (error) {
+    console.error('Admin login error:', error);
+    res.status(500).json({
+      message: 'Server error during admin login'
+    });
+  }
+});
+
 // @route   GET /api/auth/me
 // @desc    Get current user
 // @access  Private

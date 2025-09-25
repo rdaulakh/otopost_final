@@ -58,10 +58,10 @@ import { getBadgeClasses } from '../constants/colors.js'
 
 // Import API hooks
 import { 
-  useUserUsageStats,
+  useCustomerUsageStats,
   useSocialProfiles,
-  useUserSubscription
-} from '../hooks/useApi.js'
+  useCustomerSubscription
+} from '../hooks/useCustomerApi.js'
 
 import {
   useAnalyticsOverview,
@@ -77,40 +77,40 @@ const Dashboard = ({ data: fallbackData = {}, user = {}, onDataUpdate = () => {}
   const [selectedMetric, setSelectedMetric] = useState('engagement')
   const [activeAgentView, setActiveAgentView] = useState('overview')
 
-  // API hooks for real data
+  // API hooks for real data - only call when user is authenticated
   const { 
     data: analyticsData, 
     isLoading: analyticsLoading, 
     error: analyticsError,
     refetch: refetchAnalytics 
-  } = useAnalyticsOverview(selectedTimeRange)
+  } = useAnalyticsOverview(selectedTimeRange, { enabled: !!user })
   
   const { 
     data: contentData, 
     isLoading: contentLoading,
     error: contentError 
-  } = useContentList({ limit: 10, status: 'published' })
+  } = useContentList({ limit: 10, status: 'published' }, { enabled: !!user })
   
   const { 
     data: aiAgentsData, 
     isLoading: aiLoading,
     error: aiError 
-  } = useAIAgents()
+  } = useAIAgents({ enabled: !!user })
   
   const { 
     data: usageStats, 
     isLoading: usageLoading 
-  } = useUserUsageStats()
+  } = useCustomerUsageStats({ enabled: !!user })
   
   const { 
     data: socialProfiles, 
     isLoading: socialLoading 
-  } = useSocialProfiles()
+  } = useSocialProfiles({ enabled: !!user })
   
   const { 
     data: subscription, 
     isLoading: subscriptionLoading 
-  } = useUserSubscription()
+  } = useCustomerSubscription({ enabled: !!user })
 
   // UX infrastructure hooks
   const { success, error, info, warning } = useNotificationSystem()
@@ -122,50 +122,50 @@ const Dashboard = ({ data: fallbackData = {}, user = {}, onDataUpdate = () => {}
   // Error handling
   const hasError = analyticsError || contentError || aiError
 
-  // WebSocket real-time updates
-  useEffect(() => {
-    if (!isConnected) return
+  // WebSocket real-time updates temporarily disabled to prevent constant refreshing
+  // useEffect(() => {
+  //   if (!isConnected) return
 
-    // Subscribe to real-time analytics updates
-    const unsubscribeAnalytics = subscribe('analyticsUpdate', (data) => {
-      info('Analytics updated with latest data')
-      refetchAnalytics()
-    })
+  //   // Subscribe to real-time analytics updates
+  //   const unsubscribeAnalytics = subscribe('analyticsUpdate', (data) => {
+  //     info('Analytics updated with latest data')
+  //     refetchAnalytics()
+  //   })
 
-    // Subscribe to AI agent status updates
-    const unsubscribeAgents = subscribe('agentStatus', (data) => {
-      info(`AI Agent ${data.agentName} status: ${data.status}`)
-    })
+  //   // Subscribe to AI agent status updates
+  //   const unsubscribeAgents = subscribe('agentStatus', (data) => {
+  //     info(`AI Agent ${data.agentName} status: ${data.status}`)
+  //   })
 
-    // Subscribe to content updates
-    const unsubscribeContent = subscribe('contentPublished', (data) => {
-      success(`New content published: ${data.title}`)
-    })
+  //   // Subscribe to content updates
+  //   const unsubscribeContent = subscribe('contentPublished', (data) => {
+  //     success(`New content published: ${data.title}`)
+  //   })
 
-    // Subscribe to system notifications
-    const unsubscribeNotifications = subscribe('newNotification', (notification) => {
-      switch (notification.type) {
-        case 'success':
-          success(notification.message)
-          break
-        case 'error':
-          error(notification.message)
-          break
-        case 'warning':
-          warning(notification.message)
-          break
-        default:
-          info(notification.message)
-      }
-    })
+  //   // Subscribe to system notifications
+  //   const unsubscribeNotifications = subscribe('newNotification', (notification) => {
+  //     switch (notification.type) {
+  //       case 'success':
+  //         success(notification.message)
+  //         break
+  //       case 'error':
+  //         error(notification.message)
+  //         break
+  //       case 'warning':
+  //         warning(notification.message)
+  //         break
+  //       default:
+  //         info(notification.message)
+  //     }
+  //   })
 
-    return () => {
-      unsubscribeAnalytics()
-      unsubscribeAgents()
-      unsubscribeContent()
-      unsubscribeNotifications()
-    }
-  }, [isConnected, subscribe, success, error, info, warning, refetchAnalytics])
+  //   return () => {
+  //     unsubscribeAnalytics()
+  //     unsubscribeAgents()
+  //     unsubscribeContent()
+  //     unsubscribeNotifications()
+  //   }
+  // }, [isConnected, subscribe]) // Reduced dependencies to prevent constant re-renders
 
   // Use real API data only - no mock fallbacks
   const performanceMetrics = analyticsData?.performance || {}
@@ -210,22 +210,23 @@ const Dashboard = ({ data: fallbackData = {}, user = {}, onDataUpdate = () => {}
     }
   }
 
-  // Auto-refresh every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!isLoading && !isRefreshing) {
-        handleRefresh()
-      }
-    }, 30000)
+  // Auto-refresh disabled to prevent constant refreshing
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     if (!isLoading && !isRefreshing) {
+  //       handleRefresh()
+  //     }
+  //   }, 30000)
 
-    return () => clearInterval(interval)
-  }, [isLoading, isRefreshing])
+  //   return () => clearInterval(interval)
+  // }, [isLoading, isRefreshing])
 
   // Format numbers for display
   const formatNumber = (num) => {
+    if (!num || num === 0) return '0'
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
-    return num?.toString() || '0'
+    return num.toString()
   }
 
   // Format currency
@@ -254,6 +255,47 @@ const Dashboard = ({ data: fallbackData = {}, user = {}, onDataUpdate = () => {}
       case 'poor': return 'text-red-500'
       default: return 'text-gray-500'
     }
+  }
+
+  // Get icon component from string
+  const getIconComponent = (iconName) => {
+    const iconMap = {
+      'Sparkles': Sparkles,
+      'BarChart3': BarChart3,
+      'Brain': Brain,
+      'Target': Target,
+      'Zap': Zap,
+      'Cpu': Cpu,
+      'Database': Database,
+      'Activity': Activity,
+      'Settings': Settings,
+      'Calendar': Calendar,
+      'MessageCircle': MessageCircle,
+      'Play': Play,
+      'CheckCircle': CheckCircle,
+      'AlertCircle': AlertCircle,
+      'RefreshCw': RefreshCw,
+      'ArrowUpRight': ArrowUpRight,
+      'ArrowDownRight': ArrowDownRight,
+      'Plus': Plus,
+      'Filter': Filter,
+      'Download': Download,
+      'Globe': Globe,
+      'Share2': Share2,
+      'Bookmark': Bookmark,
+      'Star': Star,
+      'Award': Award,
+      'Lightbulb': Lightbulb,
+      'Wifi': Wifi,
+      'Signal': Signal,
+      'Layers': Layers,
+      'PieChart': PieChart,
+      'LineChart': LineChart,
+      'BarChart': BarChart,
+      'TrendingUpIcon': TrendingUpIcon,
+      'Loader2': Loader2
+    }
+    return iconMap[iconName] || Brain // Default to Brain icon if not found
   }
 
   // Error state
@@ -511,13 +553,13 @@ const Dashboard = ({ data: fallbackData = {}, user = {}, onDataUpdate = () => {}
                 </CardDescription>
               </div>
               <Badge variant="secondary" className="bg-green-100 text-green-800">
-                {aiAgents.filter(agent => agent.status === 'active').length} Active
+                {(aiAgents || []).filter(agent => agent.status === 'active').length} Active
               </Badge>
             </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {aiAgents.map((agent, index) => (
+              {(aiAgents || []).map((agent, index) => (
                 <motion.div
                   key={agent.id}
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -530,8 +572,8 @@ const Dashboard = ({ data: fallbackData = {}, user = {}, onDataUpdate = () => {}
                   } transition-colors cursor-pointer`}
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <div className={`p-2 rounded-lg ${agent.color}`}>
-                      <agent.icon className="h-4 w-4 text-white" />
+                    <div className={`p-2 rounded-lg ${agent.status === 'active' ? 'bg-green-500' : 'bg-gray-500'}`}>
+                      <Brain className="h-4 w-4 text-white" />
                     </div>
                     <Badge 
                       variant={agent.status === 'active' ? 'default' : 'secondary'}
@@ -548,24 +590,24 @@ const Dashboard = ({ data: fallbackData = {}, user = {}, onDataUpdate = () => {}
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
-                        Efficiency
+                        Success Rate
                       </span>
                       <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                        {agent.efficiency}%
+                        {agent.performance?.successRate?.toFixed(1) || 0}%
                       </span>
                     </div>
-                    <Progress value={agent.efficiency} className="h-2" />
+                    <Progress value={agent.performance?.successRate || 0} className="h-2" />
                     
                     <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      {agent.currentTask}
+                      {agent.description}
                     </p>
                     
                     <div className="flex justify-between text-xs">
                       <span className={isDarkMode ? 'text-gray-500' : 'text-gray-500'}>
-                        {agent.tasksCompleted} completed
+                        {agent.performance?.completedTasks || 0} completed
                       </span>
                       <span className={isDarkMode ? 'text-gray-500' : 'text-gray-500'}>
-                        {agent.tasksInProgress} in progress
+                        Quality: {agent.performance?.averageQualityScore?.toFixed(1) || 0}/5
                       </span>
                     </div>
                   </div>

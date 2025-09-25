@@ -36,7 +36,7 @@ describe('Notification Service', () => {
 
     // Login to get auth token
     const loginResponse = await request(app)
-      .post('/api/v1/auth/customer/login')
+      .post('/api/auth/customer/login')
       .send({
         email: 'test@example.com',
         password: 'TestPassword123!'

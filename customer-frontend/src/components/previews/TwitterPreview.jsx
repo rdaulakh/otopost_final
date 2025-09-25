@@ -65,6 +65,7 @@ const TwitterPreview = ({ post, className = "" }) => {
   }
 
   const formatNumber = (num) => {
+    if (!num || num === 0) return '0'
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
     return num.toString()
@@ -105,7 +106,7 @@ const TwitterPreview = ({ post, className = "" }) => {
       } else if (mediaItems.length === 2) {
         return (
           <div className="mt-3 grid grid-cols-2 gap-1 rounded-2xl overflow-hidden border border-gray-200">
-            {mediaItems.slice(0, 2).map((media, index) => (
+            {(mediaItems || []).slice(0, 2).map((media, index) => (
               <img 
                 key={index}
                 src={media.url || "https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=250&h=200&fit=crop"} 
@@ -208,7 +209,7 @@ const TwitterPreview = ({ post, className = "" }) => {
             {/* Hashtags (if separate) */}
             {post.hashtags && post.hashtags.length > 0 && (
               <div className="mb-2">
-                {post.hashtags.map((tag, index) => (
+                {(post.hashtags || []).map((tag, index) => (
                   <span key={index} className="text-blue-500 hover:underline cursor-pointer mr-1">
                     {tag.startsWith('#') ? tag : `#${tag}`}
                   </span>

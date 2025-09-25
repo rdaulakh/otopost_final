@@ -75,16 +75,16 @@ backend/
 
 ### Authentication Endpoints
 ```
-POST /api/v1/auth/customer/register     # Customer registration
-POST /api/v1/auth/customer/login        # Customer login
-POST /api/v1/auth/customer/logout       # Customer logout
-POST /api/v1/auth/customer/refresh-token # Refresh access token
-POST /api/v1/auth/customer/forgot-password # Password reset request
-POST /api/v1/auth/customer/reset-password  # Password reset
+POST /api/auth/customer/register     # Customer registration
+POST /api/auth/customer/login        # Customer login
+POST /api/auth/customer/logout       # Customer logout
+POST /api/auth/customer/refresh-token # Refresh access token
+POST /api/auth/customer/forgot-password # Password reset request
+POST /api/auth/customer/reset-password  # Password reset
 
-POST /api/v1/auth/admin/login           # Admin login
-POST /api/v1/auth/admin/logout          # Admin logout
-POST /api/v1/auth/admin/refresh-token   # Admin token refresh
+POST /api/auth/admin/login           # Admin login
+POST /api/auth/admin/logout          # Admin logout
+POST /api/auth/admin/refresh-token   # Admin token refresh
 ```
 
 ### Customer Endpoints

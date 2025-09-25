@@ -7,7 +7,17 @@ const {
 
 const router = express.Router();
 
-// All routes require customer authentication
+// OAuth flow routes (no authentication required) - MUST be first to avoid conflicts
+router.get('/oauth/:platform', socialAccountController.initiateOAuth);
+router.get('/oauth/:platform/callback', socialAccountController.handleOAuthCallback);
+
+// Complete OAuth connection (requires authentication)
+router.post('/oauth/complete', authenticateCustomer, socialAccountController.completeOAuthConnection);
+
+// Debug OAuth session (requires authentication)
+router.get('/oauth/debug', authenticateCustomer, socialAccountController.debugOAuthSession);
+
+// All other routes require customer authentication
 router.use(authenticateCustomer);
 
 // Customer social account routes
@@ -15,6 +25,8 @@ router.get('/', socialAccountController.getSocialAccounts);
 router.get('/stats', socialAccountController.getAccountStats);
 router.get('/needing-sync', socialAccountController.getAccountsNeedingSync);
 router.get('/:id', socialAccountController.getSocialAccountById);
+
+// Direct connection (for testing or manual token input)
 router.post('/connect', validateSocialAccountConnection, socialAccountController.connectSocialAccount);
 router.put('/:id', socialAccountController.updateSocialAccount);
 router.put('/:id/refresh-token', socialAccountController.refreshToken);

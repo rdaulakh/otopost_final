@@ -178,7 +178,7 @@ const startServer = async () => {
       console.log(`📊 Admin Panel WebSocket: ws://localhost:${PORT}/admin`);
       console.log(`👥 Customer WebSocket: ws://localhost:${PORT}/customer`);
       console.log(`🏥 Health Check: http://localhost:${PORT}/health`);
-      console.log(`📚 API Docs: http://localhost:${PORT}/api/v1/docs`);
+      console.log(`📚 API Docs: http://localhost:${PORT}/api/docs`);
     });
     
     // Graceful shutdown handlers

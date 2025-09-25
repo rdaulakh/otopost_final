@@ -1,12 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../config/api';
+import { api, API_ENDPOINTS } from '../config/api';
 
 // Get user profile
 export const useUserProfile = () => {
   return useQuery({
     queryKey: ['userProfile'],
     queryFn: async () => {
-      const response = await api.get('/user-profile');
+      const response = await api.get('/users/profile');
       return response.data;
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -19,8 +19,8 @@ export const useUpdateProfile = () => {
   
   return useMutation({
     mutationFn: async (profileData) => {
-      const response = await api.put('/user-profile', profileData);
-      return response.data;
+      const response = await api.put('/users/profile', profileData);
+      return response.data.data.user; // Extract user data from response
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['userProfile'] });
@@ -34,7 +34,7 @@ export const useUpdateNotificationPreferences = () => {
   
   return useMutation({
     mutationFn: async (preferences) => {
-      const response = await api.put('/user-profile/notifications', preferences);
+      const response = await api.put('/users/profile/notifications', preferences);
       return response.data;
     },
     onSuccess: () => {
@@ -49,7 +49,7 @@ export const useUpdateUserPreferences = () => {
   
   return useMutation({
     mutationFn: async (preferences) => {
-      const response = await api.put('/user-profile/preferences', preferences);
+      const response = await api.put('/users/profile/preferences', preferences);
       return response.data;
     },
     onSuccess: () => {
@@ -67,7 +67,7 @@ export const useUploadAvatar = () => {
       const formData = new FormData();
       formData.append('avatar', avatarFile);
       
-      const response = await api.post('/user-profile/avatar', formData, {
+      const response = await api.post(API_ENDPOINTS.PROFILE.UPLOAD_AVATAR, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
@@ -84,7 +84,7 @@ export const useUploadAvatar = () => {
 export const useDeleteAccount = () => {
   return useMutation({
     mutationFn: async (confirmPassword) => {
-      const response = await api.delete('/user-profile/account', {
+      const response = await api.delete('/users/profile/account', {
         data: { confirmPassword }
       });
       return response.data;
@@ -97,7 +97,7 @@ export const useUserActivity = (page = 1, limit = 20) => {
   return useQuery({
     queryKey: ['userActivity', page, limit],
     queryFn: async () => {
-      const response = await api.get(`/user-profile/activity?page=${page}&limit=${limit}`);
+      const response = await api.get(`/users/profile/activity?page=${page}&limit=${limit}`);
       return response.data;
     },
     staleTime: 2 * 60 * 1000, // 2 minutes

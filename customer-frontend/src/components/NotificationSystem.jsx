@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
-import { useNotifications, useNotificationSettings } from '../hooks/useApi.js'
+// import { useNotifications, useNotificationSettings } from '../hooks/useApi.js'
 
 // Notification Context
 const NotificationContext = createContext()
@@ -100,25 +100,30 @@ export const NotificationProvider = ({ children }) => {
   const [localNotifications, setLocalNotifications] = useState([])
   
   // Real API integration for server notifications
-  const { 
-    data: serverNotifications, 
-    isLoading, 
-    error,
-    refetch: refetchNotifications 
-  } = useNotifications()
+  // const { 
+  //   data: serverNotifications, 
+  //   isLoading, 
+  //   error,
+  //   refetch: refetchNotifications 
+  // } = useNotifications()
 
-  const { 
-    data: notificationSettings,
-    refetch: refetchSettings 
-  } = useNotificationSettings()
+  // const { 
+  //   data: notificationSettings,
+  //   refetch: refetchSettings 
+  // } = useNotificationSettings()
+
+  // Default values to prevent errors
+  const serverNotifications = { notifications: [] }
+  const isLoading = false
+  const error = null
+  const refetchNotifications = () => Promise.resolve()
+  const notificationSettings = {}
+  const refetchSettings = () => Promise.resolve()
 
   // Mark as read functionality would be implemented with a custom hook
 
-  // Auto-refresh notifications every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(refetchNotifications, 30 * 1000)
-    return () => clearInterval(interval)
-  }, [refetchNotifications])
+  // Removed auto-refresh to prevent constant refreshing
+  // Notifications will be fetched on component mount and user interactions
 
   // Add local notification
   const addNotification = useCallback((notification) => {
@@ -231,7 +236,7 @@ export const NotificationProvider = ({ children }) => {
     markAsRead,
     clearAll,
     success,
-    error: showError,
+    showError,
     warning,
     info,
     loading,

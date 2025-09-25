@@ -93,6 +93,7 @@ class BaseAgent(ABC):
     def __init__(self, agent_type: AgentType, organization_id: str):
         self.agent_type = agent_type
         self.organization_id = organization_id
+        self.agent_id = f"{agent_type.value}_{organization_id}"
         self.config = get_agent_config(agent_type)
         self.logger = get_agent_logger(agent_type.value, organization_id)
         
@@ -430,6 +431,37 @@ class BaseAgent(ABC):
         if self.memory:
             self.memory.clear()
         self.logger.info("Agent memory reset")
+    
+    async def stop(self):
+        """Stop the agent gracefully."""
+        self.logger.info(f"Stopping {self.config['name']}...")
+        
+        if self.is_busy and self.current_task:
+            self.logger.warning("Agent is busy, waiting for current task to complete...")
+            # In a real implementation, you might want to wait or cancel the task
+        
+        self.is_initialized = False
+        self.logger.info(f"{self.config['name']} stopped")
+    
+    def get_capabilities(self):
+        """Get agent capabilities."""
+        return {
+            "agent_type": self.agent_type.value,
+            "organization_id": self.organization_id,
+            "capabilities": self.config.get("capabilities", []),
+            "is_initialized": self.is_initialized,
+            "is_busy": self.is_busy
+        }
+    
+    async def start(self):
+        """Start the agent."""
+        self.logger.info(f"Starting {self.config['name']}...")
+        try:
+            await self.initialize()
+            self.logger.info(f"{self.config['name']} started successfully")
+        except Exception as e:
+            self.logger.error(f"Failed to start {self.config['name']}: {str(e)}")
+            raise
     
     async def shutdown(self):
         """Shutdown the agent gracefully."""

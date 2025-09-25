@@ -12,6 +12,7 @@ router.use(authenticateCustomer);
 
 // Customer notification routes
 router.get('/', notificationController.getNotifications);
+router.get('/realtime', notificationController.getRealtimeNotifications); // Realtime notifications endpoint
 router.get('/stats', notificationController.getNotificationStats);
 router.get('/preferences', notificationController.getNotificationPreferences);
 router.put('/preferences', validateNotificationUpdate, notificationController.updateNotificationPreferences);

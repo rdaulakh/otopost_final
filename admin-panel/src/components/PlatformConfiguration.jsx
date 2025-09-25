@@ -8,18 +8,8 @@ import SecuritySettings from './SecuritySettings';
 import WhiteLabelSettings from './WhiteLabelSettings';
 import { motion } from 'framer-motion'
 
-// Import platform configuration hooks
-import { 
-  usePlatformSettings,
-  useAIAgentConfigs,
-  useSystemSettings,
-  useAPIConfigurations,
-  useFeatureFlags,
-  useIntegrationSettings,
-  useUpdatePlatformSettings,
-  useUpdateAIAgentConfig,
-  useUpdateSystemSettings
-} from '../hooks/usePlatformConfiguration.js'
+// Import platform configuration hook (not used in this component)
+// import { usePlatformConfiguration } from '../hooks/usePlatformConfiguration.js'
 import { 
   Settings, 
   Zap, 
@@ -222,7 +212,25 @@ const PlatformConfiguration = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
     }
   })
 
+  // Tab configuration
+  const tabs = [
+    { id: 'ai_agents', name: 'AI Agents', icon: Zap },
+    { id: 'system_settings', name: 'System Settings', icon: Settings },
+    { id: 'api_config', name: 'API Configuration', icon: Key },
+    { id: 'feature_flags', name: 'Feature Flags', icon: ToggleLeft },
+    { id: 'integrations', name: 'Integrations', icon: Globe },
+    { id: 'security', name: 'Security', icon: Shield },
+    { id: 'white_label', name: 'White Label', icon: Palette }
+  ]
 
+  // Performance modes for AI agents
+  const performanceModes = [
+    { value: 'balanced', label: 'Balanced', description: 'Good performance with moderate resource usage' },
+    { value: 'optimized', label: 'Optimized', description: 'High performance with efficient resource usage' },
+    { value: 'creative', label: 'Creative', description: 'Maximum creativity with higher resource usage' },
+    { value: 'fast', label: 'Fast', description: 'Quick responses with minimal resource usage' },
+    { value: 'thorough', label: 'Thorough', description: 'Comprehensive analysis with maximum resource usage' }
+  ]
 
   const handleSaveChanges = async () => {
     setIsLoading(true)
@@ -494,19 +502,17 @@ const PlatformConfiguration = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
     switch (activeTab) {
       case 'ai_agents':
         return renderAiAgentsTab();
-      case 'system':
+      case 'system_settings':
         return renderSystemTab();
-      case 'api':
+      case 'api_config':
         return <ApiConfiguration isDarkMode={isDarkMode} />;
-      case 'team':
-        return <TeamManagement isDarkMode={isDarkMode} />;
-      case 'features':
+      case 'feature_flags':
         return <FeatureFlags isDarkMode={isDarkMode} />;
       case 'integrations':
         return <Integrations isDarkMode={isDarkMode} />;
       case 'security':
         return <SecuritySettings isDarkMode={isDarkMode} />;
-      case 'branding':
+      case 'white_label':
         return <WhiteLabelSettings isDarkMode={isDarkMode} />;
       default:
         return renderAiAgentsTab();
@@ -519,7 +525,7 @@ const PlatformConfiguration = ({ data = {}, onDataUpdate = () => {}, isDarkMode 
         ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
         : 'bg-gray-50'
     }`}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      <div className=" mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Platform Configuration</h1>

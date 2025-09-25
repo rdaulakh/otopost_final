@@ -168,10 +168,10 @@ A comprehensive AI-powered social media management platform with advanced analyt
 ## 📚 API Documentation
 
 ### Authentication Endpoints
-- `POST /api/v1/auth/admin/login` - Admin login
-- `POST /api/v1/auth/customer/register` - Customer registration
-- `POST /api/v1/auth/customer/login` - Customer login
-- `POST /api/v1/auth/refresh` - Refresh token
+- `POST /api/auth/admin/login` - Admin login
+- `POST /api/auth/customer/register` - Customer registration
+- `POST /api/auth/customer/login` - Customer login
+- `POST /api/auth/refresh` - Refresh token
 
 ### Admin Endpoints
 - `GET /api/v1/admin/users` - Get all users
@@ -235,13 +235,13 @@ ENCRYPTION_KEY=your-encryption-key
 
 #### Admin Panel (.env)
 ```env
-VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_API_BASE_URL=http://localhost:8000/api
 VITE_WEBSOCKET_URL=ws://localhost:8000/ws
 ```
 
 #### Customer Frontend (.env)
 ```env
-VITE_API_BASE_URL=http://localhost:8000/api/v1
+VITE_API_BASE_URL=http://localhost:8000/api
 VITE_WEBSOCKET_URL=ws://localhost:8000/ws
 ```
 

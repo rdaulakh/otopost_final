@@ -1,4 +1,5 @@
 const { body, param, query, validationResult } = require('express-validator');
+const validator = require('validator');
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
 
@@ -75,7 +76,10 @@ const commonValidations = {
   phone: (field = 'phoneNumber') => {
     return body(field)
       .optional()
-      .isMobilePhone()
+      .custom((value) => {
+        if (!value || value.trim() === '') return true; // Allow empty values
+        return /^[\+]?[1-9][\d]{0,15}$/.test(value.replace(/[\s\-\(\)]/g, ''));
+      })
       .withMessage('Please provide a valid phone number');
   },
   
@@ -126,14 +130,27 @@ const userValidations = {
     commonValidations.name('firstName'),
     commonValidations.name('lastName'),
     body('organizationName')
+      .optional()
       .trim()
       .isLength({ min: 1, max: 100 })
       .withMessage('Organization name must be between 1 and 100 characters'),
+    body('company')
+      .optional()
+      .trim()
+      .isLength({ min: 1, max: 100 })
+      .withMessage('Company name must be between 1 and 100 characters'),
     body('acceptTerms')
       .isBoolean()
       .custom((value) => {
         if (!value) {
           throw new Error('You must accept the terms and conditions');
+        }
+        return true;
+      }),
+    body()
+      .custom((value) => {
+        if (!value.organizationName && !value.company) {
+          throw new Error('Either organizationName or company must be provided');
         }
         return true;
       })
@@ -152,8 +169,13 @@ const userValidations = {
     commonValidations.phone().optional(),
     body('profilePicture')
       .optional()
-      .isURL()
-      .withMessage('Profile picture must be a valid URL')
+      .custom((value) => {
+        if (value === null || value === undefined || value === '') {
+          return true; // Allow null, undefined, or empty string
+        }
+        return validator.isURL(value); // Validate URL only if value exists
+      })
+      .withMessage('Profile picture must be a valid URL or null')
   ],
   
   changePassword: [
@@ -472,6 +494,34 @@ const subscriptionValidations = {
       .trim()
       .isLength({ min: 1, max: 50 })
       .withMessage('Coupon code must be between 1 and 50 characters')
+  ],
+
+  // Agent configuration validation
+  agentConfiguration: [
+    body('configuration.temperature')
+      .optional()
+      .isFloat({ min: 0, max: 2 })
+      .withMessage('Temperature must be between 0 and 2'),
+    body('configuration.maxTokens')
+      .optional()
+      .isInt({ min: 1, max: 8000 })
+      .withMessage('Max tokens must be between 1 and 8000'),
+    body('configuration.customInstructions')
+      .optional()
+      .isLength({ max: 2000 })
+      .withMessage('Custom instructions must be less than 2000 characters'),
+    body('workflow.timeout')
+      .optional()
+      .isInt({ min: 30, max: 3600 })
+      .withMessage('Timeout must be between 30 and 3600 seconds'),
+    body('priority')
+      .optional()
+      .isInt({ min: 1, max: 10 })
+      .withMessage('Priority must be between 1 and 10'),
+    body('isEnabled')
+      .optional()
+      .isBoolean()
+      .withMessage('isEnabled must be a boolean value')
   ]
 };
 
@@ -557,6 +607,12 @@ const validateNotificationModeration = [
   handleValidationErrors
 ];
 
+// Agent configuration validation
+const validateAgentConfiguration = [
+  ...subscriptionValidations.agentConfiguration,
+  handleValidationErrors
+];
+
 // File upload validation
 const fileValidations = {
   upload: [
@@ -625,8 +681,16 @@ const customValidations = {
 const validateProfileUpdate = [
   body('firstName').optional().isLength({ min: 1, max: 50 }).withMessage('First name must be between 1 and 50 characters'),
   body('lastName').optional().isLength({ min: 1, max: 50 }).withMessage('Last name must be between 1 and 50 characters'),
-  body('phoneNumber').optional().isMobilePhone().withMessage('Invalid phone number format'),
-  body('profilePicture').optional().isURL().withMessage('Profile picture must be a valid URL'),
+  body('phoneNumber').optional().custom((value) => {
+    if (!value || value.trim() === '') return true; // Allow empty values
+    return /^[\+]?[1-9][\d]{0,15}$/.test(value.replace(/[\s\-\(\)]/g, ''));
+  }).withMessage('Invalid phone number format'),
+  body('profilePicture').optional().custom((value) => {
+    if (value === null || value === undefined || value === '') {
+      return true; // Allow null, undefined, or empty string
+    }
+    return validator.isURL(value); // Validate URL only if value exists
+  }).withMessage('Profile picture must be a valid URL or null'),
   body('timezone').optional().isString().withMessage('Timezone must be a string'),
   body('language').optional().isString().withMessage('Language must be a string'),
   handleValidationErrors
@@ -639,10 +703,12 @@ const validatePasswordChange = [
 ];
 
 const validateNotificationUpdate = [
-  body('email').optional().isBoolean().withMessage('Email preference must be a boolean'),
-  body('push').optional().isBoolean().withMessage('Push preference must be a boolean'),
+  body('email').optional().isObject().withMessage('Email preference must be an object'),
+  body('push').optional().isObject().withMessage('Push preference must be an object'),
   body('sms').optional().isBoolean().withMessage('SMS preference must be a boolean'),
   body('marketing').optional().isBoolean().withMessage('Marketing preference must be a boolean'),
+  body('weeklyReports').optional().isBoolean().withMessage('Weekly reports preference must be a boolean'),
+  body('performanceAlerts').optional().isBoolean().withMessage('Performance alerts preference must be a boolean'),
   handleValidationErrors
 ];
 
@@ -723,14 +789,17 @@ const validateAnalyticsQuery = [
 const validateContentPerformanceQuery = [
   query('contentId').optional().isMongoId().withMessage('Invalid content ID'),
   query('type').optional().isIn(['post', 'story', 'reel', 'video', 'carousel', 'article']).withMessage('Invalid content type'),
-  query('platform').optional().isIn(['facebook', 'instagram', 'twitter', 'linkedin', 'tiktok', 'youtube', 'pinterest']).withMessage('Invalid platform'),
+  query('platform').optional().isIn(['all', 'facebook', 'instagram', 'twitter', 'linkedin', 'tiktok', 'youtube', 'pinterest']).withMessage('Invalid platform'),
   query('period').optional().isIn(['week', 'month', 'quarter', 'year']).withMessage('Invalid period'),
+  query('timeRange').optional().isIn(['7d', '30d', '90d', '1y']).withMessage('Invalid time range'),
+  query('metric').optional().isIn(['engagement', 'reach', 'impressions', 'clicks', 'conversions']).withMessage('Invalid metric'),
   handleValidationErrors
 ];
 
 const validatePlatformAnalyticsQuery = [
-  query('platform').isIn(['facebook', 'instagram', 'twitter', 'linkedin', 'tiktok', 'youtube', 'pinterest']).withMessage('Invalid platform'),
+  query('platform').isIn(['all', 'facebook', 'instagram', 'twitter', 'linkedin', 'tiktok', 'youtube', 'pinterest']).withMessage('Invalid platform'),
   query('period').optional().isIn(['week', 'month', 'quarter', 'year']).withMessage('Invalid period'),
+  query('timeRange').optional().isIn(['7d', '30d', '90d', '1y']).withMessage('Invalid time range'),
   query('startDate').optional().isISO8601().withMessage('Invalid start date format'),
   query('endDate').optional().isISO8601().withMessage('Invalid end date format'),
   handleValidationErrors
@@ -958,6 +1027,7 @@ module.exports = {
   validateNotificationCreation,
   validateNotificationDataUpdate,
   validateNotificationModeration,
+  validateAgentConfiguration,
   fileValidations,
   customValidations
 };

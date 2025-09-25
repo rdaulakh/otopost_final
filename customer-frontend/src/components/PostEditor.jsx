@@ -100,6 +100,9 @@ const PostEditor = ({ post, isOpen, onClose, onSave }) => {
   const contentSuggestions = []
   const isFetchingSuggestions = false
 
+  // Hashtag generation state
+  const [isGeneratingHashtags, setIsGeneratingHashtags] = useState(false)
+
   // Component state
   const [activeTab, setActiveTab] = useState('ai-content')
   const [editedPost, setEditedPost] = useState(post || {
@@ -376,6 +379,7 @@ const PostEditor = ({ post, isOpen, onClose, onSave }) => {
   // Generate hashtags with AI
   const handleGenerateHashtags = async () => {
     try {
+      setIsGeneratingHashtags(true)
       await generateHashtags(
         {
           caption: editedPost.caption,
@@ -397,6 +401,8 @@ const PostEditor = ({ post, isOpen, onClose, onSave }) => {
       )
     } catch (err) {
       error('Hashtag generation failed. Please try again.')
+    } finally {
+      setIsGeneratingHashtags(false)
     }
   }
 

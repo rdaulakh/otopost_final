@@ -33,6 +33,37 @@ const userSchema = new mongoose.Schema({
     default: null
   },
   
+  // Additional Profile Information
+  jobTitle: {
+    type: String,
+    trim: true,
+    maxlength: 100,
+    default: null
+  },
+  phoneNumber: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  website: {
+    type: String,
+    trim: true,
+    maxlength: 200,
+    default: null
+  },
+  bio: {
+    type: String,
+    trim: true,
+    maxlength: 500,
+    default: null
+  },
+  location: {
+    type: String,
+    trim: true,
+    maxlength: 100,
+    default: null
+  },
+  
   // Organization Association (Multi-tenant)
   organizationId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -171,6 +202,22 @@ const userSchema = new mongoose.Schema({
         analyticsReports: { type: Boolean, default: false },
         teamActivity: { type: Boolean, default: false },
         systemUpdates: { type: Boolean, default: true }
+      },
+      sms: {
+        type: Boolean,
+        default: false
+      },
+      marketing: {
+        type: Boolean,
+        default: false
+      },
+      weeklyReports: {
+        type: Boolean,
+        default: false
+      },
+      performanceAlerts: {
+        type: Boolean,
+        default: false
       }
     },
     dashboard: {
@@ -284,9 +331,11 @@ const userSchema = new mongoose.Schema({
     virtuals: true,
     transform: function(doc, ret) {
       delete ret.password;
-      delete ret.authentication.passwordResetToken;
-      delete ret.authentication.twoFactorSecret;
-      delete ret.authentication.refreshTokens;
+      if (ret.authentication) {
+        delete ret.authentication.passwordResetToken;
+        delete ret.authentication.twoFactorSecret;
+        delete ret.authentication.refreshTokens;
+      }
       return ret;
     }
   },
@@ -481,7 +530,9 @@ userSchema.methods.hasPermission = function(permission) {
     'settings.read': 'canManageSettings',
     'settings.update': 'canManageSettings',
     'billing.read': 'canManageBilling',
-    'billing.update': 'canManageBilling'
+    'billing.update': 'canManageBilling',
+    'ai_agents.read': 'canManageAIAgents',
+    'ai_agents.manage': 'canManageAIAgents'
   };
   
   const flatPermission = permissionMap[permission];
@@ -529,6 +580,16 @@ userSchema.statics.findByRole = function(role, organizationId = null) {
     query.organizationId = organizationId;
   }
   return this.find(query);
+};
+
+// Instance method to compare password
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  try {
+    const bcrypt = require('bcryptjs');
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    throw new Error('Password comparison failed');
+  }
 };
 
 module.exports = mongoose.model('User', userSchema);

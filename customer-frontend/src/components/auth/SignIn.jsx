@@ -24,8 +24,8 @@ import { useAuth } from '../../contexts/AuthContext.jsx'
 const SignIn = ({ onSwitchToSignUp }) => {
   const { login, isLoading: authLoading } = useAuth()
   const [formData, setFormData] = useState({
-    email: 'test@example.com', // Default credentials for demo
-    password: 'password123'
+    email: '',
+    password: ''
   })
   const [showPassword, setShowPassword] = useState(false)
   const [errors, setErrors] = useState({})
@@ -94,30 +94,6 @@ const SignIn = ({ onSwitchToSignUp }) => {
     }
   }
 
-  const handleDemoLogin = async () => {
-    setFormData({
-      email: 'test@example.com',
-      password: 'password123'
-    })
-    
-    // Auto-submit with demo credentials
-    setIsSubmitting(true)
-    try {
-      const result = await login('test@example.com', 'password123')
-      if (!result.success) {
-        setErrors({ 
-          general: result.error || 'Demo login failed. Please try again.' 
-        })
-      }
-    } catch (error) {
-      console.error('Demo login error:', error)
-      setErrors({ 
-        general: 'Demo login failed. Please try again.' 
-      })
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   const isLoading = authLoading || isSubmitting
 
@@ -203,28 +179,6 @@ const SignIn = ({ onSwitchToSignUp }) => {
             </CardHeader>
             
             <CardContent className="space-y-6">
-              {/* Demo Login Button */}
-              <Button
-                onClick={handleDemoLogin}
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-medium py-3"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <Sparkles className="h-4 w-4 mr-2" />
-                )}
-                Try Demo Login
-              </Button>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-white px-2 text-gray-500">Or continue with email</span>
-                </div>
-              </div>
 
               {/* Error Message */}
               {errors.general && (
@@ -250,8 +204,9 @@ const SignIn = ({ onSwitchToSignUp }) => {
                       placeholder="Enter your email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className={`pl-10 ${errors.email ? 'border-red-500' : ''}`}
+                      className={`pl-10 bg-white text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${errors.email ? 'border-red-500' : ''}`}
                       disabled={isLoading}
+                      style={{ color: '#111827', backgroundColor: '#ffffff' }}
                     />
                   </div>
                   {errors.email && (
@@ -270,8 +225,9 @@ const SignIn = ({ onSwitchToSignUp }) => {
                       placeholder="Enter your password"
                       value={formData.password}
                       onChange={handleInputChange}
-                      className={`pl-10 pr-10 ${errors.password ? 'border-red-500' : ''}`}
+                      className={`pl-10 pr-10 bg-white text-gray-900 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 ${errors.password ? 'border-red-500' : ''}`}
                       disabled={isLoading}
+                      style={{ color: '#111827', backgroundColor: '#ffffff' }}
                     />
                     <button
                       type="button"
@@ -290,7 +246,7 @@ const SignIn = ({ onSwitchToSignUp }) => {
                 <Button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-3"
+                  className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-medium py-3 focus:ring-2 focus:ring-blue-200 transition-all duration-200"
                 >
                   {isLoading ? (
                     <Loader2 className="h-4 w-4 animate-spin mr-2" />
@@ -302,14 +258,14 @@ const SignIn = ({ onSwitchToSignUp }) => {
               </form>
 
               <div className="text-center space-y-2">
-                <button className="text-sm text-blue-600 hover:text-blue-700 hover:underline">
+                <button className="text-sm text-purple-600 hover:text-purple-700 hover:underline transition-colors duration-200">
                   Forgot your password?
                 </button>
                 <p className="text-sm text-gray-600">
                   Don't have an account?{' '}
                   <button
                     onClick={onSwitchToSignUp}
-                    className="text-blue-600 hover:text-blue-700 font-medium hover:underline"
+                    className="text-purple-600 hover:text-purple-700 font-medium hover:underline transition-colors duration-200"
                     disabled={isLoading}
                   >
                     Sign up
@@ -319,19 +275,6 @@ const SignIn = ({ onSwitchToSignUp }) => {
             </CardContent>
           </Card>
 
-          {/* Demo Credentials Info */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-            className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg"
-          >
-            <h4 className="font-medium text-blue-800 mb-2">Demo Credentials</h4>
-            <div className="text-sm text-blue-700 space-y-1">
-              <p><strong>Email:</strong> test@example.com</p>
-              <p><strong>Password:</strong> password123</p>
-            </div>
-          </motion.div>
         </motion.div>
       </div>
     </div>

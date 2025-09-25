@@ -108,7 +108,7 @@ const ApiConfiguration = ({ isDarkMode = false }) => {
   };
 
   const handleAction = (action, keyId) => {
-    const key = apiKeys.find(k => k.id === keyId);
+    const key = (apiKeys || []).find(k => k.id === keyId);
     switch (action) {
       case 'generate':
         openModal(<div>Generate a new API key.</div>);
@@ -299,7 +299,7 @@ const ApiConfiguration = ({ isDarkMode = false }) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {apiKeys.map((apiKey) => (
+              {(apiKeys || []).map((apiKey) => (
                 <div key={apiKey.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                   <div className="flex-1">
                     <div className="flex items-center space-x-3">
@@ -471,7 +471,7 @@ const ApiConfiguration = ({ isDarkMode = false }) => {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {endpoints.map((endpoint, index) => (
+              {(endpoints || []).map((endpoint, index) => (
                 <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
                   <div className="flex items-center space-x-4">
                     <div className="flex items-center space-x-2">

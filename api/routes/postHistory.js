@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const rateLimit = require('../middleware/rateLimiter');
+const { generalLimiter: rateLimit } = require('../middleware/rateLimiter');
 
 // Get post history with filtering and pagination
 router.get('/', auth, rateLimit, async (req, res) => {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import './App.css'
 
 // Import components
@@ -16,9 +17,25 @@ import PlatformConfiguration from './components/PlatformConfiguration.jsx'
 import CustomerSuccess from './components/CustomerSuccess.jsx';
 import NotificationCenter from './components/NotificationCenter.jsx'
 import MultiTenantManagement from './components/MultiTenantManagement.jsx'
+import { NotificationProvider, useNotifications } from './components/NotificationSystem.jsx'
 
 // Import UI components
 import { Card, CardContent } from '@/components/ui/card.jsx'
+
+// Create QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
+      retry: 2,
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+})
 
 // Loading Component
 const LoadingSpinner = ({ message = "Loading..." }) => (
@@ -29,6 +46,50 @@ const LoadingSpinner = ({ message = "Loading..." }) => (
     </div>
   </div>
 )
+
+// Notification Display Component
+const NotificationDisplay = ({ isDarkMode }) => {
+  const { notifications, removeNotification } = useNotifications()
+
+  if (notifications.length === 0) return null
+
+  return (
+    <div className="fixed top-4 right-4 z-50 space-y-2 max-w-sm">
+      {notifications.map((notification) => (
+        <motion.div
+          key={notification.id}
+          initial={{ opacity: 0, x: 300, scale: 0.8 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          exit={{ opacity: 0, x: 300, scale: 0.8 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          className={`p-4 rounded-lg shadow-lg border backdrop-blur-sm ${
+            notification.type === 'success' 
+              ? 'bg-green-50 border-green-200 text-green-800' 
+              : notification.type === 'error'
+              ? 'bg-red-50 border-red-200 text-red-800'
+              : notification.type === 'warning'
+              ? 'bg-yellow-50 border-yellow-200 text-yellow-800'
+              : 'bg-blue-50 border-blue-200 text-blue-800'
+          } ${isDarkMode ? 'bg-opacity-90' : ''}`}
+        >
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <p className="text-sm font-medium">{notification.message}</p>
+            </div>
+            <button
+              onClick={() => removeNotification(notification.id)}
+              className="ml-2 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  )
+}
 
 // Error Boundary Component
 class ErrorBoundary extends React.Component {
@@ -216,7 +277,7 @@ function App() {
     try {
       // Try to authenticate with the backend API first
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'}/auth/admin/login`, {
+        const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api'}/auth/admin/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -433,77 +494,84 @@ function App() {
   }
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${
-      isDarkMode 
-        ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
-        : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'
-    }`}>
-      <div className="flex h-screen">
-        {/* Admin Sidebar */}
-        <ErrorBoundary>
-          <AdminSidebar 
-            currentView={currentView}
-            onViewChange={setCurrentView}
-            adminUser={adminUser}
-            onSignOut={handleSignOut}
-            platformStats={platformStats}
-            isDarkMode={isDarkMode}
-            onToggleTheme={toggleTheme}
-          />
-        </ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <NotificationProvider>
+        <div className={`min-h-screen transition-colors duration-300 ${
+          isDarkMode 
+            ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
+            : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'
+        }`}>
+          <div className="flex h-screen">
+            {/* Admin Sidebar */}
+            <ErrorBoundary>
+              <AdminSidebar 
+                currentView={currentView}
+                onViewChange={setCurrentView}
+                adminUser={adminUser}
+                onSignOut={handleSignOut}
+                platformStats={platformStats}
+                isDarkMode={isDarkMode}
+                onToggleTheme={toggleTheme}
+              />
+            </ErrorBoundary>
 
-        {/* Main Content Area */}
-        <main className="flex-1 overflow-hidden relative">
-          <div className={`h-full overflow-y-auto scrollbar-thin ${
-            isDarkMode 
-              ? 'scrollbar-thumb-slate-600 scrollbar-track-slate-800 hover:scrollbar-thumb-slate-500' 
-              : 'scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400'
-          }`}>
-            <div className="min-h-full pb-20">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentView}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  transition={{ duration: 0.3, ease: "easeInOut" }}
-                  className="h-full"
-                >
-                  {renderCurrentView()}
-                </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
-        </main>
-      </div>
-
-      {/* Admin Status Indicator */}
-      <motion.div
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ delay: 0.5, duration: 0.4 }}
-        className="fixed bottom-6 right-6 z-50 pointer-events-none"
-      >
-        <Card className="bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-600 text-white border-0 shadow-xl backdrop-blur-sm">
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-3">
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-              >
-                <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
-                  <span className="text-xs font-bold text-purple-600">SA</span>
+            {/* Main Content Area */}
+            <main className="flex-1 overflow-hidden relative">
+              <div className={`h-full overflow-y-auto scrollbar-thin ${
+                isDarkMode 
+                  ? 'scrollbar-thumb-slate-600 scrollbar-track-slate-800 hover:scrollbar-thumb-slate-500' 
+                  : 'scrollbar-thumb-gray-300 scrollbar-track-gray-100 hover:scrollbar-thumb-gray-400'
+              }`}>
+                <div className="min-h-full pb-20">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentView}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -20 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                      className="h-full"
+                    >
+                      {renderCurrentView()}
+                    </motion.div>
+                  </AnimatePresence>
                 </div>
-              </motion.div>
-              <div>
-                <p className="text-sm font-semibold">Super Admin Active</p>
-                <p className="text-xs opacity-90">Platform monitoring</p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-    </div>
+            </main>
+          </div>
+
+          {/* Notification Display */}
+          <NotificationDisplay isDarkMode={isDarkMode} />
+
+          {/* Admin Status Indicator */}
+          <motion.div
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 0.5, duration: 0.4 }}
+            className="fixed bottom-6 right-6 z-50 pointer-events-none"
+          >
+            <Card className="bg-gradient-to-r from-purple-500 via-blue-500 to-indigo-600 text-white border-0 shadow-xl backdrop-blur-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  >
+                    <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center">
+                      <span className="text-xs font-bold text-purple-600">SA</span>
+                    </div>
+                  </motion.div>
+                  <div>
+                    <p className="text-sm font-semibold">Super Admin Active</p>
+                    <p className="text-xs opacity-90">Platform monitoring</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </NotificationProvider>
+    </QueryClientProvider>
   )
 }
 

@@ -219,7 +219,7 @@ const analyticsController = {
         };
       }
       
-      if (platform) {
+      if (platform && platform !== 'all') {
         query['platforms.platform'] = platform;
       }
       
@@ -328,7 +328,7 @@ const analyticsController = {
         { $unwind: '$platformMetrics' }
       ];
       
-      if (platform) {
+      if (platform && platform !== 'all') {
         pipeline.push({
           $match: { 'platformMetrics.platform': platform }
         });

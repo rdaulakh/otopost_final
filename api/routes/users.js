@@ -14,33 +14,127 @@ router.get('/me', auth, async (req, res) => {
     
     if (!user) {
       return res.status(404).json({
+        success: false,
         message: 'User not found'
       });
     }
 
     res.json({
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        company: user.company,
-        subscription: user.subscription,
-        avatar: user.avatar,
-        isEmailVerified: user.isEmailVerified,
-        lastLogin: user.lastLogin,
-        preferences: user.preferences,
-        businessProfile: user.businessProfile,
-        socialAccounts: user.socialAccounts,
-        aiSettings: user.aiSettings,
-        profileCompletion: user.profileCompletion,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          company: user.company,
+          jobTitle: user.jobTitle,
+          location: user.location,
+          bio: user.bio,
+          website: user.website,
+          profilePicture: user.profilePicture,
+          preferences: user.preferences
+        }
       }
     });
   } catch (error) {
     console.error('Get user profile error:', error);
     res.status(500).json({
+      success: false,
       message: 'Server error'
+    });
+  }
+});
+
+// @route   PUT /api/users/profile
+// @desc    Update user profile with all fields
+// @access  Private
+router.put('/profile', auth, async (req, res) => {
+  try {
+    console.log('Profile update request received:', req.body);
+    
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      company,
+      jobTitle,
+      location,
+      bio,
+      website,
+      timezone
+    } = req.body;
+
+    const user = await User.findById(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // SAVE INDIVIDUAL FIELDS (NOT IN PREFERENCES)
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
+    if (email !== undefined) user.email = email;
+    if (phone !== undefined) user.phone = phone;
+    if (company !== undefined) user.company = company;
+    if (jobTitle !== undefined) user.jobTitle = jobTitle;
+    if (location !== undefined) user.location = location;
+    if (bio !== undefined) user.bio = bio;
+    if (website !== undefined) user.website = website;
+    
+    // Only timezone goes in preferences
+    if (timezone !== undefined) user.preferences.timezone = timezone;
+
+    // Update name if firstName or lastName changed
+    if (firstName !== undefined || lastName !== undefined) {
+      user.name = `${user.firstName || ''} ${user.lastName || ''}`.trim();
+    }
+
+    await user.save();
+    
+    console.log('Profile updated successfully for user:', user._id);
+    console.log('Updated fields:', {
+      firstName: user.firstName,
+      lastName: user.lastName,
+      company: user.company,
+      jobTitle: user.jobTitle,
+      location: user.location,
+      bio: user.bio,
+      website: user.website,
+      phone: user.phone
+    });
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        user: {
+          id: user._id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          company: user.company,
+          jobTitle: user.jobTitle,
+          location: user.location,
+          bio: user.bio,
+          website: user.website,
+          profilePicture: user.profilePicture,
+          preferences: user.preferences
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+      error: error.message
     });
   }
 });
@@ -52,7 +146,16 @@ router.put('/me', auth, async (req, res) => {
   try {
     const {
       name,
+      firstName,
+      lastName,
+      email,
+      phone,
       company,
+      jobTitle,
+      location,
+      bio,
+      website,
+      timezone,
       avatar,
       preferences,
       businessProfile,
@@ -69,215 +172,50 @@ router.put('/me', auth, async (req, res) => {
 
     // Update fields if provided
     if (name) user.name = name;
+    if (firstName !== undefined) user.firstName = firstName;
+    if (lastName !== undefined) user.lastName = lastName;
+    if (email !== undefined) user.email = email;
+    if (phone !== undefined) user.phone = phone;
     if (company !== undefined) user.company = company;
+    if (jobTitle !== undefined) user.jobTitle = jobTitle;
+    if (location !== undefined) user.location = location;
+    if (bio !== undefined) user.bio = bio;
+    if (website !== undefined) user.website = website;
+    if (timezone !== undefined) user.preferences.timezone = timezone;
     if (avatar !== undefined) user.avatar = avatar;
-    if (preferences) user.preferences = { ...user.preferences, ...preferences };
-    if (businessProfile) user.businessProfile = { ...user.businessProfile, ...businessProfile };
-    if (aiSettings) user.aiSettings = { ...user.aiSettings, ...aiSettings };
 
     await user.save();
 
-    res.json({
+    res.json({ 
+      success: true,
       message: 'Profile updated successfully',
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        company: user.company,
-        subscription: user.subscription,
-        avatar: user.avatar,
-        preferences: user.preferences,
-        businessProfile: user.businessProfile,
-        aiSettings: user.aiSettings,
-        profileCompletion: user.profileCompletion,
-        updatedAt: user.updatedAt
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone,
+          company: user.company,
+          jobTitle: user.jobTitle,
+          location: user.location,
+          bio: user.bio,
+          website: user.website,
+          avatar: user.avatar,
+          subscription: user.subscription,
+          preferences: user.preferences,
+          businessProfile: user.businessProfile,
+          aiSettings: user.aiSettings,
+          profileCompletion: user.profileCompletion,
+          updatedAt: user.updatedAt
+        }
       }
     });
   } catch (error) {
-    console.error('Update user profile error:', error);
+    console.error('Update profile error:', error);
     res.status(500).json({
-      message: 'Server error'
-    });
-  }
-});
-
-// @route   PUT /api/users/password
-// @desc    Change user password
-// @access  Private
-router.put('/password', auth, async (req, res) => {
-  try {
-    const { currentPassword, newPassword } = req.body;
-
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({
-        message: 'Please provide current password and new password'
-      });
-    }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({
-        message: 'New password must be at least 6 characters long'
-      });
-    }
-
-    const user = await User.findById(req.user.id);
-    
-    if (!user) {
-      return res.status(404).json({
-        message: 'User not found'
-      });
-    }
-
-    // Check current password
-    const isMatch = await bcrypt.compare(currentPassword, user.password);
-    if (!isMatch) {
-      return res.status(400).json({
-        message: 'Current password is incorrect'
-      });
-    }
-
-    // Hash new password
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
-
-    await user.save();
-
-    res.json({
-      message: 'Password updated successfully'
-    });
-  } catch (error) {
-    console.error('Change password error:', error);
-    res.status(500).json({
-      message: 'Server error'
-    });
-  }
-});
-
-// @route   PUT /api/users/business-profile
-// @desc    Update business profile
-// @access  Private
-router.put('/business-profile', auth, async (req, res) => {
-  try {
-    const {
-      industry,
-      businessType,
-      companySize,
-      website,
-      foundedYear,
-      description,
-      contactInfo,
-      marketingStrategy
-    } = req.body;
-
-    const user = await User.findById(req.user.id);
-    
-    if (!user) {
-      return res.status(404).json({
-        message: 'User not found'
-      });
-    }
-
-    // Update business profile
-    const businessProfile = {
-      ...user.businessProfile,
-      ...(industry && { industry }),
-      ...(businessType && { businessType }),
-      ...(companySize && { companySize }),
-      ...(website && { website }),
-      ...(foundedYear && { foundedYear }),
-      ...(description && { description }),
-      ...(contactInfo && { contactInfo: { ...user.businessProfile?.contactInfo, ...contactInfo } }),
-      ...(marketingStrategy && { marketingStrategy: { ...user.businessProfile?.marketingStrategy, ...marketingStrategy } })
-    };
-
-    user.businessProfile = businessProfile;
-    await user.save();
-
-    res.json({
-      message: 'Business profile updated successfully',
-      businessProfile: user.businessProfile,
-      profileCompletion: user.profileCompletion
-    });
-  } catch (error) {
-    console.error('Update business profile error:', error);
-    res.status(500).json({
-      message: 'Server error'
-    });
-  }
-});
-
-// @route   GET /api/users/stats
-// @desc    Get user statistics
-// @access  Private
-router.get('/stats', auth, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    
-    if (!user) {
-      return res.status(404).json({
-        message: 'User not found'
-      });
-    }
-
-    // Calculate user statistics
-    const stats = {
-      profileCompletion: user.profileCompletion,
-      connectedAccounts: user.socialAccounts?.length || 0,
-      activeAccounts: user.getActiveSocialAccounts()?.length || 0,
-      subscription: user.subscription,
-      memberSince: user.createdAt,
-      lastLogin: user.lastLogin
-    };
-
-    res.json(stats);
-  } catch (error) {
-    console.error('Get user stats error:', error);
-    res.status(500).json({
-      message: 'Server error'
-    });
-  }
-});
-
-// @route   DELETE /api/users/me
-// @desc    Delete user account
-// @access  Private
-router.delete('/me', auth, async (req, res) => {
-  try {
-    const { password } = req.body;
-
-    if (!password) {
-      return res.status(400).json({
-        message: 'Password is required to delete account'
-      });
-    }
-
-    const user = await User.findById(req.user.id);
-    
-    if (!user) {
-      return res.status(404).json({
-        message: 'User not found'
-      });
-    }
-
-    // Verify password
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(400).json({
-        message: 'Incorrect password'
-      });
-    }
-
-    // Soft delete - deactivate account
-    user.isActive = false;
-    user.email = `deleted_${Date.now()}_${user.email}`;
-    await user.save();
-
-    res.json({
-      message: 'Account deleted successfully'
-    });
-  } catch (error) {
-    console.error('Delete account error:', error);
-    res.status(500).json({
+      success: false,
       message: 'Server error'
     });
   }

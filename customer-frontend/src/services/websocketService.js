@@ -18,7 +18,7 @@ class WebSocketService {
       return Promise.resolve()
     }
 
-    const serverUrl = process.env.REACT_APP_API_URL || 'http://localhost:5001'
+    const serverUrl = import.meta.env.VITE_WS_URL || 'wss://digiads.digiaeon.com'
     
     return new Promise((resolve, reject) => {
       this.socket = io(serverUrl, {
@@ -37,16 +37,28 @@ class WebSocketService {
         this.reconnectAttempts = 0
         
         // Notify connection callbacks
-        this.connectionCallbacks.forEach(callback => callback())
+        if (this.connectionCallbacks && Array.isArray(this.connectionCallbacks)) {
+          this.connectionCallbacks.forEach(callback => callback())
+        }
         
         resolve()
       })
 
       // Connection error
       this.socket.on('connect_error', (error) => {
-        console.error('WebSocket connection error:', error)
+        console.warn('WebSocket connection error:', error)
         this.isConnected = false
-        reject(error)
+        
+        // Don't reject immediately, try to reconnect
+        setTimeout(() => {
+          if (!this.isConnected) {
+            console.log('WebSocket connection failed, will retry...')
+            // Notify error callbacks but don't reject the promise
+            if (this.errorCallbacks && Array.isArray(this.errorCallbacks)) {
+              this.errorCallbacks.forEach(callback => callback(error))
+            }
+          }
+        }, 1000)
       })
 
       // Disconnection
@@ -55,7 +67,9 @@ class WebSocketService {
         this.isConnected = false
         
         // Notify disconnection callbacks
-        this.disconnectionCallbacks.forEach(callback => callback(reason))
+        if (this.disconnectionCallbacks && Array.isArray(this.disconnectionCallbacks)) {
+          this.disconnectionCallbacks.forEach(callback => callback(reason))
+        }
         
         // Auto-reconnect logic
         if (reason === 'io server disconnect') {
@@ -105,6 +119,21 @@ class WebSocketService {
         this.socket.connect()
       }
     }, delay)
+  }
+
+  // Check if WebSocket is available
+  isWebSocketAvailable() {
+    return this.isConnected && this.socket
+  }
+
+  // Fallback method for when WebSocket is not available
+  fallbackNotificationCheck() {
+    if (!this.isWebSocketAvailable()) {
+      console.log('WebSocket not available, using fallback notification check')
+      // This could trigger a regular API call to check for notifications
+      return false
+    }
+    return true
   }
 
   // Set up default event listeners

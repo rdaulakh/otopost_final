@@ -1,8 +1,4 @@
 const logger = require('../utils/logger');
-const openaiService = require('../integrations/ai/openai');
-const claudeService = require('../integrations/ai/claude');
-const geminiService = require('../integrations/ai/gemini');
-const azureOpenaiService = require('../integrations/ai/azure-openai');
 
 /**
  * AI Service
@@ -11,13 +7,63 @@ const azureOpenaiService = require('../integrations/ai/azure-openai');
 
 class AIService {
   constructor() {
-    this.providers = {
-      openai: openaiService,
-      claude: claudeService,
-      gemini: geminiService,
-      'azure-openai': azureOpenaiService
-    };
+    this.providers = {};
     this.defaultProvider = process.env.DEFAULT_AI_PROVIDER || 'openai';
+    
+    // Only load providers that have required environment variables
+    this._loadProviders();
+  }
+
+  _loadProviders() {
+    // Load OpenAI if API key is available
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        const openaiService = require('../integrations/ai/openai');
+        this.providers.openai = openaiService;
+        logger.info('OpenAI service loaded successfully');
+      } catch (error) {
+        logger.warn('Failed to load OpenAI service:', error.message);
+      }
+    }
+
+    // Load Claude if API key is available
+    if (process.env.ANTHROPIC_API_KEY) {
+      try {
+        const claudeService = require('../integrations/ai/claude');
+        this.providers.claude = claudeService;
+        logger.info('Claude service loaded successfully');
+      } catch (error) {
+        logger.warn('Failed to load Claude service:', error.message);
+      }
+    }
+
+    // Load Gemini if API key is available
+    if (process.env.GEMINI_API_KEY) {
+      try {
+        const geminiService = require('../integrations/ai/gemini');
+        this.providers.gemini = geminiService;
+        logger.info('Gemini service loaded successfully');
+      } catch (error) {
+        logger.warn('Failed to load Gemini service:', error.message);
+      }
+    }
+
+    // Load Azure OpenAI if required env vars are available
+    if (process.env.AZURE_OPENAI_ENDPOINT && process.env.AZURE_OPENAI_API_KEY) {
+      try {
+        const azureOpenaiService = require('../integrations/ai/azure-openai');
+        this.providers['azure-openai'] = azureOpenaiService;
+        logger.info('Azure OpenAI service loaded successfully');
+      } catch (error) {
+        logger.warn('Failed to load Azure OpenAI service:', error.message);
+      }
+    }
+
+    // Set default provider to first available provider if default is not available
+    if (!this.providers[this.defaultProvider] && Object.keys(this.providers).length > 0) {
+      this.defaultProvider = Object.keys(this.providers)[0];
+      logger.info(`Default provider set to: ${this.defaultProvider}`);
+    }
   }
 
   // Generate content using specified provider
@@ -41,33 +87,50 @@ class AIService {
       let result;
       switch (type) {
         case 'text':
-          result = await aiProvider.generateText(prompt, { maxTokens, temperature, model });
-          break;
+        case 'strategy':
         case 'caption':
-          result = await aiProvider.generateCaption(prompt, { maxTokens, temperature, model });
-          break;
-        case 'hashtags':
-          result = await aiProvider.generateHashtags(prompt, { maxTokens, temperature, model });
-          break;
         case 'post':
-          result = await aiProvider.generatePost(prompt, { maxTokens, temperature, model });
+        case 'hashtags':
+          // Use the main generateContent method for all types
+          result = await aiProvider.generateContent({
+            prompt,
+            platforms: options.platforms || [],
+            contentType: type,
+            tone: options.tone || 'professional',
+            style: options.style || 'engaging',
+            length: options.length || 'medium',
+            includeHashtags: options.includeHashtags || false,
+            includeCallToAction: options.includeCallToAction || false,
+            customInstructions: options.customInstructions || '',
+            brandVoice: options.brandVoice || 'professional',
+            targetAudience: options.targetAudience || 'general',
+            organizationId: options.organizationId || null
+          });
           break;
         default:
           throw new Error(`Content type ${type} not supported`);
       }
 
-      return {
-        success: true,
-        content: result,
-        provider,
-        type,
-        metadata: {
-          prompt,
-          maxTokens,
-          temperature,
-          model: model || 'default'
-        }
-      };
+      // Handle the result from the AI provider
+      if (result && result.success) {
+        return {
+          success: true,
+          content: result.data?.content || result.content || result.data,
+          provider,
+          type,
+          metadata: {
+            prompt,
+            maxTokens,
+            temperature,
+            model: model || 'default',
+            tokensUsed: result.data?.tokensUsed,
+            processingTime: result.data?.processingTime,
+            confidence: result.data?.confidence
+          }
+        };
+      } else {
+        throw new Error(result?.error || 'AI provider returned unsuccessful result');
+      }
     } catch (error) {
       logger.error('Error generating content:', error);
       return {

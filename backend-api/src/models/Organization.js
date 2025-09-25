@@ -90,7 +90,6 @@ const organizationSchema = new mongoose.Schema({
   subscription: {
     planId: {
       type: String,
-      enum: ['free', 'starter', 'professional', 'enterprise', 'custom'],
       default: 'free'
     },
     status: {
@@ -246,7 +245,7 @@ const organizationSchema = new mongoose.Schema({
       enum: [
         'brand_awareness', 'lead_generation', 'sales_growth', 
         'customer_engagement', 'thought_leadership', 'community_building',
-        'product_promotion', 'customer_support'
+        'product_promotion', 'customer_support', 'market_research'
       ]
     }],
     postingFrequency: {
@@ -256,8 +255,8 @@ const organizationSchema = new mongoose.Schema({
     },
     geographicReach: {
       type: String,
-      enum: ['local', 'national', 'international', 'global'],
-      default: 'national'
+      enum: ['Local', 'Regional', 'National', 'International', 'Global'],
+      default: 'National'
     },
     contentCategories: [{
       type: String,
@@ -411,6 +410,202 @@ const organizationSchema = new mongoose.Schema({
     totalAIGenerations: {
       type: Number,
       default: 0
+    }
+  },
+
+  // AI Preferences
+  aiPreferences: {
+    creativityLevel: {
+      type: String,
+      enum: ['Conservative', 'Balanced', 'Creative', 'Experimental'],
+      default: 'Balanced'
+    },
+    contentTone: {
+      type: String,
+      enum: ['Professional', 'Casual', 'Friendly', 'Authoritative', 'Playful', 'Inspirational', 'Humorous'],
+      default: 'Professional'
+    },
+    autoApproval: {
+      type: Boolean,
+      default: false
+    },
+    autoScheduling: {
+      type: Boolean,
+      default: false
+    },
+    aiSuggestions: {
+      type: Boolean,
+      default: false
+    },
+    learningMode: {
+      type: Boolean,
+      default: false
+    },
+    contentTypes: {
+      text: { type: Boolean, default: false },
+      images: { type: Boolean, default: false },
+      videos: { type: Boolean, default: false },
+      stories: { type: Boolean, default: false },
+      reels: { type: Boolean, default: false }
+    },
+    platforms: {
+      instagram: { type: Boolean, default: false },
+      facebook: { type: Boolean, default: false },
+      linkedin: { type: Boolean, default: false },
+      twitter: { type: Boolean, default: false },
+      tiktok: { type: Boolean, default: false }
+    },
+    optimization: {
+      bestTimes: { type: Boolean, default: false },
+      hashtags: { type: Boolean, default: false },
+      captions: { type: Boolean, default: false },
+      engagement: { type: Boolean, default: false }
+    },
+    notifications: {
+      contentReady: { type: Boolean, default: false },
+      performanceAlerts: { type: Boolean, default: false },
+      weeklyReports: { type: Boolean, default: false },
+      monthlyInsights: { type: Boolean, default: false }
+    },
+    dataRetention: {
+      type: String,
+      enum: ['3 months', '6 months', '12 months', '24 months', 'Indefinite'],
+      default: '3 months'
+    },
+    privacyLevel: {
+      type: String,
+      enum: ['Basic', 'Standard', 'Enhanced', 'Maximum'],
+      default: 'Standard'
+    },
+    apiAccess: {
+      type: Boolean,
+      default: false
+    }
+  },
+
+  // Brand Assets
+  brandAssets: {
+    colors: {
+      primary: {
+        type: String,
+        default: '#3B82F6',
+        match: [/^#[0-9A-F]{6}$/i, 'Please enter a valid hex color']
+      },
+      secondary: {
+        type: String,
+        default: '#8B5CF6',
+        match: [/^#[0-9A-F]{6}$/i, 'Please enter a valid hex color']
+      },
+      accent: {
+        type: String,
+        default: '#10B981',
+        match: [/^#[0-9A-F]{6}$/i, 'Please enter a valid hex color']
+      },
+      background: {
+        type: String,
+        default: '#F8FAFC',
+        match: [/^#[0-9A-F]{6}$/i, 'Please enter a valid hex color']
+      },
+      text: {
+        type: String,
+        default: '#1F2937',
+        match: [/^#[0-9A-F]{6}$/i, 'Please enter a valid hex color']
+      }
+    },
+    logo: {
+      type: String,
+      default: null
+    },
+    primaryLogo: {
+      type: String,
+      default: null
+    },
+    lightLogo: {
+      type: String,
+      default: null
+    },
+    favicon: {
+      type: String,
+      default: null
+    },
+    watermark: {
+      type: String,
+      default: null
+    },
+    brandGuidelines: {
+      type: String,
+      maxlength: 2000,
+      default: null
+    },
+    assets: [{
+      name: String,
+      type: {
+        type: String,
+        enum: ['image', 'video', 'document', 'other']
+      },
+      url: String,
+      uploadedAt: {
+        type: Date,
+        default: Date.now
+      }
+    }]
+  },
+
+  // Platform Connections
+  platformConnections: {
+    instagram: {
+      connected: { type: Boolean, default: false },
+      accountId: String,
+      username: String,
+      accessToken: String,
+      refreshToken: String,
+      connectedAt: Date,
+      lastSync: Date
+    },
+    facebook: {
+      connected: { type: Boolean, default: false },
+      accountId: String,
+      username: String,
+      accessToken: String,
+      refreshToken: String,
+      connectedAt: Date,
+      lastSync: Date
+    },
+    linkedin: {
+      connected: { type: Boolean, default: false },
+      accountId: String,
+      username: String,
+      accessToken: String,
+      refreshToken: String,
+      connectedAt: Date,
+      lastSync: Date
+    },
+    twitter: {
+      connected: { type: Boolean, default: false },
+      accountId: String,
+      username: String,
+      accessToken: String,
+      refreshToken: String,
+      connectedAt: Date,
+      lastSync: Date
+    },
+    youtube: {
+      connected: { type: Boolean, default: false },
+      accountId: String,
+      username: String,
+      accessToken: String,
+      refreshToken: String,
+      connectedAt: Date,
+      lastSync: Date
+    },
+    tiktok: {
+      connected: { type: Boolean, default: false },
+      accountId: String,
+      username: String,
+      accessToken: String,
+      refreshToken: String,
+      connectedAt: Date,
+      lastSync: Date
     }
   }
 }, {

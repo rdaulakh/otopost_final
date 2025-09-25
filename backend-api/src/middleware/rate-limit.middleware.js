@@ -20,11 +20,11 @@ const createRedisStore = () => {
   }
 };
 
-// General rate limiter
+// General rate limiter - Increased limits for development
 const generalLimiter = rateLimit({
   store: createRedisStore(),
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 1000, // Increased from 100 to 1000 requests per windowMs for development
   message: {
     success: false,
     error: 'Too many requests from this IP, please try again later.',
@@ -243,7 +243,34 @@ const endpointLimiters = {
   '/api/analytics': createDynamicLimiter(100),
   
   // Admin endpoints
-  '/api/admin': strictLimiter
+  '/api/admin': strictLimiter,
+  
+  // Frequently called endpoints with higher limits for development
+  '/api/users/me': rateLimit({
+    store: createRedisStore(),
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 2000, // High limit for user profile requests
+    message: {
+      success: false,
+      error: 'Too many user profile requests, please try again later.',
+      retryAfter: '15 minutes'
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+  }),
+  
+  '/api/realtime/notifications': rateLimit({
+    store: createRedisStore(),
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 2000, // High limit for notification requests
+    message: {
+      success: false,
+      error: 'Too many notification requests, please try again later.',
+      retryAfter: '15 minutes'
+    },
+    standardHeaders: true,
+    legacyHeaders: false
+  })
 };
 
 // Get appropriate rate limiter for endpoint
@@ -275,6 +302,11 @@ const applyRateLimit = (req, res, next) => {
 
 // Bypass rate limiting for certain conditions
 const bypassRateLimit = (req, res, next) => {
+  // Bypass for development mode
+  if (process.env.NODE_ENV === 'development') {
+    return next();
+  }
+  
   // Bypass for admin users
   if (req.user && req.user.role === 'super_admin') {
     return next();

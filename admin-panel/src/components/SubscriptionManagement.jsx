@@ -1,18 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { motion } from 'framer-motion'
 
-// Import subscription management hooks
-import { 
-  useSubscriptions,
-  useSubscriptionPlans,
-  useSubscriptionMetrics,
-  useBillingData,
-  useRevenueAnalytics,
-  useCreateSubscription,
-  useUpdateSubscription,
-  useCancelSubscription,
-  useProcessPayment
-} from '../hooks/useSubscriptionManagement.js'
+// Import subscription management hook (not used in this component)
+// import { useSubscriptionManagement } from '../hooks/useSubscriptionManagement.js'
 import { 
   CreditCard, 
   Users, 
@@ -58,6 +48,7 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
 
   // API state
   const [apiSubscriptions, setApiSubscriptions] = useState([])
+  const [apiPlans, setApiPlans] = useState([])
   const [apiStats, setApiStats] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -95,11 +86,16 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
     }
   }
 
-  // Fetch available plans
+  // Fetch available plans (all plans)
   const fetchPlans = async () => {
     try {
+      console.log('🔍 Fetching plans...');
       const response = await planService.getPlans()
-      setApiSubscriptions(response.plans || [])
+      console.log('🔍 Plans response:', response);
+      console.log('🔍 Plans data:', response.data);
+      console.log('🔍 Plans array:', response.data?.plans);
+      // Fix: The plans are directly in response.plans, not response.data.plans
+      setApiPlans(response.plans || [])
     } catch (err) {
       setError(err.message)
       console.error('Error fetching plans:', err)
@@ -108,63 +104,127 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
 
   // Load data on component mount
   useEffect(() => {
-    fetchPlans() // Load plans instead of subscriptions
+    fetchSubscriptions() // Load actual subscriptions
+    fetchPlans() // Load available plans
     fetchStats()
   }, [])
 
   // Refetch when filters change
   useEffect(() => {
-    fetchPlans()
+    fetchSubscriptions()
   }, [searchTerm, selectedFilter, selectedPlan, sortBy, sortOrder])
 
   // Map API data to original component structure
-  const subscriptions = apiSubscriptions.map(plan => ({
-    id: plan._id,
-    user_id: plan._id, // Plans don't have organizationId
-    user_name: plan.name,
-    user_email: plan.description || 'Plan template',
-    plan: plan.name,
-    status: plan.isActive ? 'active' : 'inactive',
-    amount: plan.pricing?.monthly?.amount || 0,
-    billing_cycle: 'monthly',
-    next_billing: null, // Plans don't have billing dates
-    created_at: plan.createdAt,
-    trial_end: null, // Plans don't have trial end
-    payment_method: 'N/A', // Plans are templates
-    mrr: plan.pricing?.monthly?.amount || 0,
-    usage: {
-      posts: plan.features?.monthlyPosts?.included || 0,
-      accounts: plan.features?.socialAccounts?.included || 0,
-      ai_tokens: plan.features?.aiGenerations?.included || 0
-    }
+  const subscriptions = apiSubscriptions.map(subscription => ({
+    id: subscription._id || subscription.id,
+    user_id: subscription.organizationId?._id || subscription.user_id,
+    user_name: subscription.organizationId?.name || subscription.user_name,
+    user_email: subscription.organizationId?.email || subscription.user_email,
+    plan: subscription.planId || subscription.plan,
+    plan_name: subscription.planName || subscription.plan_name || subscription.plan,
+    status: subscription.status,
+    amount: subscription.billing?.amount || subscription.amount || 0,
+    billing_cycle: subscription.billing?.cycle || subscription.billing_cycle,
+    next_billing: subscription.billing?.nextBillingDate || subscription.next_billing,
+    created_at: subscription.createdAt || subscription.created_at,
+    trial_end: subscription.trial?.trialEnd || subscription.trial_end,
+    payment_method: subscription.paymentProvider?.provider || subscription.payment_method,
+    mrr: subscription.mrr,
+    usage: subscription.usage,
+    limits: subscription.limits
   }))
 
-  // Original subscription plans (keeping the design)
-      color: isDarkMode ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-800',
-      icon: Zap,
-      popular: false
-    },
-    {
-      id: 'pro',
-      name: 'Pro',
-      price: 99,
-      interval: 'month',
-      features: ['15 Social Accounts', '200 Posts/Month', 'Advanced Analytics', 'Priority Support', 'AI Content Generation'],
-      color: isDarkMode ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-800',
-      icon: Star,
-      popular: true
-    },
-    {
-      id: 'premium',
-      name: 'Premium',
-      price: 299,
-      interval: 'month',
-      features: ['Unlimited Accounts', 'Unlimited Posts', 'Custom Analytics', '24/7 Support', 'White-label Solution', 'API Access'],
-      color: isDarkMode ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-800',
-      icon: Crown,
-      popular: false
+  // Subscription plans for display (using API plan data)
+  const subscriptionPlans = useMemo(() => {
+    console.log('🔍 apiPlans data:', apiPlans);
+    console.log('🔍 apiPlans length:', apiPlans?.length);
+    
+    if (!apiPlans || apiPlans.length === 0) {
+      console.log('⚠️ No plans data available');
+      return [];
     }
-  ]
+    
+    return apiPlans.map(plan => {
+      // Get feature list from plan or create from features
+      let featureList = plan.featureList || [];
+      
+      // If no featureList exists, create one from the plan features
+      if (!featureList || featureList.length === 0) {
+        const features = plan.features;
+        featureList = [];
+        
+        if (features?.users?.included) {
+          featureList.push(`${features.users.included} User${features.users.included > 1 ? 's' : ''}`);
+        }
+        if (features?.socialAccounts?.included) {
+          featureList.push(`${features.socialAccounts.included} Social Account${features.socialAccounts.included > 1 ? 's' : ''}`);
+        }
+        if (features?.monthlyPosts?.included) {
+          featureList.push(`${features.monthlyPosts.included} Monthly Posts`);
+        }
+        if (features?.aiGenerations?.included) {
+          featureList.push(`${features.aiGenerations.included} AI Generations`);
+        }
+        if (features?.storageGB?.included) {
+          featureList.push(`${features.storageGB.included}GB Storage`);
+        }
+        if (features?.analyticsRetentionDays) {
+          featureList.push(`${features.analyticsRetentionDays} Days Analytics`);
+        }
+        if (features?.aiAgents) featureList.push('AI Agents');
+        if (features?.analytics) featureList.push('Analytics Dashboard');
+        if (features?.teamCollaboration) featureList.push('Team Collaboration');
+        if (features?.whiteLabel) featureList.push('White Label');
+        if (features?.apiAccess) featureList.push('API Access');
+        if (features?.prioritySupport) featureList.push('Priority Support');
+        if (features?.customBranding) featureList.push('Custom Branding');
+        if (features?.advancedAnalytics) featureList.push('Advanced Analytics');
+        if (features?.multipleWorkspaces) featureList.push('Multiple Workspaces');
+        if (features?.sso) featureList.push('SSO');
+      }
+      
+      // If still no features, add basic features
+      if (featureList.length === 0) {
+        if (plan.category === 'free') {
+          featureList = [
+            'Basic Features',
+            'Limited Usage',
+            'Community Support'
+          ];
+        } else {
+          featureList = [
+            'Custom Plan Features',
+            'Contact Support for Details'
+          ];
+        }
+      }
+
+      return {
+        id: plan.planId || plan._id,
+        name: plan.name,
+        description: plan.description || `${plan.name} subscription`,
+        price: plan.pricing?.monthly?.amount || 0,
+        interval: 'month',
+        monthlyPrice: plan.pricing?.monthly?.amount || 0,
+        yearlyPrice: plan.pricing?.yearly?.amount || 0,
+        features: featureList,
+        featureList: featureList,
+        isActive: plan.isActive,
+        popular: plan.isPopular,
+        icon: (plan.name || '').toLowerCase().includes('starter') ? Star : 
+              (plan.name || '').toLowerCase().includes('pro') ? Crown : 
+              (plan.name || '').toLowerCase().includes('premium') ? Zap : Star,
+        color: (plan.name || '').toLowerCase().includes('starter') ? 'bg-gray-100 text-gray-800' :
+               (plan.name || '').toLowerCase().includes('pro') ? 'bg-blue-100 text-blue-800' :
+               (plan.name || '').toLowerCase().includes('premium') ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800',
+        darkColor: (plan.name || '').toLowerCase().includes('starter') ? 'bg-gray-800 text-gray-300' :
+                   (plan.name || '').toLowerCase().includes('pro') ? 'bg-blue-900/30 text-blue-400' :
+                   (plan.name || '').toLowerCase().includes('premium') ? 'bg-purple-900/30 text-purple-400' : 'bg-gray-800 text-gray-300'
+      }
+    })
+  }, [apiPlans])
+
+  // Original subscription plans (keeping the design)
 
   // Subscription actions
   const handleCancelSubscription = async (subscriptionId) => {
@@ -220,20 +280,24 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
     conversionRate: 78.5
   }
 
-  // Chart data
-
-
-  // Filter and sort subscriptions
+  // Filter and sort subscriptions (only show plans that customers have subscribed to)
   const filteredSubscriptions = useMemo(() => {
+    // First, get all unique plan names that customers have subscribed to
+    const subscribedPlanNames = [...new Set(subscriptions.map(sub => sub.plan).filter(Boolean))]
+    
+    // Filter subscriptions to only include those with subscribed plans
     let filtered = subscriptions.filter(subscription => {
-      const matchesSearch = subscription.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           subscription.user_email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           subscription.plan.toLowerCase().includes(searchTerm.toLowerCase())
+      const matchesSearch = (subscription.user_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (subscription.user_email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           (subscription.plan || '').toLowerCase().includes(searchTerm.toLowerCase())
       
       const matchesFilter = selectedFilter === 'all' || subscription.status === selectedFilter
       const matchesPlan = selectedPlan === 'all' || subscription.plan === selectedPlan
       
-      return matchesSearch && matchesFilter && matchesPlan
+      // Only show subscriptions for plans that customers have actually subscribed to
+      const isSubscribedPlan = subscribedPlanNames.includes(subscription.plan)
+      
+      return matchesSearch && matchesFilter && matchesPlan && isSubscribedPlan
     })
 
     // Sort subscriptions
@@ -256,12 +320,73 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
     return filtered
   }, [subscriptions, searchTerm, selectedFilter, selectedPlan, sortBy, sortOrder])
 
+  // Chart data
+  const revenueData = useMemo(() => {
+    // Generate mock revenue data for the last 12 months
+    const months = []
+    const currentDate = new Date()
+    
+    for (let i = 11; i >= 0; i--) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1)
+      const monthName = date.toLocaleDateString('en-US', { month: 'short' })
+      
+      // Calculate mock MRR based on active subscriptions
+      const activeSubscriptions = subscriptions.filter(s => s.status === 'active')
+      const baseMRR = activeSubscriptions.reduce((sum, s) => sum + (s.mrr || 0), 0)
+      const growthFactor = 1 + (Math.random() - 0.5) * 0.2 // ±10% variation
+      const mrr = Math.max(0, baseMRR * growthFactor * (0.8 + i * 0.02)) // Gradual growth
+      
+      months.push({
+        month: monthName,
+        mrr: Math.round(mrr)
+      })
+    }
+    
+    return months
+  }, [subscriptions])
+
+  const planDistribution = useMemo(() => {
+    // Calculate plan distribution from subscriptions
+    const planCounts = {}
+    const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4']
+    
+    subscriptions.forEach(subscription => {
+      if (subscription.status === 'active') {
+        const plan = subscription.plan || 'Unknown'
+        planCounts[plan] = (planCounts[plan] || 0) + 1
+      }
+    })
+    
+    return Object.entries(planCounts).map(([plan, count], index) => ({
+      name: plan,
+      value: count,
+      color: colors[index % colors.length]
+    }))
+  }, [subscriptions])
+
+  // Status options for filtering and display
+  const statusOptions = [
+    { id: 'active', name: 'Active', color: 'bg-green-100 text-green-800', darkColor: 'bg-green-900/30 text-green-400', icon: CheckCircle },
+    { id: 'trial', name: 'Trial', color: 'bg-yellow-100 text-yellow-800', darkColor: 'bg-yellow-900/30 text-yellow-400', icon: AlertCircle },
+    { id: 'cancelled', name: 'Cancelled', color: 'bg-red-100 text-red-800', darkColor: 'bg-red-900/30 text-red-400', icon: XCircle },
+    { id: 'pending', name: 'Pending', color: 'bg-blue-100 text-blue-800', darkColor: 'bg-blue-900/30 text-blue-400', icon: Clock }
+  ]
+
+  // Filter options for the dropdown
+  const filterOptions = [
+    { id: 'all', name: 'All Subscriptions', count: subscriptions.length },
+    { id: 'active', name: 'Active', count: subscriptions.filter(s => s.status === 'active').length },
+    { id: 'trial', name: 'Trial', count: subscriptions.filter(s => s.status === 'trial').length },
+    { id: 'cancelled', name: 'Cancelled', count: subscriptions.filter(s => s.status === 'cancelled').length },
+    { id: 'pending', name: 'Pending', count: subscriptions.filter(s => s.status === 'pending').length }
+  ]
+
   const getStatusBadge = (status) => {
     const statusConfig = statusOptions.find(s => s.id === status)
     const Icon = statusConfig?.icon || CheckCircle
     
     return (
-      <Badge className={statusConfig?.color || (isDarkMode ? 'bg-gray-600 text-white' : 'bg-gray-100 text-gray-800')}>
+      <Badge className={isDarkMode ? (statusConfig?.darkColor || 'bg-gray-800 text-gray-300') : (statusConfig?.color || 'bg-gray-100 text-gray-800')}>
         <Icon className="h-3 w-3 mr-1" />
         {statusConfig?.name || status}
       </Badge>
@@ -275,11 +400,11 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
       // Generate planId from name
       const planId = newPlan.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       
-      // Create plan data
-      const planData = {
-        planId: planId,
-        name: newPlan.name,
-        description: newPlan.features || 'Custom plan created by admin',
+        // Create plan data
+        const planData = {
+          planId: planId,
+          name: newPlan.name,
+          description: newPlan.description || 'Custom plan created by admin',
         pricing: {
           monthly: {
             amount: newPlan.price,
@@ -314,6 +439,7 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
           multipleWorkspaces: false,
           sso: false
         },
+        featureList: newPlan.features || [],
         isActive: true,
         isPopular: false,
         sortOrder: 0,
@@ -359,7 +485,7 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
           ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
           : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'
       }`}>
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className=" mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -616,7 +742,7 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
                       </div>
                     </div>
                     <ul className="mt-6 space-y-3">
-                      {plan.features.map((feature, index) => (
+                      {plan.featureList?.map((feature, index) => (
                         <li key={index} className="flex items-center">
                           <CheckCircle className="h-4 w-4 text-green-500 mr-2" />
                           <span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{feature}</span>
@@ -714,7 +840,7 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
           <CardHeader>
             <CardTitle className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Subscriptions ({filteredSubscriptions.length})</CardTitle>
             <CardDescription className={`${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              Manage customer subscriptions and billing
+              Manage customer subscriptions and billing - Only shows plans that customers have subscribed to
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -723,7 +849,7 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
                 <thead>
                   <tr className="border-b">
                     <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Customer</th>
-                    <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Plan</th>
+                    <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Plan Name</th>
                     <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Status</th>
                     <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Amount</th>
                     <th className={`text-left p-4 font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Next Billing</th>
@@ -750,7 +876,10 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
                         </div>
                       </td>
                       <td className="p-4">
-                        {getPlanBadge(subscription.plan)}
+                        <div>
+                          <p className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{subscription.plan_name}</p>
+                          <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Plan ID: {subscription.plan}</p>
+                        </div>
                       </td>
                       <td className="p-4">
                         {getStatusBadge(subscription.status)}
@@ -781,9 +910,9 @@ const [isCreatePlanModalOpen, setIsCreatePlanModalOpen] = useState(false);
                       </td>
                       <td className="p-4">
                         <div className="text-sm">
-                          <p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{subscription.usage.posts} posts</p>
-                          <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{subscription.usage.accounts} accounts</p>
-                          <p className="text-xs text-gray-400">{subscription.usage.ai_tokens} tokens</p>
+                          <p className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{subscription.usage?.posts || 0} posts</p>
+                          <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{subscription.usage?.accounts || 0} accounts</p>
+                          <p className="text-xs text-gray-400">{subscription.usage?.ai_tokens || 0} tokens</p>
                         </div>
                       </td>
                       <td className="p-4">

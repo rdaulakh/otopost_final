@@ -212,7 +212,7 @@ const SupportCenter = ({ data = {}, onDataUpdate = () => {}, isDarkMode = false 
         ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900' 
         : 'bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50'
     }`}>
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>

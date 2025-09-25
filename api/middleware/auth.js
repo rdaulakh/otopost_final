@@ -15,8 +15,16 @@ const auth = async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     
+    // Handle different token structures
+    const userId = decoded.user?.id || decoded.userId;
+    if (!userId) {
+      return res.status(401).json({
+        message: 'Invalid token structure'
+      });
+    }
+    
     // Check if user still exists
-    const user = await User.findById(decoded.user.id).select('-password');
+    const user = await User.findById(userId).select('-password');
     if (!user) {
       return res.status(401).json({
         message: 'Token is valid but user no longer exists'
@@ -30,8 +38,12 @@ const auth = async (req, res, next) => {
       });
     }
 
-    // Add user to request object
-    req.user = decoded.user;
+    // Add user to request object (normalize structure)
+    req.user = {
+      id: userId,
+      email: decoded.email || user.email,
+      role: decoded.role || user.role
+    };
     req.userDoc = user;
     
     next();
@@ -88,25 +100,15 @@ const checkSubscription = (requiredLevel) => {
   };
 };
 
-// Admin middleware (for super admin features)
-const adminAuth = async (req, res, next) => {
-  try {
-    // Check if user has admin role
-    const user = req.userDoc;
-    
-    if (!user.isAdmin) {
-      return res.status(403).json({
-        message: 'Access denied. Admin privileges required.'
-      });
-    }
 
-    next();
-  } catch (error) {
-    console.error('Admin auth error:', error);
-    res.status(500).json({
-      message: 'Server error in admin authentication'
+// Admin authentication middleware
+const adminAuth = (req, res, next) => {
+  if (!req.user || !req.userDoc || !req.userDoc.isAdmin) {
+    return res.status(403).json({
+      message: 'Access denied. Admin privileges required.'
     });
   }
+  next();
 };
 
 module.exports = {

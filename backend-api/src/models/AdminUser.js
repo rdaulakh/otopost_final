@@ -685,5 +685,11 @@ adminUserSchema.statics.findByDepartment = function(department) {
   return this.find({ department, isActive: true });
 };
 
+// Instance method to compare password
+adminUserSchema.methods.comparePassword = async function(candidatePassword) {
+  const bcrypt = require('bcryptjs');
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
 module.exports = mongoose.model('AdminUser', adminUserSchema);
 

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://digiads.digiaeon.com/api';
 
 // Create axios instance
 const apiClient = axios.create({
@@ -17,6 +17,26 @@ apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('authToken');
     if (token) {
+      // Check if token is expired
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const currentTime = Math.floor(Date.now() / 1000);
+        if (payload.exp < currentTime) {
+          // Token expired, clear it
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('user');
+          // Redirect to login if not already there
+          if (!window.location.pathname.includes('/login')) {
+            window.location.href = '/login';
+          }
+          return Promise.reject(new Error('Token expired'));
+        }
+      } catch (error) {
+        // Invalid token, clear it
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+      }
+      
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
@@ -32,12 +52,30 @@ apiClient.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Handle network errors
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND' || error.message?.includes('Network Error')) {
+      console.error('Network error:', error.message);
+      return Promise.reject({
+        ...error,
+        response: {
+          data: {
+            message: 'Failed to connect to authentication server. Please check if the backend is running.'
+          }
+        }
+      });
+    }
+    
     // Handle common errors
     if (error.response?.status === 401) {
       // Unauthorized - clear token and redirect to login
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      console.warn('Unauthorized access - token cleared');
+      
+      // Only redirect if not already on login page
+      if (!window.location.pathname.includes('/login')) {
+        window.location.href = '/login';
+      }
     } else if (error.response?.status === 403) {
       // Forbidden - show error message
       console.error('Access forbidden:', error.response.data?.message);
@@ -54,21 +92,21 @@ apiClient.interceptors.response.use(
 export const API_ENDPOINTS = {
   // Authentication
   AUTH: {
-    LOGIN: '/auth/login',
-    REGISTER: '/auth/register',
-    LOGOUT: '/auth/logout',
-    REFRESH: '/auth/refresh',
-    FORGOT_PASSWORD: '/auth/forgot-password',
-    RESET_PASSWORD: '/auth/reset-password',
-    VERIFY_EMAIL: '/auth/verify-email',
+    LOGIN: '/simple-auth/login',
+    REGISTER: '/auth/customer/register',
+    LOGOUT: '/auth/customer/logout',
+    REFRESH: '/auth/customer/refresh-token',
+    FORGOT_PASSWORD: '/auth/customer/forgot-password',
+    RESET_PASSWORD: '/auth/customer/reset-password',
+    VERIFY_EMAIL: '/auth/customer/verify-email',
   },
   
     // User Management
   USERS: {
-    PROFILE: '/users/me',
-    UPDATE_PROFILE: '/users/me',
-    CHANGE_PASSWORD: '/users/password',
-    DELETE_ACCOUNT: '/users/me',
+    PROFILE: '/users/profile',
+    UPDATE_PROFILE: '/users/profile',
+    CHANGE_PASSWORD: '/users/security/password',
+    DELETE_ACCOUNT: '/users/account',
     SUBSCRIPTION: '/users/subscription',
     USAGE_STATS: '/users/stats',
   },
@@ -76,7 +114,7 @@ export const API_ENDPOINTS = {
   // Profile specific endpoints
   PROFILE: {
     UPLOAD_AVATAR: '/profile/avatar',
-    DELETE_AVATAR: '/profile/avatar',
+    DELETE_AVATAR: '/users/profile', // Use PUT /users/profile to set profilePicture to null
   },
   
   // Content Management
@@ -101,21 +139,21 @@ export const API_ENDPOINTS = {
     ANALYZE_AUDIENCE: '/ai/analyze-audience',
     ANALYZE_COMPETITORS: '/ai/analyze-competitors',
     OPTIMIZE_PERFORMANCE: '/ai/optimize-performance',
-    AGENTS: '/ai/agents',
+    AGENTS: '/ai-agents',
     USAGE_STATS: '/ai/usage-stats',
     BATCH_GENERATE: '/ai/batch-generate',
   },
   
   // Social Media Profiles
   SOCIAL_PROFILES: {
-    LIST: '/social-profiles',
-    CONNECT: '/social-profiles/connect',
-    DISCONNECT: (id) => `/social-profiles/${id}`,
-    PUBLISH: '/social-profiles/publish',
-    ANALYTICS: '/social-profiles/analytics',
-    OAUTH: (platform) => `/social-profiles/oauth/${platform}`,
-    WEBHOOK: (platform) => `/social-profiles/webhook/${platform}`,
-    PLATFORMS: '/social-profiles/platforms',
+    LIST: '/social-accounts',
+    CONNECT: '/social-accounts/connect',
+    DISCONNECT: (id) => `/api/social-accounts/${id}`,
+    PUBLISH: '/social-accounts/publish',
+    ANALYTICS: '/social-accounts/analytics',
+    OAUTH: (platform) => `/api/social-accounts/oauth/${platform}`,
+    WEBHOOK: (platform) => `/api/social-accounts/webhook/${platform}`,
+    PLATFORMS: '/social-accounts/platforms',
   },
   
   // Media Management
@@ -124,12 +162,40 @@ export const API_ENDPOINTS = {
     UPLOAD_MULTIPLE: '/media/upload/multiple',
     UPLOAD_IMAGES: '/media/upload/images',
     UPLOAD_VIDEOS: '/media/upload/videos',
-    GET_IMAGE: (filename) => `/media/images/${filename}`,
-    GET_VIDEO: (filename) => `/media/videos/${filename}`,
-    DELETE: (filename) => `/media/${filename}`,
+    GET_IMAGE: (filename) => `/api/media/images/${filename}`,
+    GET_VIDEO: (filename) => `/api/media/videos/${filename}`,
+    DELETE: (filename) => `/api/media/${filename}`,
     LIST: '/media',
   },
   
+  // Campaigns
+  CAMPAIGNS: {
+    LIST: '/campaigns',
+    CREATE: '/campaigns',
+    GET: (id) => `/api/campaigns/${id}`,
+    UPDATE: (id) => `/api/campaigns/${id}`,
+    DELETE: (id) => `/api/campaigns/${id}`,
+    ANALYTICS: (id) => `/api/campaigns/${id}/analytics`,
+    OPTIMIZE: (id) => `/api/campaigns/${id}/optimize`,
+  },
+
+  // Boosts
+  BOOSTS: {
+    LIST: '/boosts',
+    CREATE: '/boosts',
+    GET: (id) => `/api/boosts/${id}`,
+    UPDATE: (id) => `/api/boosts/${id}`,
+    DELETE: (id) => `/api/boosts/${id}`,
+  },
+
+  // Social Publishing
+  SOCIAL_PUBLISHING: {
+    ANALYTICS: (platform, postId) => `/api/social-publishing/analytics/${platform}/${postId}`,
+    SCHEDULED_UPDATE: (id) => `/api/social-publishing/scheduled/${id}`,
+    SCHEDULED_DELETE: (id) => `/api/social-publishing/scheduled/${id}`,
+    TEST_CONNECTION: (platform) => `/api/social-publishing/test-connection/${platform}`,
+  },
+
   // Analytics
   ANALYTICS: {
     OVERVIEW: '/analytics/overview',
@@ -144,7 +210,7 @@ export const API_ENDPOINTS = {
   // Real-time Features
   REALTIME: {
     STATUS: '/realtime/status',
-    NOTIFICATIONS: '/realtime/notifications',
+    NOTIFICATIONS: '/realtime/realtime',
     ANALYTICS_SUBSCRIBE: '/realtime/analytics/subscribe',
     ANALYTICS_UNSUBSCRIBE: '/realtime/analytics/unsubscribe',
     BROADCAST: '/realtime/broadcast',

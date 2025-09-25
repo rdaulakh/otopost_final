@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button.jsx'
 import { Badge } from '@/components/ui/badge.jsx'
 import { Input } from '@/components/ui/input.jsx'
-import { useTheme } from '../contexts/ThemeContext.jsx'
 
 // Import API hooks and UX components
 import { 
@@ -14,6 +13,7 @@ import {
 } from '../hooks/useCustomerApi.js'
 import { useNotificationSystem } from './NotificationSystem.jsx'
 import { TableSkeleton } from './LoadingSkeletons.jsx'
+import { useTheme } from '../contexts/ThemeContext.jsx'
 import { 
   FileText, 
   TrendingUp, 
@@ -46,8 +46,9 @@ const PostHistory = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedPlatform, setSelectedPlatform] = useState('all')
   const [selectedType, setSelectedType] = useState('all')
-  const [sortBy, setSortBy] = useState('date')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const [sortBy] = useState('date')
+  const [sortOrder] = useState('desc')
+  const [isExporting, setIsExporting] = useState(false)
 
   // Real API calls for content data
   const { 
@@ -64,8 +65,8 @@ const PostHistory = () => {
   })
   
   const { 
-    mutate: deleteContent,
-    isLoading: isDeleting 
+    mutate: _deleteContent,
+    isLoading: _isDeleting 
   } = useDeleteContent()
   
   const { 
@@ -73,14 +74,6 @@ const PostHistory = () => {
     isLoading: analyticsLoading 
   } = useContentAnalytics()
   
-  // Mock export functionality for now
-  const handleExportContent = () => {
-    info('Preparing content export...')
-    // Mock export - replace with real implementation
-    setTimeout(() => {
-      success('Content exported successfully!')
-    }, 1000)
-  }
 
   // Loading state
   const isLoading = contentLoading || analyticsLoading
@@ -181,56 +174,76 @@ const PostHistory = () => {
     }
   ]
 
-  const posts = contentData?.posts || fallbackPosts
+  const posts = contentData?.contents || fallbackPosts
   const stats = analyticsData?.stats || [
     {
       title: "Total Posts",
-      value: posts.length.toString(),
+      value: (posts?.length || 0).toString(),
       icon: FileText,
       color: "text-blue-600"
     },
     {
       title: "Published",
-      value: posts.filter(p => p.status === 'published').length.toString(),
+      value: (posts?.filter(p => p.status === 'published')?.length || 0).toString(),
       icon: TrendingUp,
       color: "text-green-600"
     },
     {
       title: "Scheduled",
-      value: posts.filter(p => p.status === 'scheduled').length.toString(),
+      value: (posts?.filter(p => p.status === 'scheduled')?.length || 0).toString(),
       icon: Clock,
       color: "text-blue-600"
     },
     {
       title: "Avg. Engagement",
-      value: performanceData?.averageEngagement || "6.1%",
+      value: analyticsData?.averageEngagement || "6.1%",
       icon: BarChart3,
       color: "text-purple-600"
     }
   ]
 
   // Handle content operations
-  const handleDeleteContent = async (contentId) => {
-    try {
-      await deleteContent(contentId)
-      success('Content deleted successfully!')
-      await refetchContent()
-    } catch (err) {
-      error('Failed to delete content')
-    }
-  }
 
   const handleExportData = async () => {
     try {
+      setIsExporting(true)
       info('Preparing export...')
-      await exportContent({
-        platform: selectedPlatform !== 'all' ? selectedPlatform : undefined,
-        type: selectedType !== 'all' ? selectedType : undefined,
-        dateRange: 'all'
-      })
+      
+      // Mock export functionality
+      await new Promise(resolve => setTimeout(resolve, 2000)) // Simulate export delay
+      
+      // Create CSV data
+      const csvData = contentData?.contents?.map(item => ({
+        title: item.title || 'Untitled',
+        platform: item.platform,
+        type: item.type,
+        status: item.status,
+        publishedAt: item.publishedAt,
+        engagement: item.engagement?.rate || 0
+      })) || []
+      
+      // Convert to CSV
+      const csvContent = [
+        'Title,Platform,Type,Status,Published At,Engagement Rate',
+        ...csvData.map(item => 
+          `"${item.title}","${item.platform}","${item.type}","${item.status}","${item.publishedAt}","${item.engagement}"`
+        )
+      ].join('\n')
+      
+      // Download CSV
+      const blob = new Blob([csvContent], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `content-export-${new Date().toISOString().split('T')[0]}.csv`
+      link.click()
+      window.URL.revokeObjectURL(url)
+      
       success('Content exported successfully!')
-    } catch (err) {
+    } catch {
       error('Failed to export content')
+    } finally {
+      setIsExporting(false)
     }
   }
 
@@ -238,7 +251,7 @@ const PostHistory = () => {
     try {
       await refetchContent()
       success('Content data refreshed successfully')
-    } catch (err) {
+    } catch {
       error('Failed to refresh content data')
     }
   }
@@ -271,14 +284,14 @@ const PostHistory = () => {
     )
   }
 
-  const filteredPosts = posts.filter(post => {
-    const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.content.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredPosts = posts?.filter(post => {
+    const matchesSearch = post.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         post.content?.text?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesPlatform = selectedPlatform === 'all' || post.platform === selectedPlatform
     const matchesType = selectedType === 'all' || post.type === selectedType
     
     return matchesSearch && matchesPlatform && matchesType
-  })
+  }) || []
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -303,12 +316,24 @@ const PostHistory = () => {
   
 
   return (
-    <div className="space-y-8 p-6">
+    <div className={`space-y-8 p-6 ${
+      isDarkMode 
+        ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen' 
+        : ''
+    }`}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Post History</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">Manage and analyze your published content</p>
+          <h1 className={`text-3xl font-bold ${
+            isDarkMode ? 'text-white' : 'text-gray-900'
+          }`}>
+            Post History
+          </h1>
+          <p className={`mt-1 ${
+            isDarkMode ? 'text-slate-300' : 'text-gray-600'
+          }`}>
+            Manage and analyze your published content
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Button 
@@ -328,16 +353,26 @@ const PostHistory = () => {
       </div>
 
       {/* Search and Filters */}
-      <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+      <Card className={`border-0 shadow-lg backdrop-blur-sm ${
+        isDarkMode 
+          ? 'bg-slate-800 border-slate-700' 
+          : 'bg-white/80'
+      }`}>
         <CardContent className="p-6">
           <div className="flex flex-col lg:flex-row gap-4 items-center">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 ${
+                isDarkMode ? 'text-slate-400' : 'text-gray-400'
+              }`} />
               <Input
                 placeholder="Search posts..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 h-11"
+                className={`pl-10 h-11 ${
+                  isDarkMode 
+                    ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-slate-400' 
+                    : ''
+                }`}
               />
             </div>
             
@@ -345,7 +380,11 @@ const PostHistory = () => {
               <select
                 value={selectedPlatform}
                 onChange={(e) => setSelectedPlatform(e.target.value)}
-                className="h-11 px-3 border border-gray-200 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`h-11 px-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  isDarkMode 
+                    ? 'border-slate-600 bg-slate-700 text-slate-100' 
+                    : 'border-gray-200 bg-white'
+                }`}
               >
                 <option value="all">All Platforms</option>
                 <option value="Instagram">Instagram</option>
@@ -358,7 +397,11 @@ const PostHistory = () => {
               <select
                 value={selectedType}
                 onChange={(e) => setSelectedType(e.target.value)}
-                className="h-11 px-3 border border-gray-200 rounded-md bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`h-11 px-3 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  isDarkMode 
+                    ? 'border-slate-600 bg-slate-700 text-slate-100' 
+                    : 'border-gray-200 bg-white'
+                }`}
               >
                 <option value="all">All Types</option>
                 <option value="Image">Image</option>
@@ -368,12 +411,20 @@ const PostHistory = () => {
                 <option value="Thread">Thread</option>
               </select>
 
-              <div className="flex items-center border border-gray-200 rounded-md bg-white">
+              <div className={`flex items-center border rounded-md ${
+                isDarkMode 
+                  ? 'border-slate-600 bg-slate-700' 
+                  : 'border-gray-200 bg-white'
+              }`}>
                 <Button
                   variant={viewMode === 'table' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('table')}
-                  className="h-11 px-3 rounded-r-none border-r"
+                  className={`h-11 px-3 rounded-r-none border-r ${
+                    isDarkMode 
+                      ? (viewMode === 'table' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-600')
+                      : ''
+                  }`}
                 >
                   <List className="h-4 w-4" />
                 </Button>
@@ -381,7 +432,11 @@ const PostHistory = () => {
                   variant={viewMode === 'grid' ? 'default' : 'ghost'}
                   size="sm"
                   onClick={() => setViewMode('grid')}
-                  className="h-11 px-3 rounded-l-none"
+                  className={`h-11 px-3 rounded-l-none ${
+                    isDarkMode 
+                      ? (viewMode === 'grid' ? 'bg-blue-600 text-white' : 'text-slate-300 hover:bg-slate-600')
+                      : ''
+                  }`}
                 >
                   <Grid3X3 className="h-4 w-4" />
                 </Button>
@@ -393,7 +448,7 @@ const PostHistory = () => {
 
       {/* Statistics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {stats.map((stat, index) => {
+        {(stats || []).map((stat, index) => {
           const Icon = stat.icon
           return (
             <motion.div
@@ -402,14 +457,32 @@ const PostHistory = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.1 }}
             >
-              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow">
+              <Card className={`border-0 shadow-lg backdrop-blur-sm hover:shadow-xl transition-shadow ${
+                isDarkMode 
+                  ? 'bg-slate-800 border-slate-700 hover:shadow-lg' 
+                  : 'bg-white/80'
+              }`}>
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.title}</p>
-                      <p className={`text-2xl font-bold ${stat.color}`}>{stat.value}</p>
+                      <p className={`text-sm font-medium ${
+                        isDarkMode ? 'text-slate-300' : 'text-gray-600'
+                      }`}>
+                        {stat.title}
+                      </p>
+                      <p className={`text-2xl font-bold ${
+                        isDarkMode 
+                          ? stat.color.replace('text-', 'text-').replace('600', '400')
+                          : stat.color
+                      }`}>
+                        {stat.value}
+                      </p>
                     </div>
-                    <Icon className={`h-8 w-8 ${stat.color}`} />
+                    <Icon className={`h-8 w-8 ${
+                      isDarkMode 
+                        ? stat.color.replace('text-', 'text-').replace('600', '400')
+                        : stat.color
+                    }`} />
                   </div>
                 </CardContent>
               </Card>
@@ -419,35 +492,81 @@ const PostHistory = () => {
       </div>
 
       {/* Posts Content */}
-      <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
-        <CardHeader className="border-b border-gray-100">
+      <Card className={`border-0 shadow-lg backdrop-blur-sm ${
+        isDarkMode 
+          ? 'bg-slate-800 border-slate-700' 
+          : 'bg-white/80'
+      }`}>
+        <CardHeader className={`border-b ${
+          isDarkMode ? 'border-slate-700' : 'border-gray-100'
+        }`}>
           <div className="flex items-center justify-between">
-            <CardTitle className="text-lg font-semibold">Posts ({filteredPosts.length})</CardTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Showing {filteredPosts.length} of {posts.length} posts</p>
+            <CardTitle className={`text-lg font-semibold ${
+              isDarkMode ? 'text-white' : 'text-gray-900'
+            }`}>
+              Posts ({filteredPosts.length})
+            </CardTitle>
+            <p className={`text-sm ${
+              isDarkMode ? 'text-slate-300' : 'text-gray-600'
+            }`}>
+              Showing {filteredPosts.length} of {posts.length} posts
+            </p>
           </div>
         </CardHeader>
         <CardContent className="p-6">
           {viewMode === 'table' ? (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className={`border-b ${
+                  isDarkMode 
+                    ? 'bg-slate-700 border-slate-600' 
+                    : 'bg-gray-50 border-gray-200'
+                }`}>
                   <tr>
-                    <th className="text-left p-4 font-medium text-gray-700">Post</th>
-                    <th className="text-left p-4 font-medium text-gray-700">Platform</th>
-                    <th className="text-left p-4 font-medium text-gray-700">Status</th>
-                    <th className="text-left p-4 font-medium text-gray-700">Date</th>
-                    <th className="text-left p-4 font-medium text-gray-700">Performance</th>
-                    <th className="text-left p-4 font-medium text-gray-700">Actions</th>
+                    <th className={`text-left p-4 font-medium ${
+                      isDarkMode ? 'text-slate-300' : 'text-gray-700'
+                    }`}>
+                      Post
+                    </th>
+                    <th className={`text-left p-4 font-medium ${
+                      isDarkMode ? 'text-slate-300' : 'text-gray-700'
+                    }`}>
+                      Platform
+                    </th>
+                    <th className={`text-left p-4 font-medium ${
+                      isDarkMode ? 'text-slate-300' : 'text-gray-700'
+                    }`}>
+                      Status
+                    </th>
+                    <th className={`text-left p-4 font-medium ${
+                      isDarkMode ? 'text-slate-300' : 'text-gray-700'
+                    }`}>
+                      Date
+                    </th>
+                    <th className={`text-left p-4 font-medium ${
+                      isDarkMode ? 'text-slate-300' : 'text-gray-700'
+                    }`}>
+                      Performance
+                    </th>
+                    <th className={`text-left p-4 font-medium ${
+                      isDarkMode ? 'text-slate-300' : 'text-gray-700'
+                    }`}>
+                      Actions
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredPosts.map((post, index) => (
+                  {(filteredPosts || []).map((post, index) => (
                     <motion.tr
                       key={post.id}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: index * 0.1 }}
-                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                      className={`border-b transition-colors ${
+                        isDarkMode 
+                          ? 'border-slate-700 hover:bg-slate-700' 
+                          : 'border-gray-100 hover:bg-gray-50'
+                      }`}
                     >
                       <td className="p-4">
                         <div className="flex items-center space-x-3">
@@ -457,10 +576,20 @@ const PostHistory = () => {
                             className="w-12 h-12 rounded-lg object-cover"
                           />
                           <div className="min-w-0 flex-1">
-                            <h4 className="font-medium text-gray-900 truncate">{post.title}</h4>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 truncate">{post.content}</p>
+                            <h4 className={`font-medium truncate ${
+                              isDarkMode ? 'text-white' : 'text-gray-900'
+                            }`}>
+                              {post.title}
+                            </h4>
+                            <p className={`text-sm truncate ${
+                              isDarkMode ? 'text-slate-300' : 'text-gray-600'
+                            }`}>
+                              {post.content?.text || post.content || 'No content'}
+                            </p>
                             <div className="flex items-center mt-1">
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className={`text-xs ${
+                                isDarkMode ? 'border-slate-600 text-slate-300' : ''
+                              }`}>
                                 {post.type}
                               </Badge>
                             </div>
@@ -470,24 +599,44 @@ const PostHistory = () => {
                       <td className="p-4">
                         <div className="flex items-center space-x-2">
                           <span className="text-lg">{getPlatformIcon(post.platform)}</span>
-                          <span className="font-medium text-gray-900">{post.platform}</span>
+                          <span className={`font-medium ${
+                            isDarkMode ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            {post.platform}
+                          </span>
                         </div>
                       </td>
                       <td className="p-4">
-                        <Badge className={getStatusColor(post.status)}>
+                        <Badge className={`${getStatusColor(post.status)} ${
+                          isDarkMode 
+                            ? (post.status === 'published' ? 'bg-green-900/30 text-green-400 border-green-700' :
+                               post.status === 'scheduled' ? 'bg-blue-900/30 text-blue-400 border-blue-700' :
+                               'bg-slate-700 text-slate-300 border-slate-600')
+                            : ''
+                        }`}>
                           {post.status}
                         </Badge>
                       </td>
                       <td className="p-4">
                         <div className="text-sm">
-                          <p className="font-medium text-gray-900">{post.date}</p>
-                          <p className="text-gray-600 dark:text-gray-400">{post.time}</p>
+                          <p className={`font-medium ${
+                            isDarkMode ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            {post.date}
+                          </p>
+                          <p className={`${
+                            isDarkMode ? 'text-slate-300' : 'text-gray-600'
+                          }`}>
+                            {post.time}
+                          </p>
                         </div>
                       </td>
                       <td className="p-4">
                         {post.status === 'published' ? (
                           <div className="space-y-1">
-                            <div className="flex items-center space-x-4 text-sm">
+                            <div className={`flex items-center space-x-4 text-sm ${
+                              isDarkMode ? 'text-slate-300' : 'text-gray-600'
+                            }`}>
                               <span className="flex items-center">
                                 <Eye className="h-3 w-3 mr-1" />
                                 {post.performance.views.toLocaleString()}
@@ -501,23 +650,37 @@ const PostHistory = () => {
                                 {post.performance.comments}
                               </span>
                             </div>
-                            <p className="text-sm font-medium text-green-600">{post.performance.engagement} engagement</p>
+                            <p className={`text-sm font-medium ${
+                              isDarkMode ? 'text-green-400' : 'text-green-600'
+                            }`}>
+                              {post.performance.engagement} engagement
+                            </p>
                           </div>
                         ) : (
-                          <p className="text-sm text-gray-500 dark:text-gray-400">No data yet</p>
+                          <p className={`text-sm ${
+                            isDarkMode ? 'text-slate-400' : 'text-gray-500'
+                          }`}>
+                            No data yet
+                          </p>
                         )}
                       </td>
                       <td className="p-4">
                         <div className="flex items-center space-x-2">
-                          <Button size="sm" variant="outline" className="h-8 px-3">
+                          <Button size="sm" variant="outline" className={`h-8 px-3 ${
+                            isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''
+                          }`}>
                             <Eye className="h-3 w-3 mr-1" />
                             View
                           </Button>
-                          <Button size="sm" variant="outline" className="h-8 px-3">
+                          <Button size="sm" variant="outline" className={`h-8 px-3 ${
+                            isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''
+                          }`}>
                             <Edit className="h-3 w-3 mr-1" />
                             Edit
                           </Button>
-                          <Button size="sm" variant="outline" className="h-8 px-2">
+                          <Button size="sm" variant="outline" className={`h-8 px-2 ${
+                            isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''
+                          }`}>
                             <MoreHorizontal className="h-3 w-3" />
                           </Button>
                         </div>
@@ -529,14 +692,18 @@ const PostHistory = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredPosts.map((post, index) => (
+              {(filteredPosts || []).map((post, index) => (
                 <motion.div
                   key={post.id}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.1 }}
                 >
-                  <Card className="border-0 shadow-md hover:shadow-lg transition-shadow">
+                  <Card className={`border-0 shadow-md hover:shadow-lg transition-shadow ${
+                    isDarkMode 
+                      ? 'bg-slate-800 border-slate-700' 
+                      : 'bg-white'
+                  }`}>
                     <div className="relative">
                       <img 
                         src={post.image} 
@@ -544,12 +711,22 @@ const PostHistory = () => {
                         className="w-full h-48 object-cover rounded-t-lg"
                       />
                       <div className="absolute top-3 left-3">
-                        <Badge className={getStatusColor(post.status)}>
+                        <Badge className={`${getStatusColor(post.status)} ${
+                          isDarkMode 
+                            ? (post.status === 'published' ? 'bg-green-900/30 text-green-400 border-green-700' :
+                               post.status === 'scheduled' ? 'bg-blue-900/30 text-blue-400 border-blue-700' :
+                               'bg-slate-700 text-slate-300 border-slate-600')
+                            : ''
+                        }`}>
                           {post.status}
                         </Badge>
                       </div>
                       <div className="absolute top-3 right-3">
-                        <div className="flex items-center space-x-1 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1">
+                        <div className={`flex items-center space-x-1 backdrop-blur-sm rounded-full px-2 py-1 ${
+                          isDarkMode 
+                            ? 'bg-slate-800/90 text-slate-300' 
+                            : 'bg-white/90'
+                        }`}>
                           <span className="text-sm">{getPlatformIcon(post.platform)}</span>
                           <span className="text-xs font-medium">{post.platform}</span>
                         </div>
@@ -558,18 +735,38 @@ const PostHistory = () => {
                     <CardContent className="p-4">
                       <div className="space-y-3">
                         <div>
-                          <h4 className="font-semibold text-gray-900 line-clamp-2">{post.title}</h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">{post.content}</p>
+                          <h4 className={`font-semibold line-clamp-2 ${
+                            isDarkMode ? 'text-white' : 'text-gray-900'
+                          }`}>
+                            {post.title}
+                          </h4>
+                          <p className={`text-sm mt-1 line-clamp-2 ${
+                            isDarkMode ? 'text-slate-300' : 'text-gray-600'
+                          }`}>
+                            {post.content?.text || post.content || 'No content'}
+                          </p>
                         </div>
                         
                         <div className="flex items-center justify-between text-sm">
-                          <Badge variant="outline">{post.type}</Badge>
-                          <span className="text-gray-500 dark:text-gray-400">{post.date}</span>
+                          <Badge variant="outline" className={`${
+                            isDarkMode ? 'border-slate-600 text-slate-300' : ''
+                          }`}>
+                            {post.type}
+                          </Badge>
+                          <span className={`${
+                            isDarkMode ? 'text-slate-400' : 'text-gray-500'
+                          }`}>
+                            {post.date}
+                          </span>
                         </div>
 
                         {post.status === 'published' && (
-                          <div className="flex items-center justify-between text-sm bg-gray-50 rounded-lg p-2">
-                            <div className="flex items-center space-x-3">
+                          <div className={`flex items-center justify-between text-sm rounded-lg p-2 ${
+                            isDarkMode ? 'bg-slate-700' : 'bg-gray-50'
+                          }`}>
+                            <div className={`flex items-center space-x-3 ${
+                              isDarkMode ? 'text-slate-300' : 'text-gray-600'
+                            }`}>
                               <span className="flex items-center">
                                 <Eye className="h-3 w-3 mr-1" />
                                 {post.performance.views.toLocaleString()}
@@ -579,20 +776,30 @@ const PostHistory = () => {
                                 {post.performance.likes}
                               </span>
                             </div>
-                            <span className="font-medium text-green-600">{post.performance.engagement}</span>
+                            <span className={`font-medium ${
+                              isDarkMode ? 'text-green-400' : 'text-green-600'
+                            }`}>
+                              {post.performance.engagement}
+                            </span>
                           </div>
                         )}
 
                         <div className="flex items-center space-x-2 pt-2">
-                          <Button size="sm" variant="outline" className="flex-1">
+                          <Button size="sm" variant="outline" className={`flex-1 ${
+                            isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''
+                          }`}>
                             <Eye className="h-3 w-3 mr-1" />
                             View
                           </Button>
-                          <Button size="sm" variant="outline" className="flex-1">
+                          <Button size="sm" variant="outline" className={`flex-1 ${
+                            isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''
+                          }`}>
                             <Edit className="h-3 w-3 mr-1" />
                             Edit
                           </Button>
-                          <Button size="sm" variant="outline">
+                          <Button size="sm" variant="outline" className={`${
+                            isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''
+                          }`}>
                             <MoreHorizontal className="h-3 w-3" />
                           </Button>
                         </div>

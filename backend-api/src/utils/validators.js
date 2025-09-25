@@ -29,8 +29,8 @@ const isValidName = (name) => {
 
 // Phone validation
 const isValidPhone = (phone) => {
-  if (!phone || typeof phone !== 'string') return false;
-  return validator.isMobilePhone(phone);
+  if (!phone || typeof phone !== 'string' || phone.trim() === '') return true; // Allow empty values
+  return /^[\+]?[1-9][\d]{0,15}$/.test(phone.replace(/[\s\-\(\)]/g, ''));
 };
 
 // URL validation

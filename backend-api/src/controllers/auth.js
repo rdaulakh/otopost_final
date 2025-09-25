@@ -6,13 +6,17 @@ const Organization = require('../models/Organization');
 const jwtManager = require('../utils/jwt');
 const redisConnection = require('../config/redis');
 const logger = require('../utils/logger');
+const agentProvisioningService = require('../services/agentProvisioningService');
 
 // Customer Authentication Controllers
 const customerAuth = {
   // Register new customer
   register: async (req, res) => {
     try {
-      const { email, password, firstName, lastName, organizationName, acceptTerms } = req.body;
+      const { email, password, firstName, lastName, organizationName, company, acceptTerms } = req.body;
+      
+      // Use organizationName or company (frontend compatibility)
+      const orgName = organizationName || company;
       
       // Check if user already exists
       const existingUser = await User.findOne({ email });
@@ -26,8 +30,8 @@ const customerAuth = {
       
       // Create organization first
       const organization = new Organization({
-        name: organizationName,
-        slug: organizationName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''),
+        name: orgName,
+        slug: orgName.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, ''),
         contactInfo: {
           primaryEmail: email
         },
@@ -39,6 +43,22 @@ const customerAuth = {
       });
       
       await organization.save();
+      
+      // Provision AI agents for the new organization
+      try {
+        const agentProvisioningResult = await agentProvisioningService.provisionAgentsForOrganization(
+          organization._id,
+          organization.toObject()
+        );
+        
+        logger.info(`AI agents provisioned for organization ${organization._id}:`, {
+          agentsCreated: agentProvisioningResult.agentsCreated,
+          success: agentProvisioningResult.success
+        });
+      } catch (agentError) {
+        logger.error(`Failed to provision AI agents for organization ${organization._id}:`, agentError);
+        // Don't fail the registration if agent provisioning fails
+      }
       
       // Create user
       const user = new User({
@@ -564,7 +584,7 @@ const adminAuth = {
       }
       
       // Verify password
-      const isPasswordValid = await admin.verifyPassword(password);
+      const isPasswordValid = await bcrypt.compare(password, admin.password);
       if (!isPasswordValid) {
         // Log failed login attempt
         logger.logSecurity('admin_failed_login', {

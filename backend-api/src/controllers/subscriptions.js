@@ -523,6 +523,65 @@ const getSubscriptionPlans = async (req, res) => {
   }
 };
 
+// Get only subscribed plans (plans that customers have actually subscribed to)
+const getSubscribedPlans = async (req, res) => {
+  try {
+    // Get all unique plan IDs from active subscriptions
+    const subscribedPlanIds = await Subscription.distinct('planId', { status: 'active' });
+    
+    if (subscribedPlanIds.length === 0) {
+      return res.json({
+        success: true,
+        data: [],
+        message: 'No subscribed plans found'
+      });
+    }
+
+    // Get subscription statistics for each subscribed plan
+    const planStats = await Subscription.aggregate([
+      { $match: { status: 'active' } },
+      {
+        $group: {
+          _id: '$planId',
+          planName: { $first: '$planName' },
+          planDescription: { $first: '$planDescription' },
+          subscriberCount: { $sum: 1 },
+          totalRevenue: { $sum: '$billing.totalAmount' },
+          avgRevenue: { $avg: '$billing.totalAmount' },
+          features: { $first: '$features' },
+          billing: { $first: '$billing' }
+        }
+      },
+      { $sort: { subscriberCount: -1 } }
+    ]);
+
+    // Format the response
+    const subscribedPlans = planStats.map(plan => ({
+      id: plan._id,
+      name: plan.planName || plan._id,
+      description: plan.planDescription || `Plan ${plan._id}`,
+      subscriberCount: plan.subscriberCount,
+      totalRevenue: plan.totalRevenue,
+      avgRevenue: plan.avgRevenue,
+      features: plan.features || [],
+      billing: plan.billing || {},
+      isSubscribed: true
+    }));
+
+    res.json({
+      success: true,
+      data: subscribedPlans
+    });
+  } catch (error) {
+    logger.error('Error fetching subscribed plans:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch subscribed plans',
+      error: error.message
+    });
+  }
+};
+
 // Calculate next billing date
 const calculateNextBillingDate = (billingCycle, startDate) => {
   const date = new Date(startDate);
@@ -617,6 +676,7 @@ module.exports = {
   getSubscriptionAnalytics,
   getSubscriptionStats,
   getSubscriptionPlans,
+  getSubscribedPlans,
   processSubscriptionRenewal
 };
 

@@ -21,8 +21,8 @@ const queryClient = new QueryClient({
       },
       // Refetch on window focus
       refetchOnWindowFocus: false,
-      // Refetch on reconnect
-      refetchOnReconnect: true,
+      // Refetch on reconnect - disabled to prevent constant refreshing
+      refetchOnReconnect: false,
     },
     mutations: {
       // Retry failed mutations

@@ -80,14 +80,14 @@ const ABTestingFramework = ({ data, user, onDataUpdate }) => {
     isLoading: resultsLoading, 
     error: resultsError,
     refetch: refetchResults 
-  } = useABTestResults({ testId: selectedExperiment?.id })
+  } = useABTestResults(selectedExperiment?.id)
 
   const { 
     data: testMetrics, 
     isLoading: metricsLoading, 
     error: metricsError,
     refetch: refetchMetrics 
-  } = useABTestMetrics()
+  } = useABTestMetrics(selectedExperiment?.id)
 
   const createABTestMutation = useCreateABTest()
 
@@ -114,11 +114,11 @@ const ABTestingFramework = ({ data, user, onDataUpdate }) => {
     }
   }
 
-  // Auto-refresh every 2 minutes for active tests
-  useEffect(() => {
-    const interval = setInterval(handleRefresh, 2 * 60 * 1000)
-    return () => clearInterval(interval)
-  }, [])
+  // Auto-refresh disabled to prevent constant refreshing
+  // useEffect(() => {
+  //   const interval = setInterval(handleRefresh, 2 * 60 * 1000)
+  //   return () => clearInterval(interval)
+  // }, [])
 
   // Handle experiment selection
   const handleExperimentSelect = (experiment) => {
@@ -176,7 +176,7 @@ const ABTestingFramework = ({ data, user, onDataUpdate }) => {
 
   // Format number
   const formatNumber = (num) => {
-    if (!num) return '0'
+    if (!num || num === 0) return '0'
     if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`
     if (num >= 1000) return `${(num / 1000).toFixed(1)}K`
     return num.toString()
@@ -228,7 +228,7 @@ const ABTestingFramework = ({ data, user, onDataUpdate }) => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -333,7 +333,7 @@ const ABTestingFramework = ({ data, user, onDataUpdate }) => {
         {/* Experiments Tab */}
         <TabsContent value="experiments" className="space-y-6">
           <div className="grid gap-6">
-            {abTests?.experiments?.map((experiment) => {
+            {abTests?.map((experiment) => {
               const StatusIcon = getStatusIcon(experiment.status)
               return (
                 <motion.div
@@ -393,7 +393,7 @@ const ABTestingFramework = ({ data, user, onDataUpdate }) => {
                       
                       {experiment.variants && (
                         <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {experiment.variants.map((variant, index) => (
+                          {(experiment.variants || []).map((variant, index) => (
                             <div key={index} className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg">
                               <div className="flex items-center justify-between mb-2">
                                 <h4 className="font-medium">{variant.name}</h4>
@@ -469,7 +469,7 @@ const ABTestingFramework = ({ data, user, onDataUpdate }) => {
               )
             })}
             
-            {(!abTests?.experiments || abTests.experiments.length === 0) && (
+            {(!abTests || abTests.length === 0) && (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <TestTube className="h-12 w-12 text-gray-400 mb-4" />

@@ -562,6 +562,115 @@ const duplicateCampaign = async (req, res) => {
   }
 };
 
+// Get campaign statistics
+const getCampaignStats = async (req, res) => {
+  try {
+    const { organizationId } = req.user;
+    const { period = '30d' } = req.query;
+
+    // Calculate date range based on period
+    const now = new Date();
+    let startDate;
+    
+    switch (period) {
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        startDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    // Get campaign statistics
+    const totalCampaigns = await Campaign.countDocuments({ organizationId });
+    const activeCampaigns = await Campaign.countDocuments({ 
+      organizationId, 
+      status: 'active' 
+    });
+    const completedCampaigns = await Campaign.countDocuments({ 
+      organizationId, 
+      status: 'completed' 
+    });
+    const pausedCampaigns = await Campaign.countDocuments({ 
+      organizationId, 
+      status: 'paused' 
+    });
+
+    // Get campaigns created in the period
+    const recentCampaigns = await Campaign.countDocuments({
+      organizationId,
+      createdAt: { $gte: startDate }
+    });
+
+    // Get campaign types distribution
+    const campaignTypes = await Campaign.aggregate([
+      { $match: { organizationId } },
+      { $group: { _id: '$type', count: { $sum: 1 } } }
+    ]);
+
+    // Get status distribution
+    const statusDistribution = await Campaign.aggregate([
+      { $match: { organizationId } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+
+    // Calculate average campaign duration (for completed campaigns)
+    const completedCampaignsData = await Campaign.find({
+      organizationId,
+      status: 'completed',
+      startDate: { $exists: true },
+      endDate: { $exists: true }
+    }).select('startDate endDate');
+
+    const avgDuration = completedCampaignsData.length > 0 
+      ? completedCampaignsData.reduce((sum, campaign) => {
+          const duration = new Date(campaign.endDate) - new Date(campaign.startDate);
+          return sum + duration;
+        }, 0) / completedCampaignsData.length
+      : 0;
+
+    const stats = {
+      overview: {
+        total: totalCampaigns,
+        active: activeCampaigns,
+        completed: completedCampaigns,
+        paused: pausedCampaigns,
+        recent: recentCampaigns
+      },
+      distribution: {
+        types: campaignTypes,
+        status: statusDistribution
+      },
+      metrics: {
+        averageDuration: Math.round(avgDuration / (1000 * 60 * 60 * 24)), // in days
+        completionRate: totalCampaigns > 0 ? (completedCampaigns / totalCampaigns) * 100 : 0
+      },
+      period: {
+        start: startDate,
+        end: now,
+        label: period
+      }
+    };
+
+    res.json({
+      success: true,
+      data: stats
+    });
+  } catch (error) {
+    logger.error('Get campaign stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch campaign statistics',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getCampaigns,
   getCampaign,
@@ -571,6 +680,7 @@ module.exports = {
   startCampaign,
   pauseCampaign,
   getCampaignAnalytics,
+  getCampaignStats,
   duplicateCampaign
 };
 

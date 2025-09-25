@@ -107,8 +107,11 @@ app.use("/api/white-label", require("./routes/whiteLabelSettings"));
 // Socket.IO
 initializeSocketService(io);
 
-const PORT = process.env.PORT || 5000;
-
-server.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+// Register routes before starting server
 app.use('/api/post-history', require('./routes/postHistory'));
 app.use('/api/user-profile', require('./routes/userProfile'));
+app.use('/api/profile-update', require('./routes/profileUpdate'));
+
+const PORT = process.env.PORT || 8000;
+
+server.listen(PORT, () => console.log(`Server started on port ${PORT}`));

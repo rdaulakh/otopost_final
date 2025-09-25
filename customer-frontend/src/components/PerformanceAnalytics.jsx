@@ -258,41 +258,67 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
   }
 
   const formatNumber = (num) => {
+    if (!num || num === 0) return '0'
     if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
     if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
     return num.toString()
   }
 
   const formatPercentage = (num) => {
+    if (!num || num === 0) return '0.0%'
     return num > 0 ? `+${num.toFixed(1)}%` : `${num.toFixed(1)}%`
   }
 
   const MetricCard = ({ title, value, change, icon: Icon, color = "blue" }) => {
     const isPositive = change > 0
     const colorClasses = {
-      blue: 'text-blue-600',
-      green: 'text-green-600',
-      purple: 'text-purple-600',
-      orange: 'text-orange-600'
+      blue: isDarkMode ? 'text-blue-400' : 'text-blue-600',
+      green: isDarkMode ? 'text-green-400' : 'text-green-600',
+      purple: isDarkMode ? 'text-purple-400' : 'text-purple-600',
+      orange: isDarkMode ? 'text-orange-400' : 'text-orange-600'
     }
 
     return (
-      <Card>
+      <Card className={`${
+        isDarkMode 
+          ? 'bg-slate-800 border-slate-700 hover:shadow-lg transition-shadow' 
+          : 'bg-white'
+      }`}>
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-slate-600 dark:text-slate-400">{title}</p>
-              <p className="text-2xl font-bold text-slate-900">{value}</p>
+              <p className={`text-sm font-medium ${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
+                {title}
+              </p>
+              <p className={`text-2xl font-bold ${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                {value}
+              </p>
               <div className="flex items-center mt-1">
                 {isPositive ? (
-                  <ArrowUpRight className="h-4 w-4 text-green-500 mr-1" />
+                  <ArrowUpRight className={`h-4 w-4 mr-1 ${
+                    isDarkMode ? 'text-green-400' : 'text-green-500'
+                  }`} />
                 ) : (
-                  <ArrowDownRight className="h-4 w-4 text-red-500 mr-1" />
+                  <ArrowDownRight className={`h-4 w-4 mr-1 ${
+                    isDarkMode ? 'text-red-400' : 'text-red-500'
+                  }`} />
                 )}
-                <span className={`text-sm font-medium ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`text-sm font-medium ${
+                  isPositive 
+                    ? (isDarkMode ? 'text-green-400' : 'text-green-600')
+                    : (isDarkMode ? 'text-red-400' : 'text-red-600')
+                }`}>
                   {formatPercentage(change)}
                 </span>
-                <span className="text-sm text-slate-500 dark:text-slate-400 ml-1">vs last period</span>
+                <span className={`text-sm ml-1 ${
+                  isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                }`}>
+                  vs last period
+                </span>
               </div>
             </div>
             <Icon className={`h-8 w-8 ${colorClasses[color]}`} />
@@ -303,29 +329,63 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
   }
 
   const PlatformCard = ({ platform, reach, engagement, followers, color }) => (
-    <Card>
+    <Card className={`${
+      isDarkMode 
+        ? 'bg-slate-800 border-slate-700 hover:shadow-lg transition-shadow' 
+        : 'bg-white'
+    }`}>
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: color }}></div>
-            <span className="font-medium text-slate-900">{platform}</span>
+            <span className={`font-medium ${
+              isDarkMode ? 'text-white' : 'text-slate-900'
+            }`}>
+              {platform}
+            </span>
           </div>
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className={`text-xs ${
+            isDarkMode ? 'bg-slate-700 text-slate-300' : ''
+          }`}>
             {((engagement / reach) * 100).toFixed(1)}%
           </Badge>
         </div>
         <div className="space-y-2">
           <div className="flex justify-between text-sm">
-            <span className="text-slate-600 dark:text-slate-400">Reach</span>
-            <span className="font-medium">{formatNumber(reach)}</span>
+            <span className={`${
+              isDarkMode ? 'text-slate-300' : 'text-slate-600'
+            }`}>
+              Reach
+            </span>
+            <span className={`font-medium ${
+              isDarkMode ? 'text-white' : 'text-slate-900'
+            }`}>
+              {formatNumber(reach)}
+            </span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-slate-600 dark:text-slate-400">Engagement</span>
-            <span className="font-medium">{formatNumber(engagement)}</span>
+            <span className={`${
+              isDarkMode ? 'text-slate-300' : 'text-slate-600'
+            }`}>
+              Engagement
+            </span>
+            <span className={`font-medium ${
+              isDarkMode ? 'text-white' : 'text-slate-900'
+            }`}>
+              {formatNumber(engagement)}
+            </span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-slate-600 dark:text-slate-400">Followers</span>
-            <span className="font-medium">{formatNumber(followers)}</span>
+            <span className={`${
+              isDarkMode ? 'text-slate-300' : 'text-slate-600'
+            }`}>
+              Followers
+            </span>
+            <span className={`font-medium ${
+              isDarkMode ? 'text-white' : 'text-slate-900'
+            }`}>
+              {formatNumber(followers)}
+            </span>
           </div>
         </div>
       </CardContent>
@@ -333,23 +393,35 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
   )
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={`p-6 space-y-6 ${
+      isDarkMode 
+        ? 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 min-h-screen' 
+        : ''
+    }`}>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">
+          <h1 className={`text-3xl font-bold ${
+            isDarkMode ? 'text-white' : 'text-slate-900'
+          }`}>
             Performance Analytics
           </h1>
-          <p className="text-slate-600 dark:text-slate-400 mt-1">
+          <p className={`mt-1 ${
+            isDarkMode ? 'text-slate-300' : 'text-slate-600'
+          }`}>
             Comprehensive insights into your social media performance
           </p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" className={`${
+            isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''
+          }`}>
             <Download className="h-4 w-4 mr-2" />
             Export Report
           </Button>
-          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading}>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoading} className={`${
+            isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : ''
+          }`}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             {isLoading ? 'Refreshing...' : 'Refresh Data'}
           </Button>
@@ -358,13 +430,22 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
 
       {/* Time Range Selector */}
       <div className="flex items-center space-x-2">
-        <span className="text-sm font-medium text-slate-700">Time Range:</span>
+        <span className={`text-sm font-medium ${
+          isDarkMode ? 'text-slate-300' : 'text-slate-700'
+        }`}>
+          Time Range:
+        </span>
         {['7d', '30d', '90d', '1y'].map((range) => (
           <Button
             key={range}
             variant={timeRange === range ? 'default' : 'outline'}
             size="sm"
             onClick={() => handleTimeRangeChange(range)}
+            className={`${
+              timeRange === range 
+                ? (isDarkMode ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25' : '')
+                : (isDarkMode ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : '')
+            }`}
           >
             {range === '7d' ? 'Last 7 days' : 
              range === '30d' ? 'Last 30 days' :
@@ -407,20 +488,67 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
 
       {/* Main Analytics Tabs */}
       <Tabs defaultValue="trends" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="trends">Trends</TabsTrigger>
-          <TabsTrigger value="platforms">Platforms</TabsTrigger>
-          <TabsTrigger value="content">Content Types</TabsTrigger>
-          <TabsTrigger value="timing">Best Times</TabsTrigger>
-          <TabsTrigger value="audience">Audience</TabsTrigger>
+        <TabsList className={`grid w-full grid-cols-5 ${
+          isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100'
+        }`}>
+          <TabsTrigger 
+            value="trends" 
+            className={`${
+              isDarkMode ? 'data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 hover:bg-slate-700' : ''
+            }`}
+          >
+            Trends
+          </TabsTrigger>
+          <TabsTrigger 
+            value="platforms"
+            className={`${
+              isDarkMode ? 'data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 hover:bg-slate-700' : ''
+            }`}
+          >
+            Platforms
+          </TabsTrigger>
+          <TabsTrigger 
+            value="content"
+            className={`${
+              isDarkMode ? 'data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 hover:bg-slate-700' : ''
+            }`}
+          >
+            Content Types
+          </TabsTrigger>
+          <TabsTrigger 
+            value="timing"
+            className={`${
+              isDarkMode ? 'data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 hover:bg-slate-700' : ''
+            }`}
+          >
+            Best Times
+          </TabsTrigger>
+          <TabsTrigger 
+            value="audience"
+            className={`${
+              isDarkMode ? 'data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=inactive]:text-slate-300 hover:bg-slate-700' : ''
+            }`}
+          >
+            Audience
+          </TabsTrigger>
         </TabsList>
 
         {/* Trends Tab */}
         <TabsContent value="trends" className="space-y-6">
-          <Card>
+          <Card className={`${
+            isDarkMode 
+              ? 'bg-slate-800 border-slate-700' 
+              : 'bg-white'
+          }`}>
             <CardHeader>
-              <CardTitle>Performance Trends</CardTitle>
-              <CardDescription>
+              <CardTitle className={`${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                Performance Trends
+              </CardTitle>
+              <CardDescription className={`${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
                 Track your reach, engagement, and follower growth over time
               </CardDescription>
             </CardHeader>
@@ -428,14 +556,35 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={analyticsData.timeSeriesData}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke={isDarkMode ? '#334155' : '#e2e8f0'}
+                    />
                     <XAxis 
                       dataKey="date" 
                       tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
                     />
-                    <YAxis yAxisId="left" />
-                    <YAxis yAxisId="right" orientation="right" />
+                    <YAxis 
+                      yAxisId="left" 
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
+                    />
+                    <YAxis 
+                      yAxisId="right" 
+                      orientation="right" 
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
+                    />
                     <Tooltip 
+                      contentStyle={{
+                        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                        border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b',
+                        fontSize: '14px'
+                      }}
+                      labelStyle={{
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b'
+                      }}
                       labelFormatter={(value) => new Date(value).toLocaleDateString('en-US', { 
                         weekday: 'long', 
                         year: 'numeric', 
@@ -443,7 +592,11 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
                         day: 'numeric' 
                       })}
                     />
-                    <Legend />
+                    <Legend 
+                      wrapperStyle={{
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b'
+                      }}
+                    />
                     <Area
                       yAxisId="left"
                       type="monotone"
@@ -478,15 +631,25 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
         {/* Platforms Tab */}
         <TabsContent value="platforms" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {analyticsData.platformBreakdown.map((platform) => (
+            {(analyticsData.platformBreakdown || []).map((platform) => (
               <PlatformCard key={platform.platform} {...platform} />
             ))}
           </div>
           
-          <Card>
+          <Card className={`${
+            isDarkMode 
+              ? 'bg-slate-800 border-slate-700' 
+              : 'bg-white'
+          }`}>
             <CardHeader>
-              <CardTitle>Platform Performance Comparison</CardTitle>
-              <CardDescription>
+              <CardTitle className={`${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                Platform Performance Comparison
+              </CardTitle>
+              <CardDescription className={`${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
                 Compare reach and engagement across all platforms
               </CardDescription>
             </CardHeader>
@@ -494,11 +657,31 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={analyticsData.platformBreakdown}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="platform" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke={isDarkMode ? '#334155' : '#e2e8f0'}
+                    />
+                    <XAxis 
+                      dataKey="platform" 
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
+                    />
+                    <YAxis 
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                        border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <Legend 
+                      wrapperStyle={{
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b'
+                      }}
+                    />
                     <Bar dataKey="reach" fill="#3B82F6" name="Reach" />
                     <Bar dataKey="engagement" fill="#10B981" name="Engagement" />
                   </BarChart>
@@ -510,10 +693,20 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
 
         {/* Content Types Tab */}
         <TabsContent value="content" className="space-y-6">
-          <Card>
+          <Card className={`${
+            isDarkMode 
+              ? 'bg-slate-800 border-slate-700' 
+              : 'bg-white'
+          }`}>
             <CardHeader>
-              <CardTitle>Content Type Performance</CardTitle>
-              <CardDescription>
+              <CardTitle className={`${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                Content Type Performance
+              </CardTitle>
+              <CardDescription className={`${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
                 Analyze which content types perform best for your audience
               </CardDescription>
             </CardHeader>
@@ -521,11 +714,31 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={analyticsData.contentTypePerformance}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="type" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke={isDarkMode ? '#334155' : '#e2e8f0'}
+                    />
+                    <XAxis 
+                      dataKey="type" 
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
+                    />
+                    <YAxis 
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
+                    />
+                    <Tooltip 
+                      contentStyle={{
+                        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                        border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <Legend 
+                      wrapperStyle={{
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b'
+                      }}
+                    />
                     <Bar dataKey="avgReach" fill="#3B82F6" name="Avg Reach" />
                     <Bar dataKey="avgEngagement" fill="#10B981" name="Avg Engagement" />
                   </BarChart>
@@ -535,15 +748,35 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {analyticsData.contentTypePerformance.map((content) => (
-              <Card key={content.type}>
+            {(analyticsData.contentTypePerformance || []).map((content) => (
+              <Card key={content.type} className={`${
+                isDarkMode 
+                  ? 'bg-slate-800 border-slate-700 hover:shadow-lg transition-shadow' 
+                  : 'bg-white'
+              }`}>
                 <CardContent className="p-4">
                   <div className="text-center">
-                    <h3 className="font-medium text-slate-900 mb-2">{content.type}</h3>
+                    <h3 className={`font-medium mb-2 ${
+                      isDarkMode ? 'text-white' : 'text-slate-900'
+                    }`}>
+                      {content.type}
+                    </h3>
                     <div className="space-y-1">
-                      <p className="text-sm text-slate-600 dark:text-slate-400">{content.posts} posts</p>
-                      <p className="text-lg font-bold text-slate-900">{content.engagementRate}%</p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">avg engagement rate</p>
+                      <p className={`text-sm ${
+                        isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                      }`}>
+                        {content.posts} posts
+                      </p>
+                      <p className={`text-lg font-bold ${
+                        isDarkMode ? 'text-white' : 'text-slate-900'
+                      }`}>
+                        {content.engagementRate}%
+                      </p>
+                      <p className={`text-xs ${
+                        isDarkMode ? 'text-slate-400' : 'text-slate-500'
+                      }`}>
+                        avg engagement rate
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -554,10 +787,20 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
 
         {/* Best Times Tab */}
         <TabsContent value="timing" className="space-y-6">
-          <Card>
+          <Card className={`${
+            isDarkMode 
+              ? 'bg-slate-800 border-slate-700' 
+              : 'bg-white'
+          }`}>
             <CardHeader>
-              <CardTitle>Optimal Posting Times</CardTitle>
-              <CardDescription>
+              <CardTitle className={`${
+                isDarkMode ? 'text-white' : 'text-slate-900'
+              }`}>
+                Optimal Posting Times
+              </CardTitle>
+              <CardDescription className={`${
+                isDarkMode ? 'text-slate-300' : 'text-slate-600'
+              }`}>
                 Discover when your audience is most active and engaged
               </CardDescription>
             </CardHeader>
@@ -565,13 +808,29 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={analyticsData.bestPostingTimes}>
-                    <CartesianGrid strokeDasharray="3 3" />
+                    <CartesianGrid 
+                      strokeDasharray="3 3" 
+                      stroke={isDarkMode ? '#334155' : '#e2e8f0'}
+                    />
                     <XAxis 
                       dataKey="hour" 
                       tickFormatter={(value) => `${value}:00`}
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
                     />
-                    <YAxis />
+                    <YAxis 
+                      tick={{ fill: isDarkMode ? '#f1f5f9' : '#1e293b' }}
+                    />
                     <Tooltip 
+                      contentStyle={{
+                        backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                        border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+                        borderRadius: '8px',
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b',
+                        fontSize: '14px'
+                      }}
+                      labelStyle={{
+                        color: isDarkMode ? '#f1f5f9' : '#1e293b'
+                      }}
                       labelFormatter={(value) => `${value}:00`}
                       formatter={(value) => [`${value}%`, 'Engagement Rate']}
                     />
@@ -589,30 +848,84 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
+            <Card className={`${
+              isDarkMode 
+                ? 'bg-slate-800 border-slate-700 hover:shadow-lg transition-shadow' 
+                : 'bg-white'
+            }`}>
               <CardContent className="p-4 text-center">
-                <Clock className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                <h3 className="font-medium text-slate-900">Best Time</h3>
-                <p className="text-2xl font-bold text-green-600">6:00 PM</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Peak engagement</p>
+                <Clock className={`h-8 w-8 mx-auto mb-2 ${
+                  isDarkMode ? 'text-green-400' : 'text-green-500'
+                }`} />
+                <h3 className={`font-medium ${
+                  isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}>
+                  Best Time
+                </h3>
+                <p className={`text-2xl font-bold ${
+                  isDarkMode ? 'text-green-400' : 'text-green-600'
+                }`}>
+                  6:00 PM
+                </p>
+                <p className={`text-sm ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                }`}>
+                  Peak engagement
+                </p>
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className={`${
+              isDarkMode 
+                ? 'bg-slate-800 border-slate-700 hover:shadow-lg transition-shadow' 
+                : 'bg-white'
+            }`}>
               <CardContent className="p-4 text-center">
-                <Calendar className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                <h3 className="font-medium text-slate-900">Best Day</h3>
-                <p className="text-2xl font-bold text-blue-600">Wednesday</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Highest reach</p>
+                <Calendar className={`h-8 w-8 mx-auto mb-2 ${
+                  isDarkMode ? 'text-blue-400' : 'text-blue-500'
+                }`} />
+                <h3 className={`font-medium ${
+                  isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}>
+                  Best Day
+                </h3>
+                <p className={`text-2xl font-bold ${
+                  isDarkMode ? 'text-blue-400' : 'text-blue-600'
+                }`}>
+                  Wednesday
+                </p>
+                <p className={`text-sm ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                }`}>
+                  Highest reach
+                </p>
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className={`${
+              isDarkMode 
+                ? 'bg-slate-800 border-slate-700 hover:shadow-lg transition-shadow' 
+                : 'bg-white'
+            }`}>
               <CardContent className="p-4 text-center">
-                <Target className="h-8 w-8 text-purple-500 mx-auto mb-2" />
-                <h3 className="font-medium text-slate-900">Optimal Frequency</h3>
-                <p className="text-2xl font-bold text-purple-600">3-4</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">Posts per day</p>
+                <Target className={`h-8 w-8 mx-auto mb-2 ${
+                  isDarkMode ? 'text-purple-400' : 'text-purple-500'
+                }`} />
+                <h3 className={`font-medium ${
+                  isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}>
+                  Optimal Frequency
+                </h3>
+                <p className={`text-2xl font-bold ${
+                  isDarkMode ? 'text-purple-400' : 'text-purple-600'
+                }`}>
+                  3-4
+                </p>
+                <p className={`text-sm ${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                }`}>
+                  Posts per day
+                </p>
               </CardContent>
             </Card>
           </div>
@@ -621,10 +934,20 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
         {/* Audience Tab */}
         <TabsContent value="audience" className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
+            <Card className={`${
+              isDarkMode 
+                ? 'bg-slate-800 border-slate-700' 
+                : 'bg-white'
+            }`}>
               <CardHeader>
-                <CardTitle>Age Demographics</CardTitle>
-                <CardDescription>
+                <CardTitle className={`${
+                  isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}>
+                  Age Demographics
+                </CardTitle>
+                <CardDescription className={`${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                }`}>
                   Age distribution of your audience
                 </CardDescription>
               </CardHeader>
@@ -633,44 +956,74 @@ const PerformanceAnalytics = ({ data, user, onDataUpdate }) => {
                   <ResponsiveContainer width="100%" height="100%">
                     <RechartsPieChart>
                       <Pie
-                        data={analyticsData.audienceInsights.demographics}
+                        data={analyticsData.audienceInsights?.demographics || []}
                         cx="50%"
                         cy="50%"
                         outerRadius={80}
                         dataKey="percentage"
                         label={({ age, percentage }) => `${age}: ${percentage}%`}
                       >
-                        {analyticsData.audienceInsights.demographics.map((entry, index) => (
+                        {(analyticsData.audienceInsights?.demographics || []).map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip />
+                      <Tooltip 
+                        contentStyle={{
+                          backgroundColor: isDarkMode ? '#1e293b' : '#ffffff',
+                          border: isDarkMode ? '1px solid #334155' : '1px solid #e2e8f0',
+                          borderRadius: '8px',
+                          color: isDarkMode ? '#f1f5f9' : '#1e293b',
+                          fontSize: '14px'
+                        }}
+                      />
                     </RechartsPieChart>
                   </ResponsiveContainer>
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className={`${
+              isDarkMode 
+                ? 'bg-slate-800 border-slate-700' 
+                : 'bg-white'
+            }`}>
               <CardHeader>
-                <CardTitle>Top Locations</CardTitle>
-                <CardDescription>
+                <CardTitle className={`${
+                  isDarkMode ? 'text-white' : 'text-slate-900'
+                }`}>
+                  Top Locations
+                </CardTitle>
+                <CardDescription className={`${
+                  isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                }`}>
                   Geographic distribution of your audience
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {analyticsData.audienceInsights.topLocations.map((location, index) => (
+                  {(analyticsData.audienceInsights?.topLocations || []).map((location, index) => (
                     <div key={location.location} className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-slate-900">{location.location}</span>
+                      <span className={`text-sm font-medium ${
+                        isDarkMode ? 'text-white' : 'text-slate-900'
+                      }`}>
+                        {location.location}
+                      </span>
                       <div className="flex items-center space-x-2">
-                        <div className="w-24 bg-slate-200 rounded-full h-2">
+                        <div className={`w-24 rounded-full h-2 ${
+                          isDarkMode ? 'bg-slate-700' : 'bg-slate-200'
+                        }`}>
                           <div 
-                            className="bg-blue-500 h-2 rounded-full" 
+                            className={`h-2 rounded-full ${
+                              isDarkMode ? 'bg-blue-400' : 'bg-blue-500'
+                            }`}
                             style={{ width: `${location.percentage}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm text-slate-600 dark:text-slate-400 w-8">{location.percentage}%</span>
+                        <span className={`text-sm w-8 ${
+                          isDarkMode ? 'text-slate-300' : 'text-slate-600'
+                        }`}>
+                          {location.percentage}%
+                        </span>
                       </div>
                     </div>
                   ))}

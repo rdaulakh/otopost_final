@@ -58,6 +58,17 @@ const EnhancedContentCalendar = () => {
   const [isEditorOpen, setIsEditorOpen] = useState(false)
 
   // Enhanced post data with complete post information
+  const enhancedPosts = [
+    {
+      id: 1,
+      title: "5 Productivity Tips for 2024",
+      type: "carousel",
+      platform: "instagram",
+      scheduledDate: "2024-01-15T09:00:00Z",
+      status: "scheduled",
+      content: {
+        caption: "Boost your productivity with these 5 game-changing tips! 💪✨ #ProductivityTips #NewYearGoals",
+        hashtags: ["#ProductivityTips", "#NewYearGoals", "#Motivation", "#Success"],
         visualDescription: "Modern carousel with 5 slides, each featuring a productivity tip with clean icons, gradient backgrounds, and consistent brand colors (blue/purple theme)"
       },
       aiInsights: {

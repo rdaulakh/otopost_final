@@ -1,5 +1,5 @@
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
 const API_TIMEOUT = import.meta.env.VITE_API_TIMEOUT || 10000;
 
 export const apiConfig = {
@@ -71,11 +71,11 @@ export const endpoints = {
   
   // Subscriptions
   subscriptions: {
-    list: '/admin/subscriptions',
+    list: '/admin/user-subscriptions',
     create: '/admin/subscriptions',
     get: (id) => `/admin/subscriptions/${id}`,
     update: (id) => `/admin/subscriptions/${id}`,
-    stats: '/admin/subscriptions/stats',
+    stats: '/admin/user-subscriptions/stats',
     analytics: '/admin/subscriptions/analytics',
     plans: '/admin/subscriptions/plans',
     cancel: (id) => `/admin/subscriptions/${id}/cancel`,

@@ -12,7 +12,7 @@ const router = express.Router();
 router.use(authenticateAdmin);
 
 // Content management
-router.get('/', requireAdminPermission('canViewContent'), validateContentQuery, adminContentController.getContents);
+router.get('/', requireAdminPermission('canViewContent'), validateContentQuery, adminContentController.getAllContent);
 router.get('/stats', requireAdminPermission('canViewContent'), adminContentController.getContentStats);
 router.get('/:id', requireAdminPermission('canViewContent'), adminContentController.getContentById);
 router.get('/:id/analytics', requireAdminPermission('canViewContent'), adminContentController.getContentAnalytics);

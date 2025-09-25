@@ -1,548 +1,366 @@
-# 🚀 **DEPLOYMENT GUIDE**
-## AI Social Media Platform - Production Deployment
+# AI Social Media Platform - Deployment Guide
 
-**Version:** 1.0.0  
-**Last Updated:** September 19, 2025  
-**Status:** Production Ready ✅
+## Overview
+This guide explains how to deploy the AI Social Media Platform backend API on different systems and environments.
 
----
+## Prerequisites
 
-## 📋 **QUICK START (3 Steps)**
+### System Requirements
+- **Node.js**: Version 18.0.0 or higher
+- **MongoDB**: Version 4.4 or higher
+- **Redis**: Version 6.0 or higher (optional but recommended)
+- **Docker**: Version 20.10 or higher (for containerized deployment)
+- **PM2**: For process management (optional)
 
-### **Step 1: Clone & Setup**
+### Network Requirements
+- **Port 8000**: Backend API server
+- **Port 27017**: MongoDB (if running locally)
+- **Port 6379**: Redis (if running locally)
+
+## Deployment Methods
+
+### Method 1: Direct Node.js Deployment
+
+#### Step 1: Clone and Setup
 ```bash
-git clone https://github.com/rdaulakh/ai-social-media-platform.git
-cd ai-social-media-platform
-```
+# Clone the repository
+git clone <your-repo-url>
+cd ai-social-media-platform/backend-api
 
-### **Step 2: Configure Environment**
-```bash
-# Backend API
-cd api
+# Install dependencies
+npm install
+
+# Copy environment file
 cp .env.example .env
-# Edit .env with your API keys (see Configuration section below)
-
-# Frontend
-cd ../customer-frontend
-cp .env.example .env
-# Edit .env with your backend URL
 ```
 
-### **Step 3: Deploy with Docker**
-```bash
-# From project root
-docker-compose up -d
-```
+#### Step 2: Configure Environment
+Edit `.env` file with your configuration:
 
-**🎉 Your platform is now running!**
-- **Frontend:** http://localhost:3000
-- **Backend API:** http://localhost:5000
-- **API Documentation:** http://localhost:5000/docs
+```env
+# Server Configuration
+NODE_ENV=production
+PORT=8000
 
----
+# Database Configuration
+MONGODB_URI=mongodb://localhost:27017/ai-social-media-platform
+# For external MongoDB:
+# MONGODB_URI=mongodb://username:password@your-mongodb-host:27017/ai-social-media-platform
 
-## 🔧 **DETAILED CONFIGURATION**
-
-### **Backend API Configuration (.env)**
-
-```bash
-# Database
-MONGODB_URI=mongodb://localhost:27017/ai-social-media
+# Redis Configuration
 REDIS_URL=redis://localhost:6379
+# For external Redis:
+# REDIS_URL=redis://username:password@your-redis-host:6379
 
-# Authentication
-JWT_SECRET=your-super-secure-jwt-secret-key-here
-JWT_EXPIRE=7d
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_REFRESH_SECRET=your-super-secret-refresh-key-change-this-in-production
+ADMIN_JWT_SECRET=admin-super-secret-jwt-key-change-this-in-production
+ADMIN_JWT_REFRESH_SECRET=admin-super-secret-refresh-key-change-this-in-production
+JWT_EXPIRES_IN=7d
 
-# AI Services (Required for full functionality)
-OPENAI_API_KEY=your-openai-api-key-here
+# Frontend URLs (Update for your domain)
+FRONTEND_URL=https://yourdomain.com
+ADMIN_PANEL_URL=https://admin.yourdomain.com
+CUSTOMER_URL=https://app.yourdomain.com
+ADMIN_URL=https://admin.yourdomain.com
 
-# Social Media APIs (Required for integrations)
-FACEBOOK_APP_ID=your-facebook-app-id
-INSTAGRAM_APP_ID=your-instagram-app-id
-TWITTER_API_KEY=your-twitter-api-key
-LINKEDIN_CLIENT_ID=your-linkedin-client-id
-TIKTOK_CLIENT_KEY=your-tiktok-client-key
-YOUTUBE_API_KEY=your-youtube-api-key
+# External Access URLs
+EXTERNAL_FRONTEND_URL=https://yourdomain.com
+EXTERNAL_ADMIN_URL=https://admin.yourdomain.com
+EXTERNAL_API_URL=https://api.yourdomain.com
 
-# File Storage (Required for media)
-AWS_ACCESS_KEY_ID=your-aws-access-key
-AWS_SECRET_ACCESS_KEY=your-aws-secret-key
-AWS_S3_BUCKET=your-s3-bucket-name
+# Encryption
+ENCRYPTION_KEY=your-32-character-encryption-key
 
-# Email Service (Optional)
+# Email Configuration (Optional)
+EMAIL_FROM=noreply@yourdomain.com
 SENDGRID_API_KEY=your-sendgrid-api-key
 
-# Server Configuration
-PORT=5000
-NODE_ENV=production
-CORS_ORIGIN=http://localhost:3000
+# AWS Configuration (Optional)
+AWS_ACCESS_KEY_ID=your-aws-access-key
+AWS_SECRET_ACCESS_KEY=your-aws-secret-key
+AWS_REGION=us-east-1
+AWS_S3_BUCKET=your-s3-bucket-name
+
+# OpenAI Configuration (Optional)
+OPENAI_API_KEY=sk-your-openai-api-key-here
 ```
 
-### **Frontend Configuration (.env)**
-
+#### Step 3: Start Services
 ```bash
-# API Configuration
-REACT_APP_API_URL=http://localhost:5000/api
-REACT_APP_WS_URL=http://localhost:5000
+# Start MongoDB (if running locally)
+sudo systemctl start mongod
 
-# Environment
-REACT_APP_ENV=production
+# Start Redis (if running locally)
+sudo systemctl start redis
+
+# Start the API server
+npm start
 ```
 
----
-
-## 🐳 **DOCKER DEPLOYMENT**
-
-### **Prerequisites:**
-- Docker 20.0+
-- Docker Compose 2.0+
-- 4GB RAM minimum
-- 10GB disk space
-
-### **Production Docker Compose:**
-
-```yaml
-version: '3.8'
-
-services:
-  # MongoDB Database
-  mongodb:
-    image: mongo:6.0
-    container_name: ai-social-mongodb
-    restart: unless-stopped
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: your-secure-password
-    volumes:
-      - mongodb_data:/data/db
-    ports:
-      - "27017:27017"
-    networks:
-      - ai-social-network
-
-  # Redis Cache
-  redis:
-    image: redis:7-alpine
-    container_name: ai-social-redis
-    restart: unless-stopped
-    command: redis-server --requirepass your-redis-password
-    volumes:
-      - redis_data:/data
-    ports:
-      - "6379:6379"
-    networks:
-      - ai-social-network
-
-  # Backend API
-  backend:
-    build: ./api
-    container_name: ai-social-backend
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-      - MONGODB_URI=mongodb://admin:your-secure-password@mongodb:27017/ai-social-media?authSource=admin
-      - REDIS_URL=redis://:your-redis-password@redis:6379
-    ports:
-      - "5000:5000"
-    depends_on:
-      - mongodb
-      - redis
-    networks:
-      - ai-social-network
-    volumes:
-      - ./api:/app
-      - /app/node_modules
-
-  # Frontend
-  frontend:
-    build: ./customer-frontend
-    container_name: ai-social-frontend
-    restart: unless-stopped
-    environment:
-      - REACT_APP_API_URL=http://localhost:5000/api
-    ports:
-      - "3000:3000"
-    depends_on:
-      - backend
-    networks:
-      - ai-social-network
-
-volumes:
-  mongodb_data:
-  redis_data:
-
-networks:
-  ai-social-network:
-    driver: bridge
-```
-
-### **Deployment Commands:**
-
+#### Step 4: Verify Deployment
 ```bash
-# Production deployment
-docker-compose -f docker-compose.prod.yml up -d
+# Check if the server is running
+curl http://localhost:8000/health
 
-# View logs
-docker-compose logs -f
-
-# Scale services
-docker-compose up -d --scale backend=3
-
-# Update services
-docker-compose pull
-docker-compose up -d --force-recreate
+# Check API endpoints
+curl http://localhost:8000/api/v1/health
 ```
 
----
+### Method 2: Docker Deployment
 
-## ☁️ **CLOUD DEPLOYMENT**
-
-### **AWS Deployment**
-
-#### **1. EC2 Instance Setup:**
+#### Step 1: Using Docker Compose
 ```bash
-# Launch EC2 instance (t3.medium or larger)
-# Install Docker and Docker Compose
-sudo yum update -y
-sudo yum install -y docker
-sudo service docker start
-sudo usermod -a -G docker ec2-user
-
-# Install Docker Compose
-sudo curl -L "https://github.com/docker/compose/releases/download/v2.20.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
-```
-
-#### **2. Application Deployment:**
-```bash
-# Clone repository
-git clone https://github.com/rdaulakh/ai-social-media-platform.git
+# Navigate to project root
 cd ai-social-media-platform
 
-# Configure environment
-cp api/.env.example api/.env
-cp customer-frontend/.env.example customer-frontend/.env
+# Create environment file
+cp .env.example .env
+# Edit .env with your configuration
 
-# Deploy
+# Start all services
 docker-compose up -d
+
+# Check status
+docker-compose ps
 ```
 
-#### **3. Load Balancer & SSL:**
+#### Step 2: Using Individual Docker Containers
 ```bash
-# Install Nginx
-sudo yum install -y nginx
+# Build the backend image
+cd backend-api
+docker build -t ai-social-backend .
 
-# Configure SSL with Let's Encrypt
-sudo yum install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d yourdomain.com
+# Run with external services
+docker run -d \
+  --name ai-social-backend \
+  -p 8000:8000 \
+  -e MONGODB_URI=mongodb://host.docker.internal:27017/ai-social-media-platform \
+  -e REDIS_URL=redis://host.docker.internal:6379 \
+  -e NODE_ENV=production \
+  ai-social-backend
 ```
 
-### **Vercel Deployment (Frontend Only)**
+### Method 3: PM2 Process Management
 
+#### Step 1: Install PM2
 ```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Deploy frontend
-cd customer-frontend
-vercel --prod
+npm install -g pm2
 ```
 
-### **Railway Deployment**
-
+#### Step 2: Configure PM2
 ```bash
-# Install Railway CLI
-npm install -g @railway/cli
+# Use the provided ecosystem.config.js
+pm2 start ecosystem.config.js
 
-# Login and deploy
-railway login
-railway init
-railway up
+# Or create a custom PM2 configuration
+pm2 start server.js --name "ai-social-backend" --env production
 ```
 
----
-
-## 🔒 **SECURITY CONFIGURATION**
-
-### **Production Security Checklist:**
-
-#### **Environment Variables:**
-- [x] Use strong JWT secrets (32+ characters)
-- [x] Secure database passwords
-- [x] API keys in environment variables only
-- [x] No secrets in code repository
-
-#### **Network Security:**
-- [x] Configure firewall rules
-- [x] Use HTTPS/SSL certificates
-- [x] Restrict database access
-- [x] Enable CORS properly
-
-#### **Application Security:**
-- [x] Rate limiting enabled
-- [x] Input validation active
-- [x] Error handling secure
-- [x] Audit logging enabled
-
-### **Security Headers (Nginx):**
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name yourdomain.com;
-
-    # Security headers
-    add_header X-Frame-Options DENY;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-XSS-Protection "1; mode=block";
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';";
-
-    # Proxy to application
-    location / {
-        proxy_pass http://localhost:3000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /api {
-        proxy_pass http://localhost:5000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
----
-
-## 📊 **MONITORING & MAINTENANCE**
-
-### **Health Checks:**
-
+#### Step 3: Setup PM2 Startup
 ```bash
-# Backend health
-curl http://localhost:5000/health
+# Save PM2 configuration
+pm2 save
 
-# Database connection
-curl http://localhost:5000/health/db
-
-# Redis connection
-curl http://localhost:5000/health/redis
+# Setup PM2 to start on boot
+pm2 startup
 ```
 
-### **Log Management:**
+## Environment-Specific Configurations
 
-```bash
-# View application logs
-docker-compose logs -f backend
-docker-compose logs -f frontend
-
-# Log rotation setup
-sudo logrotate -d /etc/logrotate.d/docker-containers
+### Development Environment
+```env
+NODE_ENV=development
+PORT=8000
+MONGODB_URI=mongodb://localhost:27017/ai-social-media-dev
+REDIS_URL=redis://localhost:6379
 ```
 
-### **Backup Strategy:**
-
-```bash
-# MongoDB backup
-docker exec ai-social-mongodb mongodump --out /backup/$(date +%Y%m%d)
-
-# Redis backup
-docker exec ai-social-redis redis-cli BGSAVE
+### Production Environment
+```env
+NODE_ENV=production
+PORT=8000
+MONGODB_URI=mongodb://username:password@your-mongodb-host:27017/ai-social-media-platform
+REDIS_URL=redis://username:password@your-redis-host:6379
 ```
 
-### **Performance Monitoring:**
-
-```bash
-# System resources
-docker stats
-
-# Application metrics
-curl http://localhost:5000/metrics
-
-# Database performance
-docker exec ai-social-mongodb mongostat
+### Staging Environment
+```env
+NODE_ENV=staging
+PORT=8000
+MONGODB_URI=mongodb://username:password@your-staging-mongodb:27017/ai-social-media-staging
+REDIS_URL=redis://username:password@your-staging-redis:6379
 ```
 
----
+## Common Issues and Solutions
 
-## 🔧 **TROUBLESHOOTING**
+### Issue 1: CORS Errors
+**Problem**: Frontend can't access the API due to CORS restrictions.
 
-### **Common Issues:**
-
-#### **1. Database Connection Failed**
-```bash
-# Check MongoDB status
-docker-compose logs mongodb
-
-# Verify connection string
-echo $MONGODB_URI
-
-# Test connection
-docker exec -it ai-social-mongodb mongo --eval "db.adminCommand('ismaster')"
-```
-
-#### **2. API Not Responding**
-```bash
-# Check backend logs
-docker-compose logs backend
-
-# Verify environment variables
-docker exec ai-social-backend env | grep -E "(MONGODB|REDIS|JWT)"
-
-# Test API endpoint
-curl http://localhost:5000/health
-```
-
-#### **3. Frontend Build Errors**
-```bash
-# Check build logs
-docker-compose logs frontend
-
-# Rebuild frontend
-docker-compose build --no-cache frontend
-docker-compose up -d frontend
-```
-
-#### **4. WebSocket Connection Issues**
-```bash
-# Check WebSocket endpoint
-curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" http://localhost:5000/socket.io/
-
-# Verify CORS settings
-grep CORS_ORIGIN api/.env
-```
-
-### **Performance Optimization:**
-
-#### **Database Optimization:**
+**Solution**: Update the CORS configuration in `server.js`:
 ```javascript
-// MongoDB indexes
-db.users.createIndex({ email: 1 }, { unique: true })
-db.content.createIndex({ userId: 1, createdAt: -1 })
-db.analytics.createIndex({ userId: 1, date: -1 })
+// Add your frontend domain to allowedOrigins
+const allowedOrigins = [
+  'https://yourdomain.com',
+  'https://www.yourdomain.com',
+  'https://admin.yourdomain.com'
+];
 ```
 
-#### **Redis Optimization:**
+### Issue 2: Database Connection Failed
+**Problem**: API can't connect to MongoDB.
+
+**Solutions**:
+1. Check MongoDB is running: `sudo systemctl status mongod`
+2. Verify connection string in `.env`
+3. Check firewall settings
+4. Ensure MongoDB accepts external connections
+
+### Issue 3: Port Already in Use
+**Problem**: Port 8000 is already occupied.
+
+**Solutions**:
+1. Change port in `.env`: `PORT=8001`
+2. Kill existing process: `sudo lsof -ti:8000 | xargs kill -9`
+3. Use different port: `PORT=8001 npm start`
+
+### Issue 4: Environment Variables Not Loading
+**Problem**: Environment variables are not being loaded.
+
+**Solutions**:
+1. Ensure `.env` file exists in `backend-api` directory
+2. Check file permissions: `chmod 644 .env`
+3. Verify `.env` file format (no spaces around `=`)
+4. Restart the server after changes
+
+### Issue 5: External Access Not Working
+**Problem**: API works locally but not accessible from other systems.
+
+**Solutions**:
+1. Check firewall settings: `sudo ufw status`
+2. Open port 8000: `sudo ufw allow 8000`
+3. Verify server binding: Check `server.js` uses `0.0.0.0:8000`
+4. Check network configuration
+
+## Security Considerations
+
+### 1. Environment Variables
+- Never commit `.env` files to version control
+- Use strong, unique secrets for JWT keys
+- Rotate secrets regularly in production
+
+### 2. Database Security
+- Use authentication for MongoDB
+- Enable SSL/TLS for database connections
+- Restrict database access by IP
+
+### 3. Network Security
+- Use HTTPS in production
+- Configure proper CORS policies
+- Implement rate limiting
+- Use a reverse proxy (Nginx)
+
+### 4. Process Security
+- Run as non-root user
+- Use PM2 or similar process manager
+- Monitor logs for suspicious activity
+
+## Monitoring and Maintenance
+
+### Health Checks
 ```bash
-# Redis memory optimization
-redis-cli CONFIG SET maxmemory 256mb
-redis-cli CONFIG SET maxmemory-policy allkeys-lru
+# API Health
+curl http://localhost:8000/health
+
+# API Version
+curl http://localhost:8000/api/v1/health
+
+# Database Status
+curl http://localhost:8000/api/v1/status
 ```
 
-#### **Application Optimization:**
+### Logs
 ```bash
-# Node.js optimization
-export NODE_OPTIONS="--max-old-space-size=4096"
-export UV_THREADPOOL_SIZE=128
+# PM2 Logs
+pm2 logs ai-social-backend
+
+# Docker Logs
+docker logs ai-social-backend
+
+# System Logs
+tail -f logs/combined.log
 ```
 
----
+### Performance Monitoring
+```bash
+# Check memory usage
+pm2 monit
 
-## 📈 **SCALING GUIDE**
+# Check Docker stats
+docker stats ai-social-backend
 
-### **Horizontal Scaling:**
-
-```yaml
-# docker-compose.scale.yml
-version: '3.8'
-
-services:
-  backend:
-    deploy:
-      replicas: 3
-    
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-    depends_on:
-      - backend
+# Check system resources
+htop
 ```
 
-### **Load Balancer Configuration:**
-
-```nginx
-upstream backend {
-    server backend_1:5000;
-    server backend_2:5000;
-    server backend_3:5000;
-}
-
-server {
-    listen 80;
-    location /api {
-        proxy_pass http://backend;
-    }
-}
-```
-
-### **Database Scaling:**
+## Troubleshooting Commands
 
 ```bash
-# MongoDB replica set
-docker-compose -f docker-compose.replica.yml up -d
+# Check if port is in use
+sudo lsof -i :8000
 
-# Redis cluster
-docker-compose -f docker-compose.redis-cluster.yml up -d
+# Check running processes
+ps aux | grep node
+
+# Check network connections
+netstat -tlnp | grep 8000
+
+# Check system resources
+free -h
+df -h
+
+# Check logs
+tail -f logs/error.log
+tail -f logs/combined.log
 ```
 
----
+## Production Checklist
 
-## 🎯 **PRODUCTION CHECKLIST**
-
-### **Pre-Deployment:**
 - [ ] Environment variables configured
-- [ ] SSL certificates installed
-- [ ] Database backups scheduled
-- [ ] Monitoring tools setup
-- [ ] Load testing completed
-- [ ] Security audit passed
+- [ ] Database connections working
+- [ ] CORS properly configured
+- [ ] SSL/HTTPS enabled
+- [ ] Firewall configured
+- [ ] Process manager setup (PM2)
+- [ ] Logging configured
+- [ ] Monitoring setup
+- [ ] Backup strategy implemented
+- [ ] Security measures in place
 
-### **Post-Deployment:**
-- [ ] Health checks passing
-- [ ] Logs monitoring active
-- [ ] Performance metrics tracked
-- [ ] Backup verification
-- [ ] User acceptance testing
-- [ ] Documentation updated
+## Support
 
----
+For additional support:
+1. Check the logs for error messages
+2. Verify all environment variables are set
+3. Test database connectivity
+4. Check network configuration
+5. Review this deployment guide
 
-## 📞 **SUPPORT**
+## Quick Start Commands
 
-### **Technical Support:**
-- **Documentation:** Available in `/docs` directory
-- **API Reference:** http://localhost:5000/docs
-- **Health Checks:** http://localhost:5000/health
-
-### **Emergency Procedures:**
 ```bash
-# Quick restart
-docker-compose restart
+# Quick deployment
+git clone <repo-url>
+cd ai-social-media-platform/backend-api
+npm install
+cp .env.example .env
+# Edit .env file
+npm start
 
-# Full reset (WARNING: Data loss)
-docker-compose down -v
+# Docker deployment
 docker-compose up -d
 
-# Backup before reset
-./scripts/backup.sh
+# PM2 deployment
+pm2 start ecosystem.config.js
 ```
-
----
-
-**🚀 Your AI Social Media Platform is now ready for production deployment!**
-
-**For additional support or custom deployment assistance, refer to the comprehensive documentation provided in the repository.**
-
----
-
-*Deployment Guide by Manus AI - September 19, 2025*

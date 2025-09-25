@@ -5,6 +5,7 @@ import path from 'path'
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/admin/',
   plugins: [react(),tailwindcss()],
   resolve: {
     alias: {
@@ -13,6 +14,11 @@ export default defineConfig({
   },
   server: {
     port: 5174,
-    host: '0.0.0.0'
+    host: '0.0.0.0',
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      'digiads.digiaeon.com'
+    ]
   }
 })
