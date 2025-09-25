@@ -232,6 +232,11 @@ Thumbs.db
 .dockerignore
 
 # AI Social Media Platform specific
+# Large files that exceed GitHub limits (keep locally but don't upload)
+mongodb-compass_1.42.0_amd64.deb
+oto-website-backup-20250924-162930.zip
+ai-agents/venv/
+
 # Uploads and user generated content
 uploads/
 public/uploads/
