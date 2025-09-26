@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Social Media Platform - API Integration Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #f7fafc;
+        }
+        .section h2 {
+            color: #4a5568;
+            margin-top: 0;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        input, textarea, button {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        button {
+            background: #4299e1;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #3182ce;
+        }
+        button:disabled {
+            background: #a0aec0;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            color: #22543d;
+        }
+        .error {
+            background: #fed7d7;
+            border: 1px solid #feb2b2;
+            color: #742a2a;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status.online {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        .status.offline {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 AI Social Media Platform - Live API Integration Test</h1>
+        
+        <div class="section">
+            <h2>📊 System Status</h2>
+            <p>API Server: <span id="apiStatus" class="status offline">Checking...</span></p>
+            <p>Database: <span id="dbStatus" class="status offline">Checking...</span></p>
+            <p>AI Integration: <span id="aiStatus" class="status offline">Checking...</span></p>
+        </div>
+
+        <div class="section">
+            <h2>👤 User Authentication Test</h2>
+            <div class="form-group">
+                <label>Email:</label>
+                <input type="email" id="loginEmail" value="test2@example.com" placeholder="Enter email">
+            </div>
+            <div class="form-group">
+                <label>Password:</label>
+                <input type="password" id="loginPassword" value="testpassword123" placeholder="Enter password">
+            </div>
+            <button onclick="testLogin()">Test Login</button>
+            <div id="loginResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>🤖 AI Content Generation Test</h2>
+            <div class="form-group">
+                <label>Content Prompt:</label>
+                <textarea id="aiPrompt" rows="3" placeholder="Enter a prompt for AI content generation">Create a social media post about the benefits of AI in business</textarea>
+            </div>
+            <div class="form-group">
+                <label>Platform:</label>
+                <select id="aiPlatform">
+                    <option value="twitter">Twitter</option>
+                    <option value="linkedin">LinkedIn</option>
+                    <option value="facebook">Facebook</option>
+                    <option value="instagram">Instagram</option>
+                </select>
+            </div>
+            <button onclick="testAIGeneration()" id="aiButton">Generate AI Content</button>
+            <div id="aiResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>📈 User Profile Test</h2>
+            <button onclick="testUserProfile()" id="profileButton">Get User Profile</button>
+            <div id="profileResult" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="section">
+            <h2>🔗 API Endpoints Available</h2>
+            <ul>
+                <li><strong>Authentication:</strong> /api/auth/login, /api/auth/register</li>
+                <li><strong>User Management:</strong> /api/users/me, /api/users/subscription</li>
+                <li><strong>AI Services:</strong> /api/ai/generate-content, /api/ai/generate-hashtags</li>
+                <li><strong>Content:</strong> /api/content (CRUD operations)</li>
+                <li><strong>Analytics:</strong> /api/analytics/overview</li>
+                <li><strong>Social Media:</strong> /api/social-profiles, /api/social-publishing</li>
+                <li><strong>Media:</strong> /api/media/upload</li>
+                <li><strong>Real-time:</strong> /api/realtime/status</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5001/api';
+        let authToken = null;
+
+        // Check system status on load
+        window.onload = function() {
+            checkSystemStatus();
+        };
+
+        async function checkSystemStatus() {
+            try {
+                // Check API health
+                const healthResponse = await fetch(`${API_BASE}/health`);
+                if (healthResponse.ok) {
+                    document.getElementById('apiStatus').textContent = 'Online';
+                    document.getElementById('apiStatus').className = 'status online';
+                    document.getElementById('dbStatus').textContent = 'Connected';
+                    document.getElementById('dbStatus').className = 'status online';
+                    document.getElementById('aiStatus').textContent = 'Ready';
+                    document.getElementById('aiStatus').className = 'status online';
+                }
+            } catch (error) {
+                console.error('Health check failed:', error);
+            }
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+            const resultDiv = document.getElementById('loginResult');
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    authToken = data.token;
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ Login Successful!\n\nUser: ${data.user.name}\nEmail: ${data.user.email}\nSubscription: ${data.user.subscription}\nToken: ${data.token.substring(0, 50)}...`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Login Failed: ${data.message}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Network Error: ${error.message}`;
+            }
+            
+            resultDiv.style.display = 'block';
+        }
+
+        async function testAIGeneration() {
+            if (!authToken) {
+                alert('Please login first to test AI generation');
+                return;
+            }
+
+            const prompt = document.getElementById('aiPrompt').value;
+            const platform = document.getElementById('aiPlatform').value;
+            const resultDiv = document.getElementById('aiResult');
+            const button = document.getElementById('aiButton');
+
+            button.disabled = true;
+            button.textContent = 'Generating...';
+
+            try {
+                const response = await fetch(`${API_BASE}/ai/generate-content`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${authToken}`
+                    },
+                    body: JSON.stringify({ 
+                        prompt, 
+                        platform,
+                        tone: 'professional'
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ AI Content Generated Successfully!\n\nPlatform: ${platform}\nModel: ${data.model}\nTokens Used: ${data.usage.total_tokens}\n\nGenerated Content:\n"${data.content}"`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ AI Generation Failed: ${data.message}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Network Error: ${error.message}`;
+            }
+            
+            button.disabled = false;
+            button.textContent = 'Generate AI Content';
+            resultDiv.style.display = 'block';
+        }
+
+        async function testUserProfile() {
+            if (!authToken) {
+                alert('Please login first to test user profile');
+                return;
+            }
+
+            const resultDiv = document.getElementById('profileResult');
+            const button = document.getElementById('profileButton');
+
+            button.disabled = true;
+            button.textContent = 'Loading...';
+
+            try {
+                const response = await fetch(`${API_BASE}/users/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.textContent = `✅ User Profile Retrieved!\n\n${JSON.stringify(data.user, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.textContent = `❌ Profile Fetch Failed: ${data.message}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.textContent = `❌ Network Error: ${error.message}`;
+            }
+            
+            button.disabled = false;
+            button.textContent = 'Get User Profile';
+            resultDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

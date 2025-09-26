@@ -1,0 +1,591 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Cost Optimization and Performance Configuration for AI Social Media Platform'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    Description: Environment name
+  
+  ProjectName:
+    Type: String
+    Default: social-media-ai-platform
+    Description: Project name
+  
+  AutoScalingGroupName:
+    Type: String
+    Description: Name of the Auto Scaling Group
+  
+  S3BucketName:
+    Type: String
+    Description: Name of the main S3 bucket
+
+Resources:
+  # Cost Anomaly Detection
+  CostAnomalyDetector:
+    Type: AWS::CE::AnomalyDetector
+    Properties:
+      AnomalyDetectorName: !Sub '${ProjectName}-${Environment}-cost-anomaly-detector'
+      MonitorType: DIMENSIONAL
+      MonitorSpecification: |
+        {
+          "Dimension": "SERVICE",
+          "MatchOptions": ["EQUALS"],
+          "Values": ["Amazon Elastic Compute Cloud - Compute", "Amazon DocumentDB", "Amazon ElastiCache", "Amazon Simple Storage Service"]
+        }
+
+  # Cost Anomaly Subscription
+  CostAnomalySubscription:
+    Type: AWS::CE::AnomalySubscription
+    Properties:
+      SubscriptionName: !Sub '${ProjectName}-${Environment}-cost-alerts'
+      MonitorArnList:
+        - !GetAtt CostAnomalyDetector.AnomalyDetectorArn
+      Subscribers:
+        - Type: EMAIL
+          Address: admin@example.com  # Replace with actual email
+      Frequency: DAILY
+      Threshold: 100  # Alert when anomaly exceeds $100
+
+  # Budget for Monthly Costs
+  MonthlyBudget:
+    Type: AWS::Budgets::Budget
+    Properties:
+      Budget:
+        BudgetName: !Sub '${ProjectName}-${Environment}-monthly-budget'
+        BudgetLimit:
+          Amount: 500  # $500 monthly budget
+          Unit: USD
+        TimeUnit: MONTHLY
+        BudgetType: COST
+        CostFilters:
+          TagKey:
+            - Environment
+          TagValue:
+            - !Ref Environment
+        NotificationsWithSubscribers:
+          - Notification:
+              NotificationType: ACTUAL
+              ComparisonOperator: GREATER_THAN
+              Threshold: 80  # Alert at 80% of budget
+              ThresholdType: PERCENTAGE
+            Subscribers:
+              - SubscriptionType: EMAIL
+                Address: admin@example.com  # Replace with actual email
+          - Notification:
+              NotificationType: FORECASTED
+              ComparisonOperator: GREATER_THAN
+              Threshold: 100  # Alert when forecasted to exceed budget
+              ThresholdType: PERCENTAGE
+            Subscribers:
+              - SubscriptionType: EMAIL
+                Address: admin@example.com  # Replace with actual email
+
+  # Lambda Function for Cost Optimization
+  CostOptimizationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-cost-optimization'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt CostOptimizationRole.Arn
+      Timeout: 900
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          PROJECT_NAME: !Ref ProjectName
+          ASG_NAME: !Ref AutoScalingGroupName
+          S3_BUCKET: !Ref S3BucketName
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          from datetime import datetime, timedelta
+          
+          def lambda_handler(event, context):
+              """
+              Cost optimization function
+              """
+              try:
+                  # Initialize AWS clients
+                  ec2 = boto3.client('ec2')
+                  autoscaling = boto3.client('autoscaling')
+                  s3 = boto3.client('s3')
+                  cloudwatch = boto3.client('cloudwatch')
+                  
+                  environment = os.environ['ENVIRONMENT']
+                  project_name = os.environ['PROJECT_NAME']
+                  asg_name = os.environ['ASG_NAME']
+                  s3_bucket = os.environ['S3_BUCKET']
+                  
+                  optimizations = []
+                  
+                  # 1. Check for unused EBS volumes
+                  unused_volumes = find_unused_ebs_volumes(ec2)
+                  if unused_volumes:
+                      optimizations.append({
+                          'type': 'unused_ebs_volumes',
+                          'count': len(unused_volumes),
+                          'potential_savings': len(unused_volumes) * 10  # Estimate $10/month per volume
+                      })
+                  
+                  # 2. Check for underutilized instances
+                  underutilized_instances = check_instance_utilization(cloudwatch, asg_name)
+                  if underutilized_instances:
+                      optimizations.append({
+                          'type': 'underutilized_instances',
+                          'instances': underutilized_instances,
+                          'recommendation': 'Consider downsizing or using Spot instances'
+                      })
+                  
+                  # 3. Check S3 storage optimization
+                  s3_optimization = analyze_s3_storage(s3, s3_bucket)
+                  if s3_optimization:
+                      optimizations.append(s3_optimization)
+                  
+                  # 4. Check for old snapshots
+                  old_snapshots = find_old_snapshots(ec2)
+                  if old_snapshots:
+                      optimizations.append({
+                          'type': 'old_snapshots',
+                          'count': len(old_snapshots),
+                          'potential_savings': len(old_snapshots) * 5  # Estimate $5/month per snapshot
+                      })
+                  
+                  # Generate optimization report
+                  report = {
+                      'timestamp': datetime.now().isoformat(),
+                      'environment': environment,
+                      'project': project_name,
+                      'optimizations': optimizations,
+                      'total_potential_savings': sum([opt.get('potential_savings', 0) for opt in optimizations])
+                  }
+                  
+                  # Store report in S3
+                  report_key = f"cost-optimization/{environment}/{datetime.now().strftime('%Y/%m/%d')}/optimization-report.json"
+                  s3.put_object(
+                      Bucket=s3_bucket,
+                      Key=report_key,
+                      Body=json.dumps(report, indent=2),
+                      ServerSideEncryption='AES256'
+                  )
+                  
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps(report)
+                  }
+                  
+              except Exception as e:
+                  print(f"Error in cost optimization: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+          
+          def find_unused_ebs_volumes(ec2):
+              """Find unattached EBS volumes"""
+              try:
+                  volumes = ec2.describe_volumes(
+                      Filters=[
+                          {'Name': 'state', 'Values': ['available']}
+                      ]
+                  )
+                  return [vol['VolumeId'] for vol in volumes['Volumes']]
+              except Exception as e:
+                  print(f"Error finding unused volumes: {str(e)}")
+                  return []
+          
+          def check_instance_utilization(cloudwatch, asg_name):
+              """Check for underutilized instances"""
+              try:
+                  # Get CPU utilization for the last 7 days
+                  end_time = datetime.now()
+                  start_time = end_time - timedelta(days=7)
+                  
+                  response = cloudwatch.get_metric_statistics(
+                      Namespace='AWS/EC2',
+                      MetricName='CPUUtilization',
+                      Dimensions=[
+                          {'Name': 'AutoScalingGroupName', 'Value': asg_name}
+                      ],
+                      StartTime=start_time,
+                      EndTime=end_time,
+                      Period=3600,  # 1 hour
+                      Statistics=['Average']
+                  )
+                  
+                  if response['Datapoints']:
+                      avg_cpu = sum([dp['Average'] for dp in response['Datapoints']]) / len(response['Datapoints'])
+                      if avg_cpu < 20:  # Less than 20% average CPU
+                          return [{'metric': 'cpu_utilization', 'average': avg_cpu, 'recommendation': 'downsize'}]
+                  
+                  return []
+              except Exception as e:
+                  print(f"Error checking utilization: {str(e)}")
+                  return []
+          
+          def analyze_s3_storage(s3, bucket_name):
+              """Analyze S3 storage for optimization opportunities"""
+              try:
+                  # Get bucket metrics
+                  cloudwatch = boto3.client('cloudwatch')
+                  
+                  # Check for objects that could be moved to IA or Glacier
+                  response = s3.list_objects_v2(Bucket=bucket_name, MaxKeys=1000)
+                  
+                  if 'Contents' in response:
+                      old_objects = []
+                      for obj in response['Contents']:
+                          age_days = (datetime.now(obj['LastModified'].tzinfo) - obj['LastModified']).days
+                          if age_days > 30 and obj['StorageClass'] == 'STANDARD':
+                              old_objects.append(obj['Key'])
+                      
+                      if old_objects:
+                          return {
+                              'type': 's3_storage_optimization',
+                              'objects_to_transition': len(old_objects),
+                              'recommendation': 'Move objects older than 30 days to IA storage',
+                              'potential_savings': len(old_objects) * 0.01  # Rough estimate
+                          }
+                  
+                  return None
+              except Exception as e:
+                  print(f"Error analyzing S3: {str(e)}")
+                  return None
+          
+          def find_old_snapshots(ec2):
+              """Find old EBS snapshots"""
+              try:
+                  snapshots = ec2.describe_snapshots(OwnerIds=['self'])
+                  old_snapshots = []
+                  
+                  cutoff_date = datetime.now() - timedelta(days=90)
+                  
+                  for snapshot in snapshots['Snapshots']:
+                      if snapshot['StartTime'].replace(tzinfo=None) < cutoff_date:
+                          old_snapshots.append(snapshot['SnapshotId'])
+                  
+                  return old_snapshots
+              except Exception as e:
+                  print(f"Error finding old snapshots: {str(e)}")
+                  return []
+
+  # IAM Role for Cost Optimization Lambda
+  CostOptimizationRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-cost-optimization-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CostOptimizationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ec2:DescribeVolumes
+                  - ec2:DescribeSnapshots
+                  - ec2:DescribeInstances
+                  - autoscaling:DescribeAutoScalingGroups
+                  - cloudwatch:GetMetricStatistics
+                  - s3:ListBucket
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:GetBucketLocation
+                Resource: '*'
+
+  # EventBridge Rule for Cost Optimization Schedule
+  CostOptimizationSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-cost-optimization-schedule'
+      Description: 'Weekly cost optimization analysis'
+      ScheduleExpression: 'cron(0 9 ? * MON *)'  # Every Monday at 9 AM UTC
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt CostOptimizationFunction.Arn
+          Id: CostOptimizationTarget
+
+  # Permission for EventBridge to invoke Lambda
+  CostOptimizationLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CostOptimizationFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CostOptimizationSchedule.Arn
+
+  # Auto Scaling Policy for Cost Optimization
+  ScaleDownPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref AutoScalingGroupName
+      Cooldown: 300
+      ScalingAdjustment: -1
+      PolicyType: SimpleScaling
+
+  ScaleUpPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AdjustmentType: ChangeInCapacity
+      AutoScalingGroupName: !Ref AutoScalingGroupName
+      Cooldown: 300
+      ScalingAdjustment: 1
+      PolicyType: SimpleScaling
+
+  # CloudWatch Alarms for Auto Scaling
+  LowCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-low-cpu-scale-down'
+      AlarmDescription: 'Scale down when CPU is low'
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 20
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref AutoScalingGroupName
+      AlarmActions:
+        - !Ref ScaleDownPolicy
+
+  HighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-high-cpu-scale-up'
+      AlarmDescription: 'Scale up when CPU is high'
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 70
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref AutoScalingGroupName
+      AlarmActions:
+        - !Ref ScaleUpPolicy
+
+  # Scheduled Scaling for Predictable Load Patterns
+  ScheduledActionScaleUp:
+    Type: AWS::AutoScaling::ScheduledAction
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroupName
+      DesiredCapacity: 3
+      MaxSize: 5
+      MinSize: 2
+      Recurrence: '0 8 * * MON-FRI'  # Scale up weekdays at 8 AM UTC
+      ScheduledActionName: !Sub '${ProjectName}-${Environment}-scale-up-business-hours'
+
+  ScheduledActionScaleDown:
+    Type: AWS::AutoScaling::ScheduledAction
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroupName
+      DesiredCapacity: 1
+      MaxSize: 3
+      MinSize: 1
+      Recurrence: '0 20 * * MON-FRI'  # Scale down weekdays at 8 PM UTC
+      ScheduledActionName: !Sub '${ProjectName}-${Environment}-scale-down-after-hours'
+
+  # Performance Optimization Lambda
+  PerformanceOptimizationFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-performance-optimization'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt CostOptimizationRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          PROJECT_NAME: !Ref ProjectName
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          from datetime import datetime, timedelta
+          
+          def lambda_handler(event, context):
+              """
+              Performance optimization recommendations
+              """
+              try:
+                  cloudwatch = boto3.client('cloudwatch')
+                  
+                  environment = os.environ['ENVIRONMENT']
+                  project_name = os.environ['PROJECT_NAME']
+                  
+                  recommendations = []
+                  
+                  # Check database performance
+                  db_recommendations = check_database_performance(cloudwatch)
+                  recommendations.extend(db_recommendations)
+                  
+                  # Check cache performance
+                  cache_recommendations = check_cache_performance(cloudwatch)
+                  recommendations.extend(cache_recommendations)
+                  
+                  # Check application performance
+                  app_recommendations = check_application_performance(cloudwatch)
+                  recommendations.extend(app_recommendations)
+                  
+                  report = {
+                      'timestamp': datetime.now().isoformat(),
+                      'environment': environment,
+                      'project': project_name,
+                      'recommendations': recommendations
+                  }
+                  
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps(report)
+                  }
+                  
+              except Exception as e:
+                  print(f"Error in performance optimization: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({'error': str(e)})
+                  }
+          
+          def check_database_performance(cloudwatch):
+              """Check database performance metrics"""
+              recommendations = []
+              
+              try:
+                  # Check DocumentDB CPU utilization
+                  end_time = datetime.now()
+                  start_time = end_time - timedelta(hours=24)
+                  
+                  response = cloudwatch.get_metric_statistics(
+                      Namespace='AWS/DocDB',
+                      MetricName='CPUUtilization',
+                      StartTime=start_time,
+                      EndTime=end_time,
+                      Period=3600,
+                      Statistics=['Average']
+                  )
+                  
+                  if response['Datapoints']:
+                      avg_cpu = sum([dp['Average'] for dp in response['Datapoints']]) / len(response['Datapoints'])
+                      if avg_cpu > 80:
+                          recommendations.append({
+                              'type': 'database_performance',
+                              'issue': 'High CPU utilization',
+                              'recommendation': 'Consider upgrading instance size or optimizing queries',
+                              'priority': 'high'
+                          })
+                      elif avg_cpu < 20:
+                          recommendations.append({
+                              'type': 'database_performance',
+                              'issue': 'Low CPU utilization',
+                              'recommendation': 'Consider downsizing instance to save costs',
+                              'priority': 'low'
+                          })
+                  
+              except Exception as e:
+                  print(f"Error checking database performance: {str(e)}")
+              
+              return recommendations
+          
+          def check_cache_performance(cloudwatch):
+              """Check Redis cache performance"""
+              recommendations = []
+              
+              try:
+                  # Check cache hit rate
+                  end_time = datetime.now()
+                  start_time = end_time - timedelta(hours=24)
+                  
+                  response = cloudwatch.get_metric_statistics(
+                      Namespace='AWS/ElastiCache',
+                      MetricName='CacheHitRate',
+                      StartTime=start_time,
+                      EndTime=end_time,
+                      Period=3600,
+                      Statistics=['Average']
+                  )
+                  
+                  if response['Datapoints']:
+                      avg_hit_rate = sum([dp['Average'] for dp in response['Datapoints']]) / len(response['Datapoints'])
+                      if avg_hit_rate < 0.8:
+                          recommendations.append({
+                              'type': 'cache_performance',
+                              'issue': 'Low cache hit rate',
+                              'recommendation': 'Review caching strategy and TTL settings',
+                              'priority': 'medium'
+                          })
+                  
+              except Exception as e:
+                  print(f"Error checking cache performance: {str(e)}")
+              
+              return recommendations
+          
+          def check_application_performance(cloudwatch):
+              """Check application performance metrics"""
+              recommendations = []
+              
+              try:
+                  # Check response time
+                  end_time = datetime.now()
+                  start_time = end_time - timedelta(hours=24)
+                  
+                  response = cloudwatch.get_metric_statistics(
+                      Namespace='AWS/ApplicationELB',
+                      MetricName='TargetResponseTime',
+                      StartTime=start_time,
+                      EndTime=end_time,
+                      Period=3600,
+                      Statistics=['Average']
+                  )
+                  
+                  if response['Datapoints']:
+                      avg_response_time = sum([dp['Average'] for dp in response['Datapoints']]) / len(response['Datapoints'])
+                      if avg_response_time > 2.0:
+                          recommendations.append({
+                              'type': 'application_performance',
+                              'issue': 'High response time',
+                              'recommendation': 'Optimize application code and database queries',
+                              'priority': 'high'
+                          })
+                  
+              except Exception as e:
+                  print(f"Error checking application performance: {str(e)}")
+              
+              return recommendations
+
+Outputs:
+  CostAnomalyDetectorArn:
+    Description: ARN of the cost anomaly detector
+    Value: !GetAtt CostAnomalyDetector.AnomalyDetectorArn
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-CostAnomalyDetector'
+
+  CostOptimizationFunctionArn:
+    Description: ARN of the cost optimization Lambda function
+    Value: !GetAtt CostOptimizationFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-CostOptimizationFunction'
+
+  PerformanceOptimizationFunctionArn:
+    Description: ARN of the performance optimization Lambda function
+    Value: !GetAtt PerformanceOptimizationFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-PerformanceOptimizationFunction'
+

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Authentication Test</h1>
+    
+    <div class="test-section">
+        <h3>1. Test Login</h3>
+        <button onclick="testLogin()">Login with test@example.com</button>
+        <div id="loginResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. Test Token Storage</h3>
+        <button onclick="checkTokenStorage()">Check Token Storage</button>
+        <div id="tokenResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. Test API Call</h3>
+        <button onclick="testApiCall()">Test API Call</button>
+        <div id="apiResult"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>4. Test Page Refresh</h3>
+        <button onclick="location.reload()">Refresh Page</button>
+        <p>After refresh, check if token is still stored and user is still authenticated.</p>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        
+        async function testLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            resultDiv.innerHTML = 'Logging in...';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/customer/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'password123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Store token and user data
+                    localStorage.setItem('authToken', data.data.tokens.accessToken);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Login Successful!</h4>
+                            <p><strong>User:</strong> ${data.data.user.email}</p>
+                            <p><strong>Token:</strong> ${data.data.tokens.accessToken.substring(0, 50)}...</p>
+                            <p><strong>Stored in localStorage:</strong> Yes</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Login Failed</h4>
+                            <p>${data.error || data.message}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Login Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function checkTokenStorage() {
+            const resultDiv = document.getElementById('tokenResult');
+            const token = localStorage.getItem('authToken');
+            const user = localStorage.getItem('user');
+            
+            if (token && user) {
+                try {
+                    const userData = JSON.parse(user);
+                    const tokenPayload = JSON.parse(atob(token.split('.')[1]));
+                    const currentTime = Math.floor(Date.now() / 1000);
+                    const isExpired = tokenPayload.exp < currentTime;
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Token Storage Check</h4>
+                            <p><strong>Token exists:</strong> Yes</p>
+                            <p><strong>User exists:</strong> Yes</p>
+                            <p><strong>User email:</strong> ${userData.email}</p>
+                            <p><strong>Token expired:</strong> ${isExpired ? 'Yes' : 'No'}</p>
+                            <p><strong>Expires at:</strong> ${new Date(tokenPayload.exp * 1000).toLocaleString()}</p>
+                        </div>
+                    `;
+                } catch (error) {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Token Storage Error</h4>
+                            <p>Error parsing token or user data: ${error.message}</p>
+                        </div>
+                    `;
+                }
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ No Token Found</h4>
+                        <p>No authentication token found in localStorage</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testApiCall() {
+            const resultDiv = document.getElementById('apiResult');
+            const token = localStorage.getItem('authToken');
+            
+            if (!token) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ No Token</h4>
+                        <p>Please login first to get a token</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            resultDiv.innerHTML = 'Making API call...';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/ai-agents`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ API Call Successful!</h4>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Response:</strong></p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ API Call Failed</h4>
+                            <p><strong>Status:</strong> ${response.status}</p>
+                            <p><strong>Response:</strong></p>
+                            <pre>${JSON.stringify(data, null, 2)}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ API Call Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Check token storage on page load
+        window.onload = function() {
+            checkTokenStorage();
+        };
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+

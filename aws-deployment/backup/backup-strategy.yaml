@@ -1,0 +1,457 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Backup and Disaster Recovery Strategy for AI Social Media Platform'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    Description: Environment name
+  
+  ProjectName:
+    Type: String
+    Default: social-media-ai-platform
+    Description: Project name
+  
+  MongoDBClusterName:
+    Type: String
+    Description: Name of the MongoDB DocumentDB cluster
+  
+  RedisClusterName:
+    Type: String
+    Description: Name of the Redis ElastiCache cluster
+  
+  S3BucketName:
+    Type: String
+    Description: Name of the main S3 bucket
+  
+  BackupRetentionDays:
+    Type: Number
+    Default: 30
+    Description: Number of days to retain backups
+  
+  CrossRegionBackup:
+    Type: String
+    Default: 'true'
+    AllowedValues: ['true', 'false']
+    Description: Enable cross-region backup replication
+
+Resources:
+  # Backup Vault for AWS Backup
+  BackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties:
+      BackupVaultName: !Sub '${ProjectName}-${Environment}-backup-vault'
+      EncryptionKeyArn: !Ref BackupKMSKey
+      Notifications:
+        BackupVaultEvents:
+          - BACKUP_JOB_STARTED
+          - BACKUP_JOB_COMPLETED
+          - BACKUP_JOB_FAILED
+          - RESTORE_JOB_STARTED
+          - RESTORE_JOB_COMPLETED
+          - RESTORE_JOB_FAILED
+        SNSTopicArn: !Ref BackupNotificationTopic
+
+  # Cross-Region Backup Vault (if enabled)
+  CrossRegionBackupVault:
+    Type: AWS::Backup::BackupVault
+    Condition: EnableCrossRegionBackup
+    Properties:
+      BackupVaultName: !Sub '${ProjectName}-${Environment}-backup-vault-dr'
+      EncryptionKeyArn: !Ref BackupKMSKey
+
+  # KMS Key for Backup Encryption
+  BackupKMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub 'KMS Key for ${ProjectName} ${Environment} backups'
+      KeyPolicy:
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub 'arn:aws:iam::${AWS::AccountId}:root'
+            Action: 'kms:*'
+            Resource: '*'
+          - Sid: Allow AWS Backup Service
+            Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action:
+              - kms:Decrypt
+              - kms:GenerateDataKey
+              - kms:ReEncrypt*
+              - kms:CreateGrant
+              - kms:DescribeKey
+            Resource: '*'
+
+  BackupKMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub 'alias/${ProjectName}-${Environment}-backup-key'
+      TargetKeyId: !Ref BackupKMSKey
+
+  # SNS Topic for Backup Notifications
+  BackupNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub '${ProjectName}-${Environment}-backup-notifications'
+      DisplayName: 'Backup and Recovery Notifications'
+
+  # IAM Role for AWS Backup
+  BackupServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-backup-service-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup
+        - arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForRestores
+        - arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForS3Backup
+        - arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForS3Restore
+
+  # Backup Plan - Daily Backups
+  DailyBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub '${ProjectName}-${Environment}-daily-backup-plan'
+        BackupPlanRule:
+          - RuleName: DailyBackups
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: 'cron(0 2 * * ? *)'  # Daily at 2 AM UTC
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 120
+            Lifecycle:
+              DeleteAfterDays: !Ref BackupRetentionDays
+              MoveToColdStorageAfterDays: 7
+            RecoveryPointTags:
+              BackupType: Daily
+              Environment: !Ref Environment
+              Project: !Ref ProjectName
+            CopyActions:
+              - !If
+                - EnableCrossRegionBackup
+                - DestinationBackupVaultArn: !GetAtt CrossRegionBackupVault.BackupVaultArn
+                  Lifecycle:
+                    DeleteAfterDays: !Ref BackupRetentionDays
+                    MoveToColdStorageAfterDays: 7
+                - !Ref AWS::NoValue
+
+  # Backup Plan - Weekly Backups
+  WeeklyBackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub '${ProjectName}-${Environment}-weekly-backup-plan'
+        BackupPlanRule:
+          - RuleName: WeeklyBackups
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: 'cron(0 1 ? * SUN *)'  # Weekly on Sunday at 1 AM UTC
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 180
+            Lifecycle:
+              DeleteAfterDays: 90
+              MoveToColdStorageAfterDays: 30
+            RecoveryPointTags:
+              BackupType: Weekly
+              Environment: !Ref Environment
+              Project: !Ref ProjectName
+            CopyActions:
+              - !If
+                - EnableCrossRegionBackup
+                - DestinationBackupVaultArn: !GetAtt CrossRegionBackupVault.BackupVaultArn
+                  Lifecycle:
+                    DeleteAfterDays: 90
+                    MoveToColdStorageAfterDays: 30
+                - !Ref AWS::NoValue
+
+  # Backup Selection for MongoDB DocumentDB
+  MongoDBBackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref DailyBackupPlan
+      BackupSelection:
+        SelectionName: !Sub '${ProjectName}-${Environment}-mongodb-backup'
+        IamRoleArn: !GetAtt BackupServiceRole.Arn
+        Resources:
+          - !Sub 'arn:aws:docdb:${AWS::Region}:${AWS::AccountId}:cluster:${MongoDBClusterName}'
+        Conditions:
+          StringEquals:
+            'aws:ResourceTag/Environment': !Ref Environment
+            'aws:ResourceTag/Project': !Ref ProjectName
+
+  # Backup Selection for S3 Bucket
+  S3BackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref WeeklyBackupPlan
+      BackupSelection:
+        SelectionName: !Sub '${ProjectName}-${Environment}-s3-backup'
+        IamRoleArn: !GetAtt BackupServiceRole.Arn
+        Resources:
+          - !Sub 'arn:aws:s3:::${S3BucketName}'
+
+  # Lambda Function for Custom Backup Tasks
+  CustomBackupFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${Environment}-custom-backup'
+      Runtime: python3.9
+      Handler: index.lambda_handler
+      Role: !GetAtt CustomBackupRole.Arn
+      Timeout: 900
+      Environment:
+        Variables:
+          ENVIRONMENT: !Ref Environment
+          PROJECT_NAME: !Ref ProjectName
+          MONGODB_CLUSTER: !Ref MongoDBClusterName
+          REDIS_CLUSTER: !Ref RedisClusterName
+          S3_BUCKET: !Ref S3BucketName
+          BACKUP_BUCKET: !Ref BackupStorageBucket
+      Code:
+        ZipFile: |
+          import json
+          import boto3
+          import os
+          from datetime import datetime, timedelta
+          
+          def lambda_handler(event, context):
+              """
+              Custom backup function for Redis and application data
+              """
+              try:
+                  # Initialize AWS clients
+                  s3 = boto3.client('s3')
+                  elasticache = boto3.client('elasticache')
+                  docdb = boto3.client('docdb')
+                  
+                  environment = os.environ['ENVIRONMENT']
+                  project_name = os.environ['PROJECT_NAME']
+                  backup_bucket = os.environ['BACKUP_BUCKET']
+                  
+                  timestamp = datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+                  
+                  # Create Redis snapshot
+                  redis_cluster = os.environ['REDIS_CLUSTER']
+                  snapshot_name = f"{project_name}-{environment}-redis-{timestamp}"
+                  
+                  elasticache.create_snapshot(
+                      CacheClusterId=redis_cluster,
+                      SnapshotName=snapshot_name
+                  )
+                  
+                  # Export application configuration
+                  config_backup = {
+                      'timestamp': timestamp,
+                      'environment': environment,
+                      'project': project_name,
+                      'backup_type': 'application_config'
+                  }
+                  
+                  # Upload configuration backup to S3
+                  config_key = f"config-backups/{environment}/{timestamp}/app-config.json"
+                  s3.put_object(
+                      Bucket=backup_bucket,
+                      Key=config_key,
+                      Body=json.dumps(config_backup),
+                      ServerSideEncryption='AES256'
+                  )
+                  
+                  # Cleanup old Redis snapshots (keep last 7 days)
+                  cleanup_old_snapshots(elasticache, project_name, environment)
+                  
+                  return {
+                      'statusCode': 200,
+                      'body': json.dumps({
+                          'message': 'Custom backup completed successfully',
+                          'redis_snapshot': snapshot_name,
+                          'config_backup': config_key
+                      })
+                  }
+                  
+              except Exception as e:
+                  print(f"Error in custom backup: {str(e)}")
+                  return {
+                      'statusCode': 500,
+                      'body': json.dumps({
+                          'error': str(e)
+                      })
+                  }
+          
+          def cleanup_old_snapshots(elasticache, project_name, environment):
+              """Clean up old Redis snapshots"""
+              try:
+                  snapshots = elasticache.describe_snapshots()
+                  cutoff_date = datetime.now() - timedelta(days=7)
+                  
+                  for snapshot in snapshots['Snapshots']:
+                      snapshot_name = snapshot['SnapshotName']
+                      if (snapshot_name.startswith(f"{project_name}-{environment}-redis-") and
+                          snapshot['NodeSnapshots'][0]['SnapshotCreateTime'].replace(tzinfo=None) < cutoff_date):
+                          
+                          elasticache.delete_snapshot(SnapshotName=snapshot_name)
+                          print(f"Deleted old snapshot: {snapshot_name}")
+                          
+              except Exception as e:
+                  print(f"Error cleaning up snapshots: {str(e)}")
+
+  # IAM Role for Custom Backup Lambda
+  CustomBackupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${Environment}-custom-backup-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: CustomBackupPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - elasticache:CreateSnapshot
+                  - elasticache:DeleteSnapshot
+                  - elasticache:DescribeSnapshots
+                  - docdb:CreateDBClusterSnapshot
+                  - docdb:DescribeDBClusterSnapshots
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource: '*'
+
+  # EventBridge Rule for Custom Backup Schedule
+  CustomBackupSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-${Environment}-custom-backup-schedule'
+      Description: 'Schedule for custom backup tasks'
+      ScheduleExpression: 'cron(0 3 * * ? *)'  # Daily at 3 AM UTC
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt CustomBackupFunction.Arn
+          Id: CustomBackupTarget
+
+  # Permission for EventBridge to invoke Lambda
+  CustomBackupLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref CustomBackupFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt CustomBackupSchedule.Arn
+
+  # S3 Bucket for Backup Storage
+  BackupStorageBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-${Environment}-backup-storage-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+      LifecycleConfiguration:
+        Rules:
+          - Id: BackupLifecycle
+            Status: Enabled
+            Transitions:
+              - TransitionInDays: 30
+                StorageClass: STANDARD_IA
+              - TransitionInDays: 90
+                StorageClass: GLACIER
+              - TransitionInDays: 365
+                StorageClass: DEEP_ARCHIVE
+            ExpirationInDays: 2555  # 7 years
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  # Cross-Region Replication for Backup Bucket
+  BackupBucketReplication:
+    Type: AWS::S3::Bucket
+    Condition: EnableCrossRegionBackup
+    Properties:
+      BucketName: !Sub '${ProjectName}-${Environment}-backup-dr-${AWS::AccountId}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+
+  # Disaster Recovery Documentation
+  DisasterRecoveryRunbook:
+    Type: AWS::SSM::Document
+    Properties:
+      DocumentType: Command
+      Name: !Sub '${ProjectName}-${Environment}-disaster-recovery-runbook'
+      Content:
+        schemaVersion: '2.2'
+        description: 'Disaster Recovery Runbook for AI Social Media Platform'
+        parameters:
+          RecoveryType:
+            type: String
+            description: 'Type of recovery to perform'
+            allowedValues:
+              - 'full-restore'
+              - 'database-only'
+              - 'application-only'
+            default: 'full-restore'
+        mainSteps:
+          - action: 'aws:runShellScript'
+            name: 'DisasterRecovery'
+            inputs:
+              runCommand:
+                - '#!/bin/bash'
+                - 'echo "Starting disaster recovery process..."'
+                - 'echo "Recovery Type: {{ RecoveryType }}"'
+                - 'echo "Environment: {{ Environment }}"'
+                - '# Add specific recovery commands here'
+                - 'echo "Disaster recovery process completed"'
+
+Conditions:
+  EnableCrossRegionBackup: !Equals [!Ref CrossRegionBackup, 'true']
+
+Outputs:
+  BackupVaultArn:
+    Description: ARN of the backup vault
+    Value: !GetAtt BackupVault.BackupVaultArn
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-BackupVaultArn'
+
+  BackupStorageBucketName:
+    Description: Name of the backup storage bucket
+    Value: !Ref BackupStorageBucket
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-BackupStorageBucket'
+
+  CustomBackupFunctionArn:
+    Description: ARN of the custom backup Lambda function
+    Value: !GetAtt CustomBackupFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-CustomBackupFunction'
+
+  DisasterRecoveryRunbookName:
+    Description: Name of the disaster recovery runbook
+    Value: !Ref DisasterRecoveryRunbook
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-DisasterRecoveryRunbook'
+

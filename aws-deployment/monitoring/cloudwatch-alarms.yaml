@@ -1,0 +1,469 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CloudWatch Alarms for AI Social Media Platform Monitoring'
+
+Parameters:
+  Environment:
+    Type: String
+    Default: production
+    Description: Environment name
+  
+  ProjectName:
+    Type: String
+    Default: social-media-ai-platform
+    Description: Project name
+  
+  SNSTopicArn:
+    Type: String
+    Description: SNS Topic ARN for alarm notifications
+  
+  LoadBalancerFullName:
+    Type: String
+    Description: Full name of the Application Load Balancer
+  
+  TargetGroupFullName:
+    Type: String
+    Description: Full name of the Target Group
+  
+  AutoScalingGroupName:
+    Type: String
+    Description: Name of the Auto Scaling Group
+  
+  MongoDBClusterName:
+    Type: String
+    Description: Name of the MongoDB DocumentDB cluster
+  
+  RedisClusterName:
+    Type: String
+    Description: Name of the Redis ElastiCache cluster
+
+Resources:
+  # Application Load Balancer Alarms
+  HighResponseTimeAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-high-response-time'
+      AlarmDescription: 'High response time detected'
+      MetricName: TargetResponseTime
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 2.0
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Ref LoadBalancerFullName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      OKActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  HighErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-high-error-rate'
+      AlarmDescription: 'High 5xx error rate detected'
+      MetricName: HTTPCode_Target_5XX_Count
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Ref LoadBalancerFullName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  LowRequestCountAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-low-request-count'
+      AlarmDescription: 'Unusually low request count - possible service issue'
+      MetricName: RequestCount
+      Namespace: AWS/ApplicationELB
+      Statistic: Sum
+      Period: 900
+      EvaluationPeriods: 2
+      Threshold: 5
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: LoadBalancer
+          Value: !Ref LoadBalancerFullName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: breaching
+
+  # Target Group Health Alarms
+  UnhealthyHostsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-unhealthy-hosts'
+      AlarmDescription: 'Unhealthy hosts detected in target group'
+      MetricName: UnHealthyHostCount
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: TargetGroup
+          Value: !Ref TargetGroupFullName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  NoHealthyHostsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-no-healthy-hosts'
+      AlarmDescription: 'No healthy hosts available - critical service outage'
+      MetricName: HealthyHostCount
+      Namespace: AWS/ApplicationELB
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: TargetGroup
+          Value: !Ref TargetGroupFullName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: breaching
+
+  # EC2 Instance Alarms
+  HighCPUUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-high-cpu-utilization'
+      AlarmDescription: 'High CPU utilization detected'
+      MetricName: CPUUtilization
+      Namespace: AWS/EC2
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref AutoScalingGroupName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  HighMemoryUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-high-memory-utilization'
+      AlarmDescription: 'High memory utilization detected'
+      MetricName: mem_used_percent
+      Namespace: CWAgent
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 85
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref AutoScalingGroupName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  HighDiskUtilizationAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-high-disk-utilization'
+      AlarmDescription: 'High disk utilization detected'
+      MetricName: disk_used_percent
+      Namespace: CWAgent
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 90
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref AutoScalingGroupName
+        - Name: device
+          Value: /dev/xvda1
+        - Name: fstype
+          Value: xfs
+        - Name: path
+          Value: /
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # MongoDB DocumentDB Alarms
+  MongoDBHighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-mongodb-high-cpu'
+      AlarmDescription: 'MongoDB high CPU utilization'
+      MetricName: CPUUtilization
+      Namespace: AWS/DocDB
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref MongoDBClusterName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  MongoDBHighConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-mongodb-high-connections'
+      AlarmDescription: 'MongoDB high connection count'
+      MetricName: DatabaseConnections
+      Namespace: AWS/DocDB
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref MongoDBClusterName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  MongoDBHighReadLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-mongodb-high-read-latency'
+      AlarmDescription: 'MongoDB high read latency'
+      MetricName: ReadLatency
+      Namespace: AWS/DocDB
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 0.2
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref MongoDBClusterName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  MongoDBHighWriteLatencyAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-mongodb-high-write-latency'
+      AlarmDescription: 'MongoDB high write latency'
+      MetricName: WriteLatency
+      Namespace: AWS/DocDB
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 0.2
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: DBClusterIdentifier
+          Value: !Ref MongoDBClusterName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # Redis ElastiCache Alarms
+  RedisHighCPUAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-redis-high-cpu'
+      AlarmDescription: 'Redis high CPU utilization'
+      MetricName: CPUUtilization
+      Namespace: AWS/ElastiCache
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 3
+      Threshold: 80
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Ref RedisClusterName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  RedisHighConnectionsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-redis-high-connections'
+      AlarmDescription: 'Redis high connection count'
+      MetricName: CurrConnections
+      Namespace: AWS/ElastiCache
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 50
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Ref RedisClusterName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  RedisLowCacheHitRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-redis-low-cache-hit-rate'
+      AlarmDescription: 'Redis low cache hit rate'
+      MetricName: CacheHitRate
+      Namespace: AWS/ElastiCache
+      Statistic: Average
+      Period: 900
+      EvaluationPeriods: 2
+      Threshold: 0.8
+      ComparisonOperator: LessThanThreshold
+      Dimensions:
+        - Name: CacheClusterId
+          Value: !Ref RedisClusterName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # Auto Scaling Alarms
+  AutoScalingMaxCapacityAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-autoscaling-max-capacity'
+      AlarmDescription: 'Auto Scaling Group reached maximum capacity'
+      MetricName: GroupDesiredCapacity
+      Namespace: AWS/AutoScaling
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 8
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Dimensions:
+        - Name: AutoScalingGroupName
+          Value: !Ref AutoScalingGroupName
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # Application-Specific Alarms
+  ApplicationErrorRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-application-error-rate'
+      AlarmDescription: 'High application error rate detected'
+      MetricName: ErrorRate
+      Namespace: !Sub '${ProjectName}/${Environment}'
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 5
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  AIAgentFailureRateAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-ai-agent-failure-rate'
+      AlarmDescription: 'High AI agent failure rate detected'
+      MetricName: AIAgentFailureRate
+      Namespace: !Sub '${ProjectName}/${Environment}'
+      Statistic: Average
+      Period: 600
+      EvaluationPeriods: 2
+      Threshold: 10
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  SocialMediaAPIErrorAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-social-media-api-errors'
+      AlarmDescription: 'High social media API error rate'
+      MetricName: SocialMediaAPIErrorRate
+      Namespace: !Sub '${ProjectName}/${Environment}'
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 15
+      ComparisonOperator: GreaterThanThreshold
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # Cost Management Alarms
+  HighBillingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-high-billing'
+      AlarmDescription: 'Monthly billing threshold exceeded'
+      MetricName: EstimatedCharges
+      Namespace: AWS/Billing
+      Statistic: Maximum
+      Period: 86400
+      EvaluationPeriods: 1
+      Threshold: 500
+      ComparisonOperator: GreaterThanThreshold
+      Dimensions:
+        - Name: Currency
+          Value: USD
+      AlarmActions:
+        - !Ref SNSTopicArn
+      TreatMissingData: notBreaching
+
+  # Composite Alarms
+  ServiceHealthCompositeAlarm:
+    Type: AWS::CloudWatch::CompositeAlarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-service-health'
+      AlarmDescription: 'Overall service health status'
+      AlarmRule: !Sub |
+        ALARM("${HighErrorRateAlarm}") OR
+        ALARM("${NoHealthyHostsAlarm}") OR
+        ALARM("${MongoDBHighCPUAlarm}") OR
+        ALARM("${RedisHighCPUAlarm}")
+      AlarmActions:
+        - !Ref SNSTopicArn
+      OKActions:
+        - !Ref SNSTopicArn
+
+  PerformanceCompositeAlarm:
+    Type: AWS::CloudWatch::CompositeAlarm
+    Properties:
+      AlarmName: !Sub '${ProjectName}-${Environment}-performance'
+      AlarmDescription: 'Overall performance status'
+      AlarmRule: !Sub |
+        ALARM("${HighResponseTimeAlarm}") OR
+        ALARM("${HighCPUUtilizationAlarm}") OR
+        ALARM("${HighMemoryUtilizationAlarm}") OR
+        ALARM("${MongoDBHighReadLatencyAlarm}") OR
+        ALARM("${MongoDBHighWriteLatencyAlarm}")
+      AlarmActions:
+        - !Ref SNSTopicArn
+
+Outputs:
+  ServiceHealthAlarmArn:
+    Description: ARN of the service health composite alarm
+    Value: !GetAtt ServiceHealthCompositeAlarm.Arn
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-ServiceHealthAlarm'
+
+  PerformanceAlarmArn:
+    Description: ARN of the performance composite alarm
+    Value: !GetAtt PerformanceCompositeAlarm.Arn
+    Export:
+      Name: !Sub '${ProjectName}-${Environment}-PerformanceAlarm'
+

@@ -1,0 +1,100 @@
+# Prometheus Configuration for AI Social Media Platform
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'ai-social-platform'
+    environment: 'production'
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
+
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Backend API
+  - job_name: 'backend-api'
+    static_configs:
+      - targets: ['backend-api:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+
+  # Customer Frontend
+  - job_name: 'customer-frontend'
+    static_configs:
+      - targets: ['customer-frontend:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # Admin Panel
+  - job_name: 'admin-panel'
+    static_configs:
+      - targets: ['admin-panel:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 30s
+
+  # AI Agents
+  - job_name: 'ai-agents'
+    static_configs:
+      - targets: ['ai-agents:8000']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  # MongoDB
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb:27017']
+    scrape_interval: 30s
+
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis:6379']
+    scrape_interval: 30s
+
+  # Node Exporter
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  # cAdvisor
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+
+  # Nginx
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx:9113']
+    scrape_interval: 30s
+
+  # Blackbox Exporter
+  - job_name: 'blackbox'
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://customer-frontend:3000
+        - http://admin-panel:3001
+        - http://backend-api:3001/api/health
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+

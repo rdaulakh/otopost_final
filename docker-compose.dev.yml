@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: ai-social-mongodb-dev
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: ai-social-media
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_dev_data:/data/db
+    networks:
+      - ai-social-dev-network
+
+  # Redis Cache & Session Store
+  redis:
+    image: redis:7.2-alpine
+    container_name: ai-social-redis-dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_dev_data:/data
+    networks:
+      - ai-social-dev-network
+    command: redis-server --appendonly yes
+
+  # Backend API Server (Development)
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile.dev
+    container_name: ai-social-api-dev
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      MONGODB_URI: mongodb://mongodb:27017/ai-social-media
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRE: ${JWT_EXPIRE:-7d}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID}
+      INSTAGRAM_APP_ID: ${INSTAGRAM_APP_ID}
+      TWITTER_API_KEY: ${TWITTER_API_KEY}
+      LINKEDIN_CLIENT_ID: ${LINKEDIN_CLIENT_ID}
+      TIKTOK_CLIENT_KEY: ${TIKTOK_CLIENT_KEY}
+      YOUTUBE_API_KEY: ${YOUTUBE_API_KEY}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./api:/app
+      - /app/node_modules
+      - ./api/uploads:/app/uploads
+    networks:
+      - ai-social-dev-network
+    depends_on:
+      - mongodb
+      - redis
+
+volumes:
+  mongodb_dev_data:
+    driver: local
+  redis_dev_data:
+    driver: local
+
+networks:
+  ai-social-dev-network:
+    driver: bridge

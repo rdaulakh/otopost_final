@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Authentication Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+        .info { background-color: #d1ecf1; border-color: #bee5eb; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 3px; overflow-x: auto; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Frontend Authentication Test</h1>
+        <p>This page tests the frontend authentication flow with the fixed backend.</p>
+        
+        <div class="test-section">
+            <h3>1. Test Login and Token Storage</h3>
+            <button onclick="testLogin()">Login and Store Token</button>
+            <div id="loginResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. Test API Calls with Stored Token</h3>
+            <button onclick="testApiCalls()">Test All API Endpoints</button>
+            <div id="apiResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. Test Token Persistence (Refresh Page)</h3>
+            <button onclick="testPersistence()">Check Token Persistence</button>
+            <div id="persistenceResult"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'http://localhost:8000/api';
+        
+        async function testLogin() {
+            const resultDiv = document.getElementById('loginResult');
+            resultDiv.innerHTML = '<div class="info">Logging in...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/auth/customer/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'test@example.com',
+                        password: 'password123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Store token and user data (simulating frontend behavior)
+                    localStorage.setItem('authToken', data.data.tokens.accessToken);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Login Successful!</h4>
+                            <p><strong>User:</strong> ${data.data.user.email}</p>
+                            <p><strong>Token:</strong> ${data.data.tokens.accessToken.substring(0, 50)}...</p>
+                            <p><strong>Stored in localStorage:</strong> Yes</p>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Login Failed</h4>
+                            <p>${data.error || data.message}</p>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ Login Error</h4>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        async function testApiCalls() {
+            const resultDiv = document.getElementById('apiResult');
+            const token = localStorage.getItem('authToken');
+            
+            if (!token) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ No Token</h4>
+                        <p>Please login first to get a token</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            resultDiv.innerHTML = '<div class="info">Testing API endpoints...</div>';
+            
+            const endpoints = [
+                { name: 'AI Agents', url: '/ai-agents' },
+                { name: 'Subscriptions', url: '/subscriptions' },
+                { name: 'Social Accounts', url: '/social-accounts' }
+            ];
+            
+            let results = [];
+            
+            for (const endpoint of endpoints) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}${endpoint.url}`, {
+                        method: 'GET',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    results.push(`
+                        <div class="${response.ok ? 'success' : 'error'}">
+                            <strong>${endpoint.name}:</strong> ${response.ok ? '✅ Success' : '❌ Failed'} 
+                            (Status: ${response.status})
+                            ${!response.ok ? `<br><small>${data.message || data.error}</small>` : ''}
+                        </div>
+                    `);
+                } catch (error) {
+                    results.push(`
+                        <div class="error">
+                            <strong>${endpoint.name}:</strong> ❌ Error - ${error.message}
+                        </div>
+                    `);
+                }
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="info">
+                    <h4>API Test Results:</h4>
+                    ${results.join('')}
+                </div>
+            `;
+        }
+        
+        function testPersistence() {
+            const resultDiv = document.getElementById('persistenceResult');
+            const token = localStorage.getItem('authToken');
+            const user = localStorage.getItem('user');
+            
+            if (token && user) {
+                try {
+                    const userData = JSON.parse(user);
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    const currentTime = Math.floor(Date.now() / 1000);
+                    const isExpired = payload.exp < currentTime;
+                    
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <h4>✅ Token Persistence Working!</h4>
+                            <p><strong>Token exists:</strong> Yes</p>
+                            <p><strong>User exists:</strong> Yes</p>
+                            <p><strong>User email:</strong> ${userData.email}</p>
+                            <p><strong>Token expired:</strong> ${isExpired ? 'Yes' : 'No'}</p>
+                            <p><strong>Expires at:</strong> ${new Date(payload.exp * 1000).toLocaleString()}</p>
+                            <p><strong>Ready for page refresh test:</strong> Yes</p>
+                        </div>
+                    `;
+                } catch (error) {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <h4>❌ Token Persistence Error</h4>
+                            <p>Error parsing token: ${error.message}</p>
+                        </div>
+                    `;
+                }
+            } else {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <h4>❌ No Token Found</h4>
+                        <p>No authentication token found in localStorage</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto-run tests on page load
+        window.onload = function() {
+            testPersistence();
+        };
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,743 @@
+{
+  "info": {
+    "name": "AI Social Media Platform API",
+    "description": "Complete API collection for the AI Social Media Platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "ai-social-media-api-collection"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Liveness Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/live",
+              "host": ["{{base_url}}"],
+              "path": ["live"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', response.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test User\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"company\": \"Test Company\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', response.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Logout User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "logout"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Management",
+      "item": [
+        {
+          "name": "Get User Profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"company\": \"Updated Company\",\n  \"preferences\": {\n    \"theme\": \"dark\",\n    \"notifications\": {\n      \"email\": true,\n      \"push\": false\n    }\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "me"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Business Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"industry\": \"Technology\",\n  \"businessType\": \"B2B\",\n  \"companySize\": \"11-50\",\n  \"website\": \"https://example.com\",\n  \"marketingStrategy\": {\n    \"brandVoice\": \"Professional\",\n    \"contentStyle\": \"Educational\",\n    \"postingFrequency\": \"Daily\",\n    \"targetAudience\": \"Tech professionals and entrepreneurs\",\n    \"businessObjectives\": [\"Brand Awareness\", \"Lead Generation\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/business-profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "business-profile"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"password123\",\n  \"newPassword\": \"newpassword123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/users/password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "password"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/users/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "users", "stats"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Content Management",
+      "item": [
+        {
+          "name": "Get All Content",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/content?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "content"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Sample Social Media Post\",\n  \"content\": {\n    \"text\": \"This is a sample social media post about AI and technology! 🚀\",\n    \"hashtags\": [\"#AI\", \"#Technology\", \"#SocialMedia\", \"#Innovation\"]\n  },\n  \"platforms\": [\n    {\n      \"platform\": \"instagram\",\n      \"status\": \"draft\"\n    },\n    {\n      \"platform\": \"linkedin\",\n      \"status\": \"draft\"\n    }\n  ],\n  \"postType\": \"text\",\n  \"tags\": [\"technology\", \"ai\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/content",
+              "host": ["{{base_url}}"],
+              "path": ["api", "content"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Content by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/content/{{content_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "content", "{{content_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Content",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Updated Social Media Post\",\n  \"content\": {\n    \"text\": \"This is an updated social media post about AI and technology! 🚀✨\",\n    \"hashtags\": [\"#AI\", \"#Technology\", \"#SocialMedia\", \"#Innovation\", \"#Update\"]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/content/{{content_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "content", "{{content_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"feedback\": \"Content looks great! Ready to publish.\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/content/{{content_id}}/approve",
+              "host": ["{{base_url}}"],
+              "path": ["api", "content", "{{content_id}}", "approve"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Scheduled Content",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/content/scheduled/upcoming?days=7",
+              "host": ["{{base_url}}"],
+              "path": ["api", "content", "scheduled", "upcoming"],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "7"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Analytics Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/content/analytics/summary?period=30",
+              "host": ["{{base_url}}"],
+              "path": ["api", "content", "analytics", "summary"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Social Profiles",
+      "item": [
+        {
+          "name": "Get Social Profiles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/social-profiles",
+              "host": ["{{base_url}}"],
+              "path": ["api", "social-profiles"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Connect Social Profile",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"instagram\",\n  \"platformId\": \"12345678\",\n  \"username\": \"testuser\",\n  \"displayName\": \"Test User\",\n  \"profilePicture\": \"https://example.com/avatar.jpg\",\n  \"bio\": \"Test Instagram account\",\n  \"followerCount\": 1000,\n  \"followingCount\": 500,\n  \"postCount\": 100,\n  \"accessToken\": \"sample_access_token\",\n  \"permissions\": [\"read\", \"write\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/social-profiles",
+              "host": ["{{base_url}}"],
+              "path": ["api", "social-profiles"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Social Profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"settings\": {\n    \"autoPost\": true,\n    \"optimalTiming\": true,\n    \"hashtagSuggestions\": true\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/social-profiles/{{profile_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "social-profiles", "{{profile_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/social-profiles/{{profile_id}}/analytics",
+              "host": ["{{base_url}}"],
+              "path": ["api", "social-profiles", "{{profile_id}}", "analytics"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Summary Stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/social-profiles/summary/stats",
+              "host": ["{{base_url}}"],
+              "path": ["api", "social-profiles", "summary", "stats"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "AI Features",
+      "item": [
+        {
+          "name": "Generate Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"prompt\": \"Create a post about the benefits of AI in social media marketing\",\n  \"platform\": \"linkedin\",\n  \"postType\": \"text\",\n  \"tone\": \"professional\",\n  \"includeHashtags\": true,\n  \"includeImages\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ai/generate-content",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ai", "generate-content"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Strategy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"goals\": [\"Brand Awareness\", \"Lead Generation\"],\n  \"targetAudience\": \"Tech professionals and entrepreneurs\",\n  \"platforms\": [\"linkedin\", \"twitter\", \"instagram\"],\n  \"duration\": 30,\n  \"contentTypes\": [\"educational\", \"promotional\"]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ai/generate-strategy",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ai", "generate-strategy"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Optimize Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"contentId\": \"{{content_id}}\",\n  \"optimizationType\": \"engagement\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ai/optimize-content",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ai", "optimize-content"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get AI Insights",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ai/insights?period=30",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ai", "insights"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Generate Hashtags",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"AI is revolutionizing social media marketing\",\n  \"platform\": \"instagram\",\n  \"industry\": \"Technology\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ai/generate-hashtags",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ai", "generate-hashtags"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Schedule Optimization",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platforms\": [\"instagram\", \"linkedin\", \"twitter\"],\n  \"timezone\": \"America/New_York\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ai/schedule-optimization",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ai", "schedule-optimization"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get AI Agents Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ai/agents/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ai", "agents", "status"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/dashboard?period=30",
+              "host": ["{{base_url}}"],
+              "path": ["api", "analytics", "dashboard"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Performance Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/performance?period=30&platform=instagram",
+              "host": ["{{base_url}}"],
+              "path": ["api", "analytics", "performance"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30"
+                },
+                {
+                  "key": "platform",
+                  "value": "instagram"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Engagement Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/engagement?period=30",
+              "host": ["{{base_url}}"],
+              "path": ["api", "analytics", "engagement"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Audience Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/audience",
+              "host": ["{{base_url}}"],
+              "path": ["api", "analytics", "audience"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Export Analytics Report",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/reports/export?period=30&format=json",
+              "host": ["{{base_url}}"],
+              "path": ["api", "analytics", "reports", "export"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30"
+                },
+                {
+                  "key": "format",
+                  "value": "json"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

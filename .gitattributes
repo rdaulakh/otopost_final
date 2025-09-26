@@ -1,0 +1,6 @@
+*.deb filter=lfs diff=lfs merge=lfs -text
+*.zip filter=lfs diff=lfs merge=lfs -text
+*.so filter=lfs diff=lfs merge=lfs -text
+*.whl filter=lfs diff=lfs merge=lfs -text
+mongodb-compass_1.42.0_amd64.deb filter=lfs diff=lfs merge=lfs -text
+oto-website-backup-20250924-162930.zip filter=lfs diff=lfs merge=lfs -text

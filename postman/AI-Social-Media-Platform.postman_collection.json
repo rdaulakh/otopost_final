@@ -1,0 +1,401 @@
+{
+  "info": {
+    "name": "AI Social Media Platform API",
+    "description": "Complete API collection for the AI Social Media Management Platform",
+    "version": "1.0.0",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "admin_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "organization_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{base_url}}/health",
+          "host": ["{{base_url}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', response.token);",
+                  "    pm.collectionVariables.set('user_id', response.user._id);",
+                  "    pm.collectionVariables.set('organization_id', response.user.organizationId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"organizationName\": \"Test Organization\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('jwt_token', response.token);",
+                  "    pm.collectionVariables.set('user_id', response.user._id);",
+                  "    pm.collectionVariables.set('organization_id', response.user.organizationId);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"demo@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/me",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "me"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Content Management",
+      "item": [
+        {
+          "name": "Create Content",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"post\",\n  \"platforms\": [\"instagram\", \"facebook\"],\n  \"content\": {\n    \"text\": \"Test post from API\",\n    \"hashtags\": [\"test\", \"api\", \"social\"]\n  },\n  \"scheduledAt\": \"2024-12-31T12:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/content",
+              "host": ["{{base_url}}"],
+              "path": ["api", "content"]
+            }
+          }
+        },
+        {
+          "name": "Get Content List",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/content?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "content"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI Agents",
+      "item": [
+        {
+          "name": "Get AI Agents Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/ai-agents/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ai-agents", "status"]
+            }
+          }
+        },
+        {
+          "name": "Create Intelligence Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"comprehensive_insights\",\n  \"organizationId\": \"{{organization_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/ai-agents/intelligence/analyze",
+              "host": ["{{base_url}}"],
+              "path": ["api", "ai-agents", "intelligence", "analyze"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Get Dashboard Analytics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["api", "analytics", "dashboard"]
+            }
+          }
+        },
+        {
+          "name": "Get Content Performance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/analytics/content/performance?period=30d",
+              "host": ["{{base_url}}"],
+              "path": ["api", "analytics", "content", "performance"],
+              "query": [
+                {
+                  "key": "period",
+                  "value": "30d"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin API",
+      "item": [
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('admin_token', response.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@aisocialmedia.com\",\n  \"password\": \"admin123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/admin/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/users?page=1&limit=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get System Analytics",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{admin_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/admin/analytics/system",
+              "host": ["{{base_url}}"],
+              "path": ["api", "admin", "analytics", "system"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Social Media Integration",
+      "item": [
+        {
+          "name": "Connect Instagram",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accessToken\": \"your_instagram_access_token\",\n  \"accountId\": \"your_instagram_account_id\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/social/instagram/connect",
+              "host": ["{{base_url}}"],
+              "path": ["api", "social", "instagram", "connect"]
+            }
+          }
+        },
+        {
+          "name": "Get Connected Accounts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/social/accounts",
+              "host": ["{{base_url}}"],
+              "path": ["api", "social", "accounts"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+
