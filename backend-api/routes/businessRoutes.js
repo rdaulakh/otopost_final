@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const asyncHandler = require('express-async-handler');
+const mongoose = require('mongoose');
 const Business = require('../models/businessModel');
 const { protect } = require('../middleware/authMiddleware');
 

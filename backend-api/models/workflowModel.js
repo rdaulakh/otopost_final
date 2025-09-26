@@ -37,7 +37,7 @@ const workflowSchema = mongoose.Schema({
     required: true,
     unique: true
   },
-  user: {
+  userId: {
     type: mongoose.Schema.Types.ObjectId,
     required: true,
     ref: 'User'
@@ -89,7 +89,7 @@ const workflowSchema = mongoose.Schema({
 });
 
 // Index for efficient queries
-workflowSchema.index({ user: 1, createdAt: -1 });
+workflowSchema.index({ userId: 1, createdAt: -1 });
 workflowSchema.index({ business: 1, type: 1 });
 workflowSchema.index({ status: 1, createdAt: -1 });
 
@@ -111,7 +111,7 @@ workflowSchema.methods.calculateSuccessRate = function() {
 // Static method to get user workflow stats
 workflowSchema.statics.getUserStats = async function(userId) {
   const stats = await this.aggregate([
-    { $match: { user: mongoose.Types.ObjectId(userId) } },
+    { $match: { userId: mongoose.Types.ObjectId(userId) } },
     {
       $group: {
         _id: '$status',
@@ -126,7 +126,7 @@ workflowSchema.statics.getUserStats = async function(userId) {
 
 // Static method to get recent workflows
 workflowSchema.statics.getRecentWorkflows = async function(userId, limit = 10) {
-  return this.find({ user: userId })
+  return this.find({ userId: userId })
     .sort({ createdAt: -1 })
     .limit(limit)
     .populate('business', 'businessName industry')

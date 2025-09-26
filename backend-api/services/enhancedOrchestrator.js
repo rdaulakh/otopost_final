@@ -21,7 +21,7 @@ class EnhancedOrchestrator {
             // Create workflow record
             const workflow = new Workflow({
                 workflowId,
-                user: userId,
+                userId: userId,
                 business: businessId,
                 type: 'content_generation',
                 status: 'in_progress',
@@ -95,7 +95,7 @@ class EnhancedOrchestrator {
 
             const workflow = new Workflow({
                 workflowId,
-                user: userId,
+                userId: userId,
                 business: businessId,
                 type: 'strategy_generation',
                 status: 'in_progress',
@@ -165,7 +165,7 @@ class EnhancedOrchestrator {
 
             const workflow = new Workflow({
                 workflowId,
-                user: userId,
+                userId: userId,
                 business: businessId,
                 type: 'performance_analysis',
                 status: 'in_progress',
@@ -269,7 +269,7 @@ class EnhancedOrchestrator {
     async getUserWorkflowStats(userId) {
         try {
             const stats = await Workflow.getUserStats(userId);
-            const totalWorkflows = await Workflow.countDocuments({ user: userId });
+            const totalWorkflows = await Workflow.countDocuments({ userId: userId });
             
             return {
                 totalWorkflows,

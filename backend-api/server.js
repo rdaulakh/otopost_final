@@ -41,6 +41,7 @@ app.use('/api/plans', require('./routes/planRoutes'));
 app.use('/api/content', require('./routes/contentRoutes')); // AI Agents routes
 app.use('/api/posts', require('./routes/postRoutes'));
 app.use('/api/health', require('./routes/healthRoutes')); // Health monitoring
+app.use('/api/test', require('./routes/testRoutes')); // Testing endpoints
 
 // Error handling middleware (order matters)
 app.use(aiAgentErrorHandler); // AI-specific error handling first
