@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://digiads.digiaeon.com/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
 
 // Create axios instance
 const apiClient = axios.create({
@@ -92,7 +92,7 @@ apiClient.interceptors.response.use(
 export const API_ENDPOINTS = {
   // Authentication
   AUTH: {
-    LOGIN: '/simple-auth/login',
+    LOGIN: '/auth/login',
     REGISTER: '/auth/customer/register',
     LOGOUT: '/auth/customer/logout',
     REFRESH: '/auth/customer/refresh-token',

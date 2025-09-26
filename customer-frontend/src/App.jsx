@@ -42,6 +42,7 @@ import EnhancedCostOptimizer from './components/EnhancedCostOptimizer.jsx'
 import Settings from './components/Settings.jsx'
 import Sidebar from './components/Sidebar.jsx'
 import CompetitorAnalysis from './components/CompetitorAnalysis.jsx'
+import AIAgentsDashboard from './components/AIAgentsDashboard.jsx'
 
 // Import UI components
 import { Card, CardContent } from '@/components/ui/card.jsx'
@@ -281,6 +282,7 @@ function AppContent() {
 
   const navigation = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+    { id: 'ai-agents', label: 'AI Agents', icon: Sparkles },
     { id: 'strategy', label: 'AI Strategy', icon: Brain },
     { id: 'calendar', label: 'Content Calendar', icon: Calendar },
     { id: 'campaigns', label: 'Campaign Manager', icon: Target },
@@ -302,6 +304,12 @@ function AppContent() {
     }
 
     switch (currentView) {
+      case 'ai-agents':
+        return (
+          <ErrorBoundary>
+            <AIAgentsDashboard {...viewProps} />
+          </ErrorBoundary>
+        )
       case 'strategy':
         return (
           <ErrorBoundary>

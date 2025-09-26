@@ -103,7 +103,7 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
     try {
       setIsLoadingOrgProfile(true)
       const token = localStorage.getItem('authToken')
-      const response = await fetch('https://digiads.digiaeon.com/api/users/organization/profile', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/users/organization/profile', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -124,7 +124,7 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
   const fetchBrandAssets = async () => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch('https://digiads.digiaeon.com/api/users/organization/brand-assets', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/users/organization/brand-assets', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -143,7 +143,7 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
   const deleteBrandAsset = async (assetType) => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await fetch(`https://digiads.digiaeon.com/api/users/organization/brand-assets/${assetType}`, {
+      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/users/organization/brand-assets/${assetType}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -228,7 +228,7 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
       }
       
       const token = localStorage.getItem('authToken')
-      const response = await fetch('https://digiads.digiaeon.com/api/users/organization/profile', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/users/organization/profile', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -560,7 +560,7 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
       info(`Redirecting to ${platform} for authorization...`)
       
       // Redirect to the OAuth initiation endpoint
-      const oauthUrl = `https://digiads.digiaeon.com/api/social-accounts/oauth/${platform}`
+      const oauthUrl = `${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/social-accounts/oauth/${platform}`
       window.location.href = oauthUrl
     } catch (err) {
       console.error('OAuth initiation error:', err)
@@ -574,7 +574,7 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
       console.log('Attempting to complete OAuth connection...')
       
       // First, let's check the OAuth session debug info
-      const debugResponse = await fetch('https://digiads.digiaeon.com/api/social-accounts/oauth/debug', {
+      const debugResponse = await fetch('${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/social-accounts/oauth/debug', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -586,7 +586,7 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
       const debugData = await debugResponse.json()
       console.log('OAuth debug data:', debugData)
       
-      const response = await fetch('https://digiads.digiaeon.com/api/social-accounts/oauth/complete', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/social-accounts/oauth/complete', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
@@ -710,7 +710,7 @@ const Settings = ({ data = {}, user = {}, onDataUpdate = () => {} }) => {
 
       // Upload to backend
       const token = localStorage.getItem('authToken')
-      const response = await fetch('https://digiads.digiaeon.com/api/users/organization/upload-asset', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/users/organization/upload-asset', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`

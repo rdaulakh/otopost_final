@@ -51,7 +51,7 @@ const UserProfileMinimal = () => {
           return
         }
 
-        const response = await fetch('https://digiads.digiaeon.com/api/users/profile', {
+        const response = await fetch('${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/users/profile', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
@@ -108,7 +108,7 @@ const UserProfileMinimal = () => {
       userData.phoneNumber = phone // API expects phoneNumber, not phone
       
       // Update user profile
-      const userResponse = await fetch('https://digiads.digiaeon.com/api/users/profile', {
+      const userResponse = await fetch('${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/users/profile', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -126,7 +126,7 @@ const UserProfileMinimal = () => {
       
       // Update organization profile if company name is provided
       if (company) {
-        const orgResponse = await fetch('https://digiads.digiaeon.com/api/users/organization/profile', {
+        const orgResponse = await fetch('${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/users/organization/profile', {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,

@@ -1,7 +1,8 @@
 const express = require('express');
 const dotenv = require('dotenv').config();
 const cors = require('cors');
-const { errorHandler } = require('./middleware/errorMiddleware');
+const errorHandler = require('./middleware/errorMiddleware');
+const { aiAgentErrorHandler } = require('./middleware/aiAgentErrorHandler');
 const connectDB = require('./config/db');
 
 const port = process.env.PORT || 5000;
@@ -37,10 +38,13 @@ app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/business', require('./routes/businessRoutes'));
 app.use('/api/plans', require('./routes/planRoutes'));
-app.use('/api/content', require('./routes/contentRoutes')); // New
-app.use('/api/posts', require('./routes/postRoutes'));     // New
+app.use('/api/content', require('./routes/contentRoutes')); // AI Agents routes
+app.use('/api/posts', require('./routes/postRoutes'));
+app.use('/api/health', require('./routes/healthRoutes')); // Health monitoring
 
-app.use(errorHandler);
+// Error handling middleware (order matters)
+app.use(aiAgentErrorHandler); // AI-specific error handling first
+app.use(errorHandler);        // General error handling
 
 app.listen(port, () => console.log(`[SERVER] Server is running on port ${port}`));
 

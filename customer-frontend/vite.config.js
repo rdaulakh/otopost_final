@@ -12,7 +12,7 @@ export default defineConfig({
     },
   },
   define: {
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'https://digiads.digiaeon.com/api'),
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify(process.env.VITE_API_BASE_URL || 'http://localhost:5000/api'),
   },
   build: {
     rollupOptions: {
@@ -32,8 +32,6 @@ export default defineConfig({
     allowedHosts: [
       'localhost',
       '127.0.0.1',
-      'digiads.digiaeon.com',
-      '5173-i7ktze5qp2r82izkua5jw-5bbe0b08.manusvm.computer',
       '.manusvm.computer'
     ]
   }

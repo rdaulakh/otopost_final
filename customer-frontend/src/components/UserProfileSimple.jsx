@@ -81,13 +81,13 @@ const uploadProfilePicture = async (file) => {
       // Convert relative path to full URL
       const fullUrl = response.data.data.avatar.startsWith('http') 
         ? response.data.data.avatar 
-        : `https://digiads.digiaeon.com${response.data.data.avatar}`
+        : `${import.meta.env.VITE_API_BASE_URL?.replace("/api", "") || "http://localhost:5000"}${response.data.data.avatar}`
       return { url: fullUrl }
     } else if (response.data.avatar) {
       // Fallback for old API structure
       const fullUrl = response.data.avatar.startsWith('http') 
         ? response.data.avatar 
-        : `https://digiads.digiaeon.com${response.data.avatar}`
+        : `${import.meta.env.VITE_API_BASE_URL?.replace("/api", "") || "http://localhost:5000"}${response.data.avatar}`
       return { url: fullUrl }
     } else {
       throw new Error('Invalid response format from upload API')

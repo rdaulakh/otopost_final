@@ -134,9 +134,8 @@ class ErrorBoundary extends React.Component {
 
 function App() {
   const [currentView, setCurrentView] = useState('dashboard')
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
   const [isAuthenticating, setIsAuthenticating] = useState(false)
+  const [loginError, setLoginError] = useState('')
   
   // Admin user data
   const [adminUser, setAdminUser] = useState({
@@ -307,7 +306,7 @@ function App() {
       }
     } catch (error) {
       console.error('Admin sign in error:', error)
-      alert(`Authentication failed: ${error.message}`)
+      setLoginError(`Authentication failed: ${error.message}`)
     } finally {
       setIsAuthenticating(false)
     }
@@ -347,12 +346,18 @@ function App() {
             
             <form onSubmit={(e) => {
               e.preventDefault()
+              setLoginError('') // Clear previous errors
               const formData = new FormData(e.target)
               handleAdminSignIn({
                 email: formData.get('email'),
                 password: formData.get('password')
               })
             }}>
+              {loginError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-600">{loginError}</p>
+                </div>
+              )}
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">

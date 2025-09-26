@@ -78,7 +78,7 @@ export const useUpdateSettings = () => {
     mutationFn: async (settings) => {
       // Update organization profile with AI preferences
       const token = localStorage.getItem('authToken');
-      const response = await fetch('https://digiads.digiaeon.com/api/users/organization/profile', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/users/organization/profile', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -112,7 +112,7 @@ export const useUpdateNotificationSettings = () => {
     mutationFn: async (notifications) => {
       // Update organization profile with notification settings
       const token = localStorage.getItem('authToken');
-      const response = await fetch('https://digiads.digiaeon.com/api/users/organization/profile', {
+      const response = await fetch('${import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"}/users/organization/profile', {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${token}`,

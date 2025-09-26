@@ -18,7 +18,7 @@ class WebSocketService {
       return Promise.resolve()
     }
 
-    const serverUrl = import.meta.env.VITE_WS_URL || 'wss://digiads.digiaeon.com'
+    const serverUrl = import.meta.env.VITE_WS_URL || 'wss://localhost:5000'
     
     return new Promise((resolve, reject) => {
       this.socket = io(serverUrl, {

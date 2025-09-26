@@ -5,7 +5,7 @@ import { API_ENDPOINTS } from '../config/api.js'
 import apiClient from '../config/api.js'
 
 // Get API_BASE_URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://digiads.digiaeon.com/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
 
 // Use the configured API client
 const api = apiClient
